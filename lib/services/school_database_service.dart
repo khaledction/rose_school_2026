@@ -426,9 +426,12 @@ class SchoolDatabaseService {
       'landline': identity.landline,
       'website': identity.website,
       'facebookPage': identity.facebookPage,
-      'secretaryName': identity.secretaryName,
-      'supervisorName': identity.supervisorName,
+      'schoolManagerName': identity.schoolManagerName,
+      'sectionSupervisorName': identity.sectionSupervisorName,
       'principalName': identity.principalName,
+      'generalSupervisorName': identity.generalSupervisorName,
+      'sealImagePath': identity.sealImagePath,
+      'signatureImagePath': identity.signatureImagePath,
     };
   }
 
@@ -440,9 +443,12 @@ class SchoolDatabaseService {
       landline: item['landline']?.toString() ?? '',
       website: item['website']?.toString() ?? '',
       facebookPage: item['facebookPage']?.toString() ?? '',
-      secretaryName: item['secretaryName']?.toString() ?? '',
-      supervisorName: item['supervisorName']?.toString() ?? '',
+      schoolManagerName: item['schoolManagerName']?.toString() ?? item['secretaryName']?.toString() ?? '',
+      sectionSupervisorName: item['sectionSupervisorName']?.toString() ?? item['supervisorName']?.toString() ?? '',
       principalName: item['principalName']?.toString() ?? '',
+      generalSupervisorName: item['generalSupervisorName']?.toString() ?? '',
+      sealImagePath: item['sealImagePath']?.toString() ?? '',
+      signatureImagePath: item['signatureImagePath']?.toString() ?? '',
     );
   }
 

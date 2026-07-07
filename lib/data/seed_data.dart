@@ -474,9 +474,12 @@ const SchoolIdentityEntry kInitialSchoolIdentity = SchoolIdentityEntry(
   landline: '011-4455667',
   website: 'https://rose-school.edu',
   facebookPage: 'https://facebook.com/rose.school.2026',
-  secretaryName: 'أمين السر',
-  supervisorName: 'الموجه',
+  schoolManagerName: 'مدير المدرسة',
+  sectionSupervisorName: 'مشرف القسم',
   principalName: 'مدير المدرسة',
+  generalSupervisorName: 'المشرف العام',
+  sealImagePath: '',
+  signatureImagePath: '',
 );
 
 const List<AdminUserEntry> kInitialAdminUsers = <AdminUserEntry>[

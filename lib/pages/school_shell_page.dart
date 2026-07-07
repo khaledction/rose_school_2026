@@ -214,9 +214,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final TextEditingController _schoolLandlineController = TextEditingController();
   final TextEditingController _schoolWebsiteController = TextEditingController();
   final TextEditingController _schoolFacebookController = TextEditingController();
-  final TextEditingController _secretaryNameController = TextEditingController();
-  final TextEditingController _supervisorNameController = TextEditingController();
+  final TextEditingController _secretaryNameController = TextEditingController(); // مدير المدرسة (old name kept for sections file compat)
+  final TextEditingController _supervisorNameController = TextEditingController(); // مشرف القسم (old name kept for sections file compat)
   final TextEditingController _principalNameController = TextEditingController();
+  final TextEditingController _generalSupervisorController = TextEditingController(); // المشرف العام
+  String _sealImagePath = '';
+  String _signatureImagePath = '';
   final TextEditingController _loginUsernameController = TextEditingController(text: 'admin');
   final TextEditingController _loginPasswordController = TextEditingController(text: 'admin');
   final TextEditingController _adminUsernameController = TextEditingController();
@@ -373,9 +376,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     _schoolLandlineController.text = _schoolIdentity.landline;
     _schoolWebsiteController.text = _schoolIdentity.website;
     _schoolFacebookController.text = _schoolIdentity.facebookPage;
-    _secretaryNameController.text = _schoolIdentity.secretaryName;
-    _supervisorNameController.text = _schoolIdentity.supervisorName;
+    _secretaryNameController.text = _schoolIdentity.schoolManagerName;
+    _supervisorNameController.text = _schoolIdentity.sectionSupervisorName;
     _principalNameController.text = _schoolIdentity.principalName;
+    _generalSupervisorController.text = _schoolIdentity.generalSupervisorName;
+    _sealImagePath = _schoolIdentity.sealImagePath;
+    _signatureImagePath = _schoolIdentity.signatureImagePath;
   }
 
   void _cancelAdminDraft() {
@@ -531,9 +537,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         landline: _schoolLandlineController.text.trim(),
         website: _schoolWebsiteController.text.trim(),
         facebookPage: _schoolFacebookController.text.trim(),
-        secretaryName: _secretaryNameController.text.trim(),
-        supervisorName: _supervisorNameController.text.trim(),
+        schoolManagerName: _secretaryNameController.text.trim(),
+        sectionSupervisorName: _supervisorNameController.text.trim(),
         principalName: _principalNameController.text.trim(),
+        generalSupervisorName: _generalSupervisorController.text.trim(),
+        sealImagePath: _sealImagePath,
+        signatureImagePath: _signatureImagePath,
       );
     });
     await _database.saveJson('school_identity', _database.schoolIdentityToJson(_schoolIdentity));
@@ -2167,6 +2176,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _secretaryNameController,
       _supervisorNameController,
       _principalNameController,
+      _generalSupervisorController,
       _loginUsernameController,
       _loginPasswordController,
       _adminUsernameController,

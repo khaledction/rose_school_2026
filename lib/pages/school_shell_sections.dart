@@ -73,9 +73,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     _editableField('موبايل المدرسة وتس أب', _schoolWhatsappController),
                     _editableField('موبايل المدرسة للتواصل', _schoolMobileController),
                     _editableField('هاتف المدرسة الارضي', _schoolLandlineController),
-                    _editableField('اسم أمين السر', _secretaryNameController),
-                    _editableField('اسم الموجه', _supervisorNameController),
+                    _editableField('مدير المدرسة', _secretaryNameController),
+                    _editableField('مشرف القسم', _supervisorNameController),
                     _editableField('اسم المدير', _principalNameController),
+                    _editableField('المشرف العام', _generalSupervisorController),
                     _editableField('موقع المدرسة على الانتر نت', _schoolWebsiteController, span2: true),
                     _editableField('صفحة المدرسة على الفيس بوك', _schoolFacebookController, span2: true),
                   ],
@@ -1705,14 +1706,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               children: <Widget>[
                 const Text('اعتمادات الجلاء المدرسي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
                 const SizedBox(height: 10),
-                const Text('يمكن تعديل أسماء أمين السر والموجه والمدير من باب أمانة السر أيضًا لتظهر مباشرة داخل الجلاء المدرسي.', style: TextStyle(color: AppPalette.muted)),
+                const Text('يمكن تعديل أسماء مدير المدرسة ومشرف القسم والمدير من باب الإدارة أيضًا لتظهر مباشرة داخل الجلاء المدرسي.', style: TextStyle(color: AppPalette.muted)),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: <Widget>[
-                    _editableField('اسم أمين السر', _secretaryNameController),
-                    _editableField('اسم الموجه', _supervisorNameController),
+                    _editableField('مدير المدرسة', _secretaryNameController),
+                    _editableField('مشرف القسم', _supervisorNameController),
                     _editableField('اسم المدير', _principalNameController),
                   ],
                 ),
@@ -6491,14 +6492,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
-                      const Text('توقيع التوجيه / أمانة السر', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
+                      const Text('توقيع مدير المدرسة / مشرف القسم', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
-                          Text('الموجه: ${_supervisorNameController.text.isEmpty ? 'الموجه' : _supervisorNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                          Text('مشرف القسم: ${_supervisorNameController.text.isEmpty ? 'مشرف القسم' : _supervisorNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
                           const SizedBox(width: 14),
-                          Text('أمين السر: ${_secretaryNameController.text.isEmpty ? 'أمين السر' : _secretaryNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                          Text('مدير المدرسة: ${_secretaryNameController.text.isEmpty ? 'مدير المدرسة' : _secretaryNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
                         ],
                       ),
                       const SizedBox(height: 12),

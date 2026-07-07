@@ -622,9 +622,12 @@ class SchoolIdentityEntry {
     required this.landline,
     required this.website,
     required this.facebookPage,
-    required this.secretaryName,
-    required this.supervisorName,
-    required this.principalName,
+    required this.schoolManagerName,    // سابقاً: أمين السر ← مدير المدرسة
+    required this.sectionSupervisorName, // سابقاً: الموجه ← مشرف القسم
+    required this.principalName,         // يبقى المدير
+    this.generalSupervisorName = '',     // جديد: المشرف العام
+    this.sealImagePath = '',             // جديد: صورة الخاتم
+    this.signatureImagePath = '',        // جديد: صورة التوقيع
   });
 
   final String email;
@@ -633,9 +636,12 @@ class SchoolIdentityEntry {
   final String landline;
   final String website;
   final String facebookPage;
-  final String secretaryName;
-  final String supervisorName;
+  final String schoolManagerName;
+  final String sectionSupervisorName;
   final String principalName;
+  final String generalSupervisorName;
+  final String sealImagePath;
+  final String signatureImagePath;
 
   SchoolIdentityEntry copyWith({
     String? email,
@@ -644,9 +650,12 @@ class SchoolIdentityEntry {
     String? landline,
     String? website,
     String? facebookPage,
-    String? secretaryName,
-    String? supervisorName,
+    String? schoolManagerName,
+    String? sectionSupervisorName,
     String? principalName,
+    String? generalSupervisorName,
+    String? sealImagePath,
+    String? signatureImagePath,
   }) {
     return SchoolIdentityEntry(
       email: email ?? this.email,
@@ -655,9 +664,12 @@ class SchoolIdentityEntry {
       landline: landline ?? this.landline,
       website: website ?? this.website,
       facebookPage: facebookPage ?? this.facebookPage,
-      secretaryName: secretaryName ?? this.secretaryName,
-      supervisorName: supervisorName ?? this.supervisorName,
+      schoolManagerName: schoolManagerName ?? this.schoolManagerName,
+      sectionSupervisorName: sectionSupervisorName ?? this.sectionSupervisorName,
       principalName: principalName ?? this.principalName,
+      generalSupervisorName: generalSupervisorName ?? this.generalSupervisorName,
+      sealImagePath: sealImagePath ?? this.sealImagePath,
+      signatureImagePath: signatureImagePath ?? this.signatureImagePath,
     );
   }
 }
