@@ -16,9 +16,12 @@ import 'package:printing/printing.dart';
 
 import '../data/seed_data.dart';
 import '../models/school_models.dart';
+import '../models/notification_model.dart';
 import '../services/local_student_file_service.dart';
 import '../services/school_database_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_palette.dart';
+import 'dashboard_page.dart';
 
 part 'school_shell_sections.dart';
 part '../widgets/school_shell_widgets.dart';
@@ -219,7 +222,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final List<TextEditingController> _regularPaidControllers = List<TextEditingController>.generate(10, (_) => TextEditingController());
   final List<TextEditingController> _regularDateControllers = List<TextEditingController>.generate(10, (_) => TextEditingController());
 
-  String _currentPage = 'students';
+  String _currentPage = 'dashboard';
+  final List<NotificationItem> _notifications = [];
   int? _selectedStudentId = 1;
   String _gender = 'ذكر';
   String _status = 'نشط';
@@ -300,6 +304,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   };
 
   String _pageDoorId(String pageId) {
+    if (const <String>{'dashboard'}.contains(pageId)) {
+      return ''; // accessible to all
+    }
     if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
@@ -316,16 +323,20 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (user == null) {
       return false;
     }
+    if (doorId.isEmpty) {
+      return true; // dashboard is accessible to all authenticated users
+    }
     final permission = _doorPermissions[doorId] ?? '';
     return user.permissions.contains(permission);
   }
 
   String _firstAllowedPage(AdminUserEntry user) {
-    if (_userHasDoorPermission(user, 'administration')) return 'admin_dashboard';
+    return 'dashboard';
+    /*if (_userHasDoorPermission(user, 'administration')) return 'admin_dashboard';
     if (_userHasDoorPermission(user, 'secretariat')) return 'students';
     if (_userHasDoorPermission(user, 'exams')) return 'exams';
     if (_userHasDoorPermission(user, 'accounting')) return 'accounting';
-    return 'students';
+    return 'students';*/
   }
 
   void _loadAdminDraft([AdminUserEntry? user]) {
@@ -529,6 +540,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _loginError = '';
       _currentPage = _firstAllowedPage(user);
     });
+    NotificationService.instance.addSimple(
+      type: 'success',
+      title: 'تسجيل دخول',
+      body: 'تم تسجيل دخول المستخدم ${user.username} بنجاح.',
+      targetPage: 'dashboard',
+    );
     _showSnack('تم تسجيل الدخول بنجاح.');
   }
 
@@ -1891,6 +1908,21 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Future<void> _initializeDatabase() async {
+    await NotificationService.instance.init();
+    if (NotificationService.instance.all.isEmpty) {
+      await NotificationService.instance.addSimple(
+        type: 'info',
+        title: 'مرحباً بك في مدرسة روز التعليمية',
+        body: 'نظام إدارة متكامل للطلاب والموظفين والمحاسبة.',
+        targetPage: 'dashboard',
+      );
+      await NotificationService.instance.addSimple(
+        type: 'success',
+        title: 'تم تجهيز قاعدة البيانات',
+        body: 'جميع البيانات جاهزة، يمكنك البدء بالعمل.',
+        targetPage: 'students',
+      );
+    }
     final existing = await _database.readJson('students');
     if (existing == null) {
       await _persistAll();
@@ -2705,6 +2737,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         primaryColor: const Color(0xFFA82A38),
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
+          _NavItem('dashboard', '📊 لوحة القيادة'),
           _NavItem('admin_dashboard', 'لوحة الإدارة'),
           _NavItem('admin_identity', 'الهوية والاعتماد'),
         ],
@@ -2952,6 +2985,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   _PageInfo _pageInfo() {
     switch (_currentPage) {
+      case 'dashboard':
+        return const _PageInfo(
+          '📊 لوحة القيادة',
+          'الصفحة الرئيسية',
+          'مرحباً بك في نظام روز التعليمي. هذه لوحة القيادة الرئيسية تعرض لك إحصائيات حية عن الطلاب والإيرادات والصرفيات وآخر الإشعارات.',
+        );
       case 'admin_dashboard':
         return const _PageInfo(
           'لوحة الإدارة',
@@ -3053,6 +3092,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   static String _pageLabel(String id) {
     const labels = <String, String>{
+      'dashboard': '📊 لوحة القيادة',
       'admin_dashboard': 'لوحة الإدارة',
       'admin_identity': 'الهوية والاعتماد',
       'attendance': 'الحضور والغياب',
@@ -3091,6 +3131,47 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                     borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
                   ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 18),
+            // Notification bell
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                final unread = NotificationService.instance.unreadCount;
+                if (unread > 0) {
+                  NotificationService.instance.markAllAsRead();
+                  setState(() {});
+                  _showSnack('تم تحديد $unread إشعار/إشعارات كمقروءة.');
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppPalette.line),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const Icon(Icons.notifications_outlined, size: 20, color: AppPalette.deepNavySoft),
+                    if (NotificationService.instance.unreadCount > 0) ...<Widget>[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppPalette.roseRed,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${NotificationService.instance.unreadCount}',
+                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -3191,6 +3272,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _buildPageBody() {
     switch (_currentPage) {
+      case 'dashboard':
+        return _dashboardPageWrapped();
       case 'admin_dashboard':
         return _adminDashboardPage();
       case 'admin_identity':
@@ -3226,6 +3309,38 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       default:
         return _placeholderPage(_pageLabel(_currentPage));
     }
+  }
+
+  Widget _dashboardPageWrapped() {
+    final studentCount = _students.length;
+    final maleCount = _students.where((s) => s.gender == 'ذكر').length;
+    final femaleCount = _students.where((s) => s.gender == 'أنثى').length;
+
+    double totalIncome = 0;
+    for (final d in _accountingDonations) {
+      totalIncome += d.amount;
+    }
+    for (final i in _invoices) {
+      totalIncome += i.amount;
+    }
+    double totalExpenses = 0;
+    for (final r in _receipts) {
+      totalExpenses += r.amount;
+    }
+
+    return DashboardPage(
+      studentCount: studentCount,
+      studentMaleCount: maleCount,
+      studentFemaleCount: femaleCount,
+      employeeCount: 0, // will be updated when employees module is built
+      userCount: _adminUsers.length,
+      totalIncome: totalIncome,
+      totalExpenses: totalExpenses,
+      onNavigate: (pageId, {String? targetId}) {
+        setState(() => _currentPage = pageId);
+      },
+      onRefresh: () => setState(() {}),
+    );
   }
 
   Widget _adminDashboardPage() => _adminDashboardPageSection();
