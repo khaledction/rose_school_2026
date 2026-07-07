@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Project-generated archives and local-only packages
+/backups/
+/preview_only_package/
+/ROSE_SCHOOL_DESKTOP_READY_PACKAGE/
+*.zip

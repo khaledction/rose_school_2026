@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rose School — قائمة الطلاب</title>
+<style>
+  :root{
+    --navy-950:#0a1633;--navy-900:#0d1d43;--navy-800:#10295a;--navy-700:#12356f;
+    --gold-700:#a76727;--gold-600:#b97a33;--gold-500:#cd9045;--gold-100:#f6ead6;
+    --sky-100:#eef8ff;--sky-200:#dceffc;--sky-300:#cde7fa;
+    --green-600:#41a96b;--green-100:#e6f6ec;
+    --blue-600:#2c89de;--blue-100:#eaf3ff;
+    --pink-600:#d05e85;--pink-100:#fde8f0;
+    --purple-700:#2d2d76;--purple-100:#ecebff;
+    --line:#e5eaf3;--text:#20293a;--muted:#7b8897;
+    --shadow:0 14px 32px rgba(20,40,90,.10);--shadow-sm:0 8px 18px rgba(20,40,90,.08);
+    --r-xl:26px;--r-lg:20px;--r-md:16px;--r-sm:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI","Tahoma",sans-serif;background:linear-gradient(180deg,var(--sky-100) 0%,var(--sky-200) 100%);color:var(--text)}
+  button,input{font:inherit}
+  .app{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 308px}
+  .content{padding:22px;background:radial-gradient(circle at top left,rgba(255,255,255,.5),transparent 24%),linear-gradient(180deg,var(--sky-100) 0%,var(--sky-200) 100%)}
+  .content-shell{min-height:calc(100vh - 44px);padding:16px;border-radius:28px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.44);backdrop-filter:blur(6px)}
+  .sidebar{padding:22px 18px;background:linear-gradient(180deg,#1b1611 0%, #0f1f49 35%, #0e2f73 100%);color:#fff;position:sticky;top:0;height:100vh;overflow:auto;box-shadow:inset 1px 0 0 rgba(255,255,255,.05)}
+  .brand{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px}
+  .brand h1{font-size:18px;line-height:1.65;font-weight:800}.brand h1 b{color:#d4a95f}
+  .brand small{display:block;margin-top:4px;color:rgba(255,255,255,.7);font-size:12px}
+  .logo{width:60px;height:60px;border-radius:50%;border:2px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);box-shadow:0 10px 22px rgba(0,0,0,.18);overflow:hidden}
+  .logo img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .menu-title{margin:20px 4px 12px;font-size:15px;font-weight:800;color:rgba(255,255,255,.9)}
+  .group{margin-bottom:14px}
+  .group-head{width:100%;border:0;background:transparent;color:#fff;padding:12px 12px;border-radius:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-weight:800;transition:.18s ease}
+  .group-head:hover{background:linear-gradient(90deg,rgba(169,103,39,.22),rgba(205,144,69,.12))}
+  .group-head.active{background:rgba(185,122,51,.16)}
+  .group-head .left{display:flex;align-items:center;gap:8px}
+  .submenu{display:grid;gap:7px;margin-top:8px;padding-right:10px;border-right:1px solid rgba(255,255,255,.10)}
+  .submenu button{border:0;background:transparent;color:rgba(255,255,255,.84);text-align:right;padding:11px 14px;border-radius:14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;transition:.18s ease}
+  .submenu button:hover{background:linear-gradient(90deg,rgba(169,103,39,.30),rgba(205,144,69,.18));color:#fff}
+  .submenu button.active{background:linear-gradient(90deg,rgba(169,103,39,.95),rgba(205,144,69,1));color:#fff;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.18)}
+  .dot{font-size:10px;opacity:.9}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+  .search{position:relative;width:320px;max-width:100%}
+  .search input{width:100%;border:0;outline:none;border-radius:18px;background:rgba(255,255,255,.95);padding:15px 18px 15px 50px;box-shadow:var(--shadow);color:var(--text)}
+  .search .icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#eff6ff;color:var(--navy-700);font-size:15px}
+  .head{text-align:right}
+  .head .sub{font-size:13px;color:#6f7d8e;margin-bottom:6px}
+  .head h2{font-size:42px;line-height:1.1;color:#182544;font-weight:800}
+  .hint{background:rgba(245,230,206,.88);border:1px solid rgba(191,148,88,.42);color:#7b5830;border-radius:16px;padding:13px 16px;line-height:1.8;box-shadow:var(--shadow-sm);margin-bottom:16px}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+  .stat{background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:22px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;box-shadow:var(--shadow-sm);min-height:96px}
+  .stat .num{font-size:38px;line-height:1;font-weight:800;color:#21293a}
+  .stat .label{margin-top:8px;color:var(--muted);font-size:15px}
+  .stat-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;box-shadow:0 8px 16px rgba(0,0,0,.12)}
+  .ic-pink{background:linear-gradient(135deg,var(--pink-600),#bd436d)} .ic-blue{background:linear-gradient(135deg,var(--blue-600),#166ec2)} .ic-green{background:linear-gradient(135deg,var(--green-600),#2a8e54)} .ic-purple{background:linear-gradient(135deg,var(--purple-700),#1d1d5a)}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .toolbar .title{font-size:19px;font-weight:800;color:var(--navy-800);display:flex;align-items:center;gap:8px}
+  .btn{border:0;border-radius:14px;padding:12px 18px;cursor:pointer;font-weight:800;transition:.16s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.primary{background:linear-gradient(135deg,var(--gold-700),var(--gold-500));color:#fff;box-shadow:0 14px 20px rgba(169,103,39,.26)}
+  .btn.soft{background:#edf6ff;color:#24436f;border:1px solid #d5e6f5}
+  .table-wrap{background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  thead th{padding:15px 12px;background:linear-gradient(180deg,#132556 0%,#0f1f45 100%);color:#fff;font-size:14px;text-align:center}
+  tbody td{padding:15px 12px;border-bottom:1px solid #edf3f8;text-align:center;font-size:14px;background:#fff;color:#273243}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover td{background:linear-gradient(180deg,#fffdf8 0%,#fdf7ef 100%)}
+  .student{display:flex;align-items:center;gap:12px;text-align:right}
+  .avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#1d4d9c,#377fd8);color:#fff;display:grid;place-items:center;font-weight:800;flex-shrink:0}
+  .student strong{display:block;margin-bottom:4px;font-size:15px}
+  .student small{display:block;color:#8a95a3;line-height:1.55}
+  .status{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:800;min-width:68px}
+  .status.active{background:var(--green-100);color:var(--green-600)}
+  .status.transfer{background:var(--blue-100);color:var(--blue-600)}
+  .status.stop{background:#fde9e8;color:#c05d57}
+  .status.archive{background:#fff1dc;color:#b8772f}
+  .actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+  .icon-btn{width:28px;height:28px;border-radius:50%;border:1px solid #e2ebf2;background:#fff;display:grid;place-items:center;cursor:pointer;color:#6f7b88;font-size:13px;transition:.18s ease}
+  .icon-btn:hover{background:linear-gradient(180deg,#fff8ef 0%,#f8ecd7 100%);border-color:rgba(185,122,51,.35)}
+  .icon-btn.blue{color:#1f6cc4}.icon-btn.orange{color:#be7d35}.icon-btn.dark{color:#394459}
+  .modal{position:fixed;inset:0;background:rgba(9,18,43,.55);display:none;place-items:center;padding:20px;z-index:40}
+  .modal.show{display:grid}
+  .modal-card{width:min(980px,100%);background:#fff;border-radius:24px;box-shadow:0 28px 56px rgba(0,0,0,.24);overflow:hidden}
+  .modal-head{background:linear-gradient(135deg,var(--navy-900),var(--navy-700));color:#fff;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .modal-head h3{font-size:20px;margin-bottom:4px}
+  .modal-head p{opacity:.85;font-size:13px}
+  .close{border:0;background:rgba(255,255,255,.12);color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer}
+  .modal-body{padding:20px}
+  .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .opt{padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;box-shadow:var(--shadow-sm);text-align:right;transition:.18s ease}
+  .opt:hover{transform:translateY(-1px);background:linear-gradient(90deg,rgba(169,103,39,.08),rgba(13,29,67,.02));border-color:rgba(169,103,39,.35)}
+  .opt b{display:block;color:var(--navy-700)} .opt small{display:block;color:var(--muted);margin-top:4px;line-height:1.6}
+  .toast{position:fixed;left:18px;bottom:18px;background:#214f9a;color:#fff;padding:14px 18px;border-radius:16px;box-shadow:0 18px 26px rgba(0,0,0,.18);opacity:0;transform:translateY(12px);transition:.2s ease;pointer-events:none;z-index:50;max-width:380px;line-height:1.8}
+  .toast.show{opacity:1;transform:translateY(0)}
+  @media (max-width:1200px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.stats,.options{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (max-width:760px){.stats,.options{grid-template-columns:1fr}.head h2{font-size:30px}.search{width:100%}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <main class="content">
+      <div class="content-shell">
+        <div class="top">
+          <div class="search">
+            <input id="searchInput" placeholder="ابحث..." />
+            <span class="icon">🔎</span>
+          </div>
+          <div class="head">
+            <div class="sub">أمانة السر، قائمة الطلاب</div>
+            <h2>قائمة الطلاب</h2>
+          </div>
+        </div>
+
+        <div class="hint">💡 جرّب التنقل: اضغط على أي باب من القائمة الجانبية لفتح أقسامه، ثم اضغط أي قسم في قائمة الطلاب أو أزرار الإجراءات لفتح نافذة الوصول السريع للطالب.</div>
+
+        <div class="stats">
+          <div class="stat"><div><div class="num">421</div><div class="label">إناث</div></div><div class="stat-ic ic-pink">♀</div></div>
+          <div class="stat"><div><div class="num">421</div><div class="label">ذكور</div></div><div class="stat-ic ic-blue">♂</div></div>
+          <div class="stat"><div><div class="num">798</div><div class="label">نشطون</div></div><div class="stat-ic ic-green">✓</div></div>
+          <div class="stat"><div><div class="num">842</div><div class="label">إجمالي الطلاب</div></div><div class="stat-ic ic-purple">■</div></div>
+        </div>
+
+        <div class="toolbar">
+          <div class="title">🗒️ سجل الطلاب</div>
+          <button class="btn primary" id="newStudentBtn">+ طالب جديد</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>الطالب</th>
+                <th>التسلسل</th>
+                <th>الصف</th>
+                <th>ولي الأمر</th>
+                <th>الحالة</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <h1>مدرسة <b>روز</b> التعليمية</h1>
+          <small>المعاينة الدقيقة · قائمة الطلاب</small>
+        </div>
+        <div class="logo"><img src="../assets/logo.jpg" alt="Rose School Logo" /></div>
+      </div>
+
+      <div class="menu-title">الإدارة</div>
+
+      <div class="group">
+        <button class="group-head active"><span class="left">🗂️ أمانة السر</span><span>▾</span></button>
+        <div class="submenu">
+          <button class="active">قائمة الطلاب <span class="dot">•</span></button>
+          <button onclick="go('student_form_mockup.html')">استمارة طالب <span class="dot">•</span></button>
+          <button onclick="toast('Demo: فتح قسم الحضور والغياب.')">الحضور والغياب <span class="dot">•</span></button>
+          <button onclick="toast('Demo: فتح قسم التبرعات.')">التبرعات <span class="dot">•</span></button>
+          <button onclick="toast('Demo: فتح قسم المكافآت والعقوبات.')">المكافآت والعقوبات <span class="dot">•</span></button>
+          <button onclick="toast('Demo: فتح قسم الشهادات.')">الشهادات <span class="dot">•</span></button>
+        </div>
+      </div>
+
+      <div class="group"><button class="group-head" onclick="toast('Demo: باب الامتحانات محفوظ ضمن الهيكل.')"><span class="left">📝 الامتحانات</span><span>◂</span></button></div>
+      <div class="group"><button class="group-head" onclick="toast('Demo: باب المحاسبة محفوظ ضمن الهيكل.')"><span class="left">💰 المحاسبة</span><span>◂</span></button></div>
+      <div class="group"><button class="group-head" onclick="go('../FULL_PROJECT_DEMO.html')"><span class="left">⬅ الرجوع للواجهة الرئيسية</span><span>◂</span></button></div>
+    </aside>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <h3 id="modalTitle">ماذا تريد عن الطالب؟</h3>
+          <p id="modalSub">الوصول السريع إلى الأقسام المرتبطة بالطالب</p>
+        </div>
+        <button class="close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="options" id="options"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+const students = [
+  {id:1, serial:'RS-2026-0001', name:'أحمد محمد علي', phone:'1234567890', grade:'السابع', guardian:'محمد علي', status:'نشط', cls:'active'},
+  {id:2, serial:'RS-2026-0002', name:'سارة خالد يوسف', phone:'2345678901', grade:'التاسع', guardian:'خالد يوسف', status:'نشط', cls:'active'},
+  {id:3, serial:'RS-2026-0003', name:'يوسف عمر حسن', phone:'3456789012', grade:'الرابع', guardian:'عمر حسن', status:'منقطع', cls:'stop'},
+  {id:4, serial:'RS-2026-0004', name:'لمى نبيل صالح', phone:'4567890123', grade:'الحادي عشر علمي', guardian:'نبيل صالح', status:'نشط', cls:'active'}
+];
+
+const actions = [
+  ['استمارة الطالب','فتح نموذج بيانات الطالب الكامل','student_form_mockup.html'],
+  ['الحضور والغياب','متابعة الدوام والتأخر والغياب',null],
+  ['التبرعات','تسجيل المساهمات والمساعدات',null],
+  ['المكافآت والعقوبات','السجل السلوكي والتكريمات',null],
+  ['الشهادات','الشهادات وكشوف النتائج',null],
+  ['الوثائق والمرفقات','هوية الطالب والشهادات السابقة',null],
+  ['النقل والفصل','تغيير الحالة أو النقل أو طي القيد',null],
+  ['الأرشيف','الوصول إلى السجلات غير النشطة',null],
+  ['التقارير','التصدير والإحصائيات',null],
+  ['بطاقة الطالب والطباعة','بطاقة الطالب وQR',null],
+  ['النسخ الاحتياطي والاستعادة','حماية البيانات المحلية',null],
+  ['النقل المدرسي','الاشتراك ونقاط التجمع',null],
+  ['مراسلات أولياء الأمور','الإشعارات والاستدعاءات',null]
+];
+
+function go(url){ window.location.href = url; }
+function toast(message, color='#214f9a'){
+  const t = document.getElementById('toast');
+  t.textContent = message; t.style.background = color; t.classList.add('show');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function renderRows(list){
+  document.getElementById('rows').innerHTML = list.map(s => `
+    <tr>
+      <td>
+        <div class="student">
+          <div class="avatar">${s.name.slice(0,2)}</div>
+          <div>
+            <strong>${s.name}</strong>
+            <small>${s.phone}<br>هوية</small>
+          </div>
+        </div>
+      </td>
+      <td>${s.serial}</td>
+      <td>${s.grade}</td>
+      <td>${s.guardian}</td>
+      <td><span class="status ${s.cls}">${s.status}</span></td>
+      <td>
+        <div class="actions">
+          <button class="icon-btn blue" onclick="openStudent(${s.id})">🖨</button>
+          <button class="icon-btn orange" onclick="openStudent(${s.id})">✎</button>
+          <button class="icon-btn dark" onclick="openStudent(${s.id})">◉</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+function openStudent(id){
+  const s = students.find(x => x.id === id);
+  document.getElementById('modalTitle').textContent = `ماذا تريد عن ${s.name}؟`;
+  document.getElementById('modalSub').textContent = `الوصول السريع إلى كل الأبواب المرتبطة بالطالب (${s.serial})`;
+  document.getElementById('options').innerHTML = actions.map(([title,desc,url]) => `
+    <button class="opt" onclick="${url ? `go('${url}')` : `toast('Demo: فتح قسم ${title} للطالب ${s.name}.')`} ">
+      <div><b>${title}</b><small>${desc}</small></div>
+      <span>◂</span>
+    </button>
+  `).join('');
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  const filtered = students.filter(s => [s.name,s.serial,s.guardian,s.grade,s.phone].join(' ').toLowerCase().includes(q));
+  renderRows(filtered);
+});
+
+document.getElementById('newStudentBtn').addEventListener('click', () => go('student_form_mockup.html'));
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+renderRows(students);
+</script>
+</body>
+</html>
