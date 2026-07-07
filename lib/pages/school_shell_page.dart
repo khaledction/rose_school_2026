@@ -31,6 +31,7 @@ import 'employee_finance_review_page.dart';
 import 'accounting_income_expenses_page.dart';
 import 'parent_meetings_page.dart';
 import 'local_data_center_page.dart';
+import 'student_sorting_page.dart';
 
 part 'school_shell_sections.dart';
 part '../widgets/school_shell_widgets.dart';
@@ -325,7 +326,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'data_center', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'student_sorting', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'data_center', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
     if (const <String>{'admin_dashboard', 'admin_identity'}.contains(pageId)) {
@@ -2786,6 +2787,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('certificates', 'الشهادات'),
           _NavItem('documents', 'الوثائق والمرفقات'),
           _NavItem('reports', 'التقارير'),
+          _NavItem('student_sorting', '🔍 فرز الطلاب'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
           _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
           _NavItem('data_center', '📁 مركز البيانات المحلي'),
@@ -3092,6 +3094,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'أمانة السر، بطاقة الطالب والطباعة',
           'يمكنك الآن معاينة البطاقة المدرسية الفعلية وتجهيزها كـ PDF وصورة جاهزة للطباعة مع اللوغو وصورة الطالب وQR.',
         );
+      case 'student_sorting':
+        return _studentSortingPageWrapped();
       case 'parent_meetings':
         return const _PageInfo(
           '📅 اجتماعات أولياء الأمور',
@@ -3103,6 +3107,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'النسخ الاحتياطي',
           'أمانة السر، النسخ الاحتياطي والاستعادة',
           'تم إنشاء النسخة الاحتياطية الثانية، وسيتم لاحقًا ربط هذا الباب وظيفيًا داخل التطبيق نفسه.',
+        );
+      case 'student_sorting':
+        return const _PageInfo(
+          '🔍 فرز الطلاب',
+          'أمانة السر، فرز الطلاب',
+          'فرز الطلاب حسب الصفوف أو حسب الصف والشعبة مع ترتيب حسب الأعلى درجات.',
         );
       case 'data_center':
         return const _PageInfo(
@@ -3168,6 +3178,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'certificates': 'الشهادات',
       'documents': 'الوثائق والمرفقات',
       'transport': 'النقل المدرسي',
+      'student_sorting': '🔍 فرز الطلاب',
       'parent_meetings': '📅 اجتماعات أولياء الأمور',
       'data_center': '📁 مركز البيانات المحلي',
       'messages': 'مراسلات أولياء الأمور',
@@ -3365,6 +3376,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         return _donationsPage();
       case 'documents':
         return _documentsPage();
+      case 'student_sorting':
+        return _studentSortingPageWrapped();
       case 'parent_meetings':
         return _parentMeetingsPageWrapped();
       case 'backup':
@@ -3408,6 +3421,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _dataCenterPageWrapped() {
     return const LocalDataCenterPage();
+  }
+
+  Widget _studentSortingPageWrapped() {
+    return StudentSortingPage(students: _students);
   }
 
   Widget _parentMeetingsPageWrapped() {
