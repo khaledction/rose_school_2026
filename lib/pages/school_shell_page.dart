@@ -22,11 +22,13 @@ import '../services/school_database_service.dart';
 import '../services/notification_service.dart';
 import '../services/employee_service.dart';
 import '../services/finance_service.dart';
+import '../services/meeting_service.dart';
 import '../theme/app_palette.dart';
 import 'dashboard_page.dart';
 import 'employees_page.dart';
 import 'employee_finance_review_page.dart';
 import 'accounting_income_expenses_page.dart';
+import 'parent_meetings_page.dart';
 
 part 'school_shell_sections.dart';
 part '../widgets/school_shell_widgets.dart';
@@ -318,7 +320,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
     if (const <String>{'admin_dashboard', 'admin_identity'}.contains(pageId)) {
@@ -1922,6 +1924,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     await NotificationService.instance.init();
     await EmployeeService.instance.init();
     await FinanceService.instance.init();
+    await MeetingService.instance.init();
     if (NotificationService.instance.all.isEmpty) {
       await NotificationService.instance.addSimple(
         type: 'info',
@@ -2773,6 +2776,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('reports', 'التقارير'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
           _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
+          _NavItem('parent_meetings', '📅 اجتماعات أولياء الأمور'),
           _NavItem('transport', 'النقل المدرسي'),
           _NavItem('messages', 'مراسلات أولياء الأمور'),
         ],
@@ -3075,6 +3079,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'أمانة السر، بطاقة الطالب والطباعة',
           'يمكنك الآن معاينة البطاقة المدرسية الفعلية وتجهيزها كـ PDF وصورة جاهزة للطباعة مع اللوغو وصورة الطالب وQR.',
         );
+      case 'parent_meetings':
+        return const _PageInfo(
+          '📅 اجتماعات أولياء الأمور',
+          'أمانة السر، اجتماعات أولياء الأمور',
+          'إدارة اجتماعات أولياء الأمور، تسجيل الحضور والغياب، وعرض تقارير إحصائية عن نسب الحضور.',
+        );
       case 'backup':
         return const _PageInfo(
           'النسخ الاحتياطي',
@@ -3139,6 +3149,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'certificates': 'الشهادات',
       'documents': 'الوثائق والمرفقات',
       'transport': 'النقل المدرسي',
+      'parent_meetings': '📅 اجتماعات أولياء الأمور',
       'messages': 'مراسلات أولياء الأمور',
       'exams': 'لوحة الامتحانات',
       'accounting': 'لوحة المحاسبة',
@@ -3334,6 +3345,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         return _donationsPage();
       case 'documents':
         return _documentsPage();
+      case 'parent_meetings':
+        return _parentMeetingsPageWrapped();
       case 'backup':
         return _backupPage();
       case 'transport':
@@ -3369,6 +3382,15 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _incomeExpensesPageWrapped() {
     return const AccountingIncomeExpensesPage();
+  }
+
+  Widget _parentMeetingsPageWrapped() {
+    return ParentMeetingsPage(
+      students: _students,
+      onNavigate: (pageId, {String? targetId}) {
+        setState(() => _currentPage = pageId);
+      },
+    );
   }
 
   Widget _dashboardPageWrapped() {
