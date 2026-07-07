@@ -4,8 +4,9 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:qr/qr.dart';
+
+import 'app_storage_paths_service.dart';
 
 class LocalStudentFileService {
   LocalStudentFileService._();
@@ -20,11 +21,7 @@ class LocalStudentFileService {
   }
 
   Future<Directory> _resolveRootDirectory() async {
-    final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory(p.join(docs.path, 'rose_school_2026_files'));
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
+    final dir = await AppStoragePathsService.instance.filesDir;
     return dir;
   }
 

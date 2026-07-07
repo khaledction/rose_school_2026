@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../models/school_models.dart';
+import 'app_storage_paths_service.dart';
 
 class SchoolDatabaseService {
   SchoolDatabaseService._();
@@ -22,8 +21,7 @@ class SchoolDatabaseService {
   Future<Database> _open() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, 'rose_school_2026.db');
+    final path = await AppStoragePathsService.instance.databasePath;
     return openDatabase(
       path,
       version: 1,
