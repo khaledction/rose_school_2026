@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
@@ -172,7 +173,7 @@ class _ParentMeetingsPageState extends State<ParentMeetingsPage> {
               pw.TableHelper.fromTextArray(
                 headerStyle: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headers: ['#', 'الطالب', 'الصف', 'الشعبة', 'ولي الأمر', 'الحالة'],
-                rows: List<List<String>>.generate(report.attendanceList.length, (i) {
+                data: List<List<String>>.generate(report.attendanceList.length, (i) {
                   final a = report.attendanceList[i];
                   return [
                     (i + 1).toString(),

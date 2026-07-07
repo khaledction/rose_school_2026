@@ -3094,8 +3094,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'أمانة السر، بطاقة الطالب والطباعة',
           'يمكنك الآن معاينة البطاقة المدرسية الفعلية وتجهيزها كـ PDF وصورة جاهزة للطباعة مع اللوغو وصورة الطالب وQR.',
         );
-      case 'student_sorting':
-        return _studentSortingPageWrapped();
       case 'parent_meetings':
         return const _PageInfo(
           '📅 اجتماعات أولياء الأمور',

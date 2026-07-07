@@ -766,7 +766,7 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
         value: _incomeCurrency,
         items: const [
           DropdownMenuItem(value: 'ليرة سورية', child: Text('ل.س')),
-          DropdownMenuItem(value: 'دولار أمريكي', child: Text('$')),
+          DropdownMenuItem(value: 'دولار أمريكي', child: const Text(r'$')),
           DropdownMenuItem(value: 'يورو', child: Text('€')),
         ],
         onChanged: (v) => setState(() => _incomeCurrency = v!),
@@ -794,7 +794,7 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
         value: _expenseCurrency,
         items: const [
           DropdownMenuItem(value: 'ليرة سورية', child: Text('ل.س')),
-          DropdownMenuItem(value: 'دولار أمريكي', child: Text('$')),
+          DropdownMenuItem(value: 'دولار أمريكي', child: const Text(r'$')),
           DropdownMenuItem(value: 'يورو', child: Text('€')),
         ],
         onChanged: (v) => setState(() => _expenseCurrency = v!),
