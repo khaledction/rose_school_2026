@@ -20,8 +20,11 @@ import '../models/notification_model.dart';
 import '../services/local_student_file_service.dart';
 import '../services/school_database_service.dart';
 import '../services/notification_service.dart';
+import '../services/employee_service.dart';
 import '../theme/app_palette.dart';
 import 'dashboard_page.dart';
+import 'employees_page.dart';
+import 'employee_finance_review_page.dart';
 
 part 'school_shell_sections.dart';
 part '../widgets/school_shell_widgets.dart';
@@ -306,6 +309,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _pageDoorId(String pageId) {
     if (const <String>{'dashboard'}.contains(pageId)) {
       return ''; // accessible to all
+    }
+    if (pageId == 'employees') {
+      return 'secretariat';
+    }
+    if (const <String>{'employee_review'}.contains(pageId)) {
+      return 'administration';
     }
     if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
@@ -1909,6 +1918,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Future<void> _initializeDatabase() async {
     await NotificationService.instance.init();
+    await EmployeeService.instance.init();
     if (NotificationService.instance.all.isEmpty) {
       await NotificationService.instance.addSimple(
         type: 'info',
@@ -2738,6 +2748,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
           _NavItem('dashboard', '📊 لوحة القيادة'),
+          _NavItem('employees', '👥 الموظفين'),
+          _NavItem('employee_review', '🔍 مراجعة الموظفين'),
           _NavItem('admin_dashboard', 'لوحة الإدارة'),
           _NavItem('admin_identity', 'الهوية والاعتماد'),
         ],
@@ -2991,6 +3003,18 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'الصفحة الرئيسية',
           'مرحباً بك في نظام روز التعليمي. هذه لوحة القيادة الرئيسية تعرض لك إحصائيات حية عن الطلاب والإيرادات والصرفيات وآخر الإشعارات.',
         );
+      case 'employees':
+        return const _PageInfo(
+          '👥 الموظفين',
+          'أمانة السر، الموظفين',
+          'إضافة وتعديل وعرض الموظفين. أمانة السر تملأ البيانات الشخصية فقط، ثم تذهب للمراجعة المالية من الإدارة.',
+        );
+      case 'employee_review':
+        return const _PageInfo(
+          '🔍 مراجعة الموظفين',
+          'الإدارة، مراجعة الموظفين',
+          'مراجعة الموظفين الجدد، إقرار الرواتب والمكافآت والخصومات، أو رفض الطلب مع إيضاح السبب.',
+        );
       case 'admin_dashboard':
         return const _PageInfo(
           'لوحة الإدارة',
@@ -3093,6 +3117,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   static String _pageLabel(String id) {
     const labels = <String, String>{
       'dashboard': '📊 لوحة القيادة',
+      'employees': '👥 الموظفين',
+      'employee_review': '🔍 مراجعة الموظفين',
       'admin_dashboard': 'لوحة الإدارة',
       'admin_identity': 'الهوية والاعتماد',
       'attendance': 'الحضور والغياب',
@@ -3274,6 +3300,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     switch (_currentPage) {
       case 'dashboard':
         return _dashboardPageWrapped();
+      case 'employees':
+        return _employeesPageWrapped();
+      case 'employee_review':
+        return _employeeReviewPageWrapped();
       case 'admin_dashboard':
         return _adminDashboardPage();
       case 'admin_identity':
@@ -3309,6 +3339,18 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       default:
         return _placeholderPage(_pageLabel(_currentPage));
     }
+  }
+
+  Widget _employeesPageWrapped() {
+    return EmployeesPage(
+      onNavigate: (pageId, {String? targetId}) {
+        setState(() => _currentPage = pageId);
+      },
+    );
+  }
+
+  Widget _employeeReviewPageWrapped() {
+    return const EmployeeFinanceReviewPage();
   }
 
   Widget _dashboardPageWrapped() {
