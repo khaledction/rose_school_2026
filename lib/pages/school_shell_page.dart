@@ -21,10 +21,12 @@ import '../services/local_student_file_service.dart';
 import '../services/school_database_service.dart';
 import '../services/notification_service.dart';
 import '../services/employee_service.dart';
+import '../services/finance_service.dart';
 import '../theme/app_palette.dart';
 import 'dashboard_page.dart';
 import 'employees_page.dart';
 import 'employee_finance_review_page.dart';
+import 'accounting_income_expenses_page.dart';
 
 part 'school_shell_sections.dart';
 part '../widgets/school_shell_widgets.dart';
@@ -1919,6 +1921,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   Future<void> _initializeDatabase() async {
     await NotificationService.instance.init();
     await EmployeeService.instance.init();
+    await FinanceService.instance.init();
     if (NotificationService.instance.all.isEmpty) {
       await NotificationService.instance.addSimple(
         type: 'info',
@@ -2786,7 +2789,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         title: 'المحاسبة',
         primaryColor: const Color(0xFF1E7A43),
         secondaryColor: const Color(0xFF2F9A8E),
-        items: const <_NavItem>[_NavItem('accounting', 'لوحة المحاسبة')],
+        items: const <_NavItem>[
+          _NavItem('accounting', 'لوحة المحاسبة'),
+          _NavItem('income_expenses', '💰 الإيرادات والصرفيات'),
+        ],
       ),
     ];
     final user = _authenticatedUser;
@@ -3014,6 +3020,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           '🔍 مراجعة الموظفين',
           'الإدارة، مراجعة الموظفين',
           'مراجعة الموظفين الجدد، إقرار الرواتب والمكافآت والخصومات، أو رفض الطلب مع إيضاح السبب.',
+        );
+      case 'income_expenses':
+        return const _PageInfo(
+          '💰 الإيرادات والصرفيات',
+          'المحاسبة، الإيرادات والصرفيات',
+          'إدارة الإيرادات والصرفيات مع تصنيفات قابلة للتخصيص. يعرض ملخصاً شهرياً مع إمكانية إضافة وتحرير التصنيفات.',
         );
       case 'admin_dashboard':
         return const _PageInfo(
@@ -3332,6 +3344,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         return _disciplinePage();
       case 'certificates':
         return _certificatesPage();
+      case 'income_expenses':
+        return _incomeExpensesPageWrapped();
       case 'accounting':
         return _accountingPage();
       case 'exams':
@@ -3351,6 +3365,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _employeeReviewPageWrapped() {
     return const EmployeeFinanceReviewPage();
+  }
+
+  Widget _incomeExpensesPageWrapped() {
+    return const AccountingIncomeExpensesPage();
   }
 
   Widget _dashboardPageWrapped() {
