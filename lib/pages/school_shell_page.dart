@@ -19,6 +19,7 @@ import '../models/school_models.dart';
 import '../models/notification_model.dart';
 import '../services/local_student_file_service.dart';
 import '../services/school_database_service.dart';
+import '../services/backup_service.dart';
 import '../services/notification_service.dart';
 import '../services/employee_service.dart';
 import '../services/finance_service.dart';
@@ -29,6 +30,7 @@ import 'employees_page.dart';
 import 'employee_finance_review_page.dart';
 import 'accounting_income_expenses_page.dart';
 import 'parent_meetings_page.dart';
+import 'local_data_center_page.dart';
 
 part 'school_shell_sections.dart';
 part '../widgets/school_shell_widgets.dart';
@@ -320,7 +322,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'data_center', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
     if (const <String>{'admin_dashboard', 'admin_identity'}.contains(pageId)) {
@@ -2776,6 +2778,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('reports', 'التقارير'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
           _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
+          _NavItem('data_center', '📁 مركز البيانات المحلي'),
           _NavItem('parent_meetings', '📅 اجتماعات أولياء الأمور'),
           _NavItem('transport', 'النقل المدرسي'),
           _NavItem('messages', 'مراسلات أولياء الأمور'),
@@ -3091,6 +3094,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'أمانة السر، النسخ الاحتياطي والاستعادة',
           'تم إنشاء النسخة الاحتياطية الثانية، وسيتم لاحقًا ربط هذا الباب وظيفيًا داخل التطبيق نفسه.',
         );
+      case 'data_center':
+        return const _PageInfo(
+          '📁 مركز البيانات المحلي',
+          'أمانة السر، مركز البيانات',
+          'إدارة قاعدة البيانات المحلية والملفات. إنشاء واستعادة النسخ الاحتياطية، مراقبة حالة التخزين، وتصدير البيانات.',
+        );
       case 'transport':
         return const _PageInfo(
           'النقل المدرسي',
@@ -3150,6 +3159,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'documents': 'الوثائق والمرفقات',
       'transport': 'النقل المدرسي',
       'parent_meetings': '📅 اجتماعات أولياء الأمور',
+      'data_center': '📁 مركز البيانات المحلي',
       'messages': 'مراسلات أولياء الأمور',
       'exams': 'لوحة الامتحانات',
       'accounting': 'لوحة المحاسبة',
@@ -3349,6 +3359,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         return _parentMeetingsPageWrapped();
       case 'backup':
         return _backupPage();
+      case 'data_center':
+        return _dataCenterPageWrapped();
       case 'transport':
         return _transportPage();
       case 'messages':
@@ -3382,6 +3394,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _incomeExpensesPageWrapped() {
     return const AccountingIncomeExpensesPage();
+  }
+
+  Widget _dataCenterPageWrapped() {
+    return const LocalDataCenterPage();
   }
 
   Widget _parentMeetingsPageWrapped() {
