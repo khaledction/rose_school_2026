@@ -73,7 +73,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     _editableField('موبايل المدرسة وتس أب', _schoolWhatsappController),
                     _editableField('موبايل المدرسة للتواصل', _schoolMobileController),
                     _editableField('هاتف المدرسة الارضي', _schoolLandlineController),
-                    _editableField('مدير المدرسة', _secretaryNameController),
+                    _editableField('المدير العام', _secretaryNameController),
                     _editableField('مشرف القسم', _supervisorNameController),
                     _editableField('اسم المدير', _principalNameController),
                     _editableField('المشرف العام', _generalSupervisorController),
@@ -224,7 +224,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Text('فرز السجل:', style: TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w800, fontSize: 12)),
+                  const Text('فرز:', style: TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w800, fontSize: 12)),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -347,33 +347,33 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       borderRadius: BorderRadius.circular(999),
       onTap: () => _toggleStudentSortCriterion(label),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
-          gradient: active ? const LinearGradient(colors: <Color>[AppPalette.goldDark, AppPalette.gold]) : null,
-          color: active ? null : const Color(0xFFF4F8FC),
-          border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFD9E7F3)),
+          color: active ? AppPalette.royalBlue : const Color(0xFFF4F8FC),
+          border: Border.all(color: active ? AppPalette.royalBlue : const Color(0xFFE2EBF2)),
+          boxShadow: active ? [BoxShadow(color: AppPalette.royalBlue.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))] : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, size: 16, color: active ? Colors.white : AppPalette.royalBlue),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: active ? Colors.white : AppPalette.deepNavySoft, fontWeight: FontWeight.w800, fontSize: 12)),
+            Icon(icon, size: 15, color: active ? Colors.white : AppPalette.royalBlue.withOpacity(0.6)),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(color: active ? Colors.white : AppPalette.deepNavySoft, fontWeight: FontWeight.w700, fontSize: 12)),
             if (active) ...<Widget>[
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Container(
-                width: 18,
-                height: 18,
+                width: 17,
+                height: 17,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.22),
+                  color: Colors.white.withOpacity(0.25),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
                     '${sortIndex + 1}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 10),
                   ),
                 ),
               ),
@@ -513,17 +513,20 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             ),
             _dateFieldCard('تاريخ الانتساب للمدرسة', _enrollmentDateController),
             _editableField('السنة الدراسية', _schoolYearController),
-            _choiceField(
-              'الصف الذي انتسب إليه',
-              {for (var i = 1; i <= 12; i++) '$i': _enrollmentGrade == '$i'},
-              (key) => setState(() => _enrollmentGrade = key),
-              span2: true,
-            ),
-            _choiceField(
-              'الشعبة',
-              <String, bool>{'?': _sectionController.text.isEmpty || _sectionController.text == '?', for (var i = 1; i <= 10; i++) '$i': _sectionController.text == '$i'},
-              (key) => setState(() => _sectionController.text = key),
-              span2: true,
+            Row(
+              children: <Widget>[
+                _choiceField(
+                  'الصف',
+                  {for (var i = 1; i <= 12; i++) '$i': _enrollmentGrade == '$i'},
+                  (key) => setState(() => _enrollmentGrade = key),
+                ),
+                const SizedBox(width: 20),
+                _choiceField(
+                  'الشعبة',
+                  <String, bool>{'?': _sectionController.text.isEmpty || _sectionController.text == '?', for (var i = 1; i <= 10; i++) '$i': _sectionController.text == '$i'},
+                  (key) => setState(() => _sectionController.text = key),
+                ),
+              ],
             ),
             if (_enrollmentType == 'طالب منقول')
               _editableField('اسم المدرسة المنقول منها', _previousSchoolController, span2: true)
@@ -758,6 +761,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   children: <Widget>[
                     _primaryFormRow('رقم التسلسل', child: _serialValueBox()),
                     _primaryFormRow('الاسم *', child: _simpleInput(_fullNameController, hint: 'اسم الطالب')),
+                    _primaryFormRow('الكنية', child: _simpleInput(_grandfatherNameController, hint: 'الكنية')),
                     _primaryFormRow('اسم الأب', child: _simpleInput(_fatherNameController, hint: 'اسم الأب')),
                     _primaryFormRow('اسم الأم', child: _simpleInput(_motherNameController, hint: 'اسم الأم')),
                     _primaryFormRow('الجد', child: _simpleInput(_grandfatherNameController, hint: 'الجد')),
@@ -816,10 +820,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               child: (_selectedStudent != null && _fileStorage.fileExistsSync(_selectedStudent!.studentPhotoPath))
                                   ? Image.file(File(_selectedStudent!.studentPhotoPath), fit: BoxFit.cover)
                                   : Center(
-                                      child: Text(
-                                        _fullNameController.text.isEmpty ? 'صورة الطالب' : _fullNameController.text.substring(0, _fullNameController.text.length >= 2 ? 2 : 1),
-                                        style: const TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w900, fontSize: 24),
-                                      ),
+                                      child: Image.asset('image/logo.jpg', width: 60, height: 60, fit: BoxFit.contain),
                                     ),
                             ),
                           ),
@@ -1570,20 +1571,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         child: hasPhoto
             ? Image.file(File(student!.studentPhotoPath), fit: BoxFit.cover, width: double.infinity)
             : Center(
-                child: Container(
-                  width: 86,
-                  height: 86,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: <Color>[Color(0xFF1C4F9E), Color(0xFF3884DF)]),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _fullNameController.text.isNotEmpty ? _fullNameController.text.substring(0, _fullNameController.text.length >= 2 ? 2 : 1) : 'ط',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 30),
-                    ),
-                  ),
-                ),
+                child: Image.asset('image/logo.jpg', width: 70, height: 70, fit: BoxFit.contain),
               ),
       ),
     );
@@ -1704,22 +1692,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text('اعتمادات الجلاء المدرسي', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                const SizedBox(height: 10),
-                const Text('يمكن تعديل أسماء مدير المدرسة ومشرف القسم والمدير من باب الإدارة أيضًا لتظهر مباشرة داخل الجلاء المدرسي.', style: TextStyle(color: AppPalette.muted)),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: <Widget>[
-                    _editableField('مدير المدرسة', _secretaryNameController),
-                    _editableField('مشرف القسم', _supervisorNameController),
-                    _editableField('اسم المدير', _principalNameController),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _actionButton('حفظ الاعتمادات', AppPalette.goldDark, Colors.white, _saveSchoolIdentity),
-              ],
+                ],
             ),
           ),
           const SizedBox(height: 14),
@@ -3378,7 +3351,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 runSpacing: 8,
                 children: <Widget>[
                   _actionButton('إضافة تبرع', AppPalette.goldDark, Colors.white, _showSecretariatDonationDialog),
-                  _actionButton('فتح باب المحاسبة', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => setState(() => _currentPage = 'accounting')),
+                  
                   _actionButton('تحديث القائمة', Colors.white, const Color(0xFF667586), () => setState(() {})),
                 ],
               ),
@@ -5253,6 +5226,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   runSpacing: 12,
                   children: <Widget>[
                     _dropdownField('نوع الشهادة', _certificateKind, const <String>['شهادة تقدير', 'شهادة مشاركة', 'بيان نجاح', 'شهادة أخرى'], (v) => setState(() => _certificateKind = v)),
+                    if (_certificateKind == 'شهادة أخرى')
+                      _editableField('تسمية الشهادة', _certificateTitleController),
                     _dateFieldCard('تاريخ الشهادة', _certificateDateController),
                     _editableField('عنوان الشهادة', _certificateTitleController),
                     _editableField('ملاحظة', _certificateNoteController, span2: true, maxLines: 3),
@@ -6464,9 +6439,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const Text('توقيع مدير المدرسة', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
+                      const Text('توقيع المدير العام', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
                       const SizedBox(height: 6),
-                      Text(_principalNameController.text.isEmpty ? 'مدير المدرسة' : _principalNameController.text, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                      Text(_principalNameController.text.isEmpty ? 'المدير العام' : _principalNameController.text, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 16),
                       const Divider(thickness: 1.2, color: Color(0xFFB7C5D6)),
                     ],
@@ -6492,14 +6467,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
-                      const Text('توقيع مدير المدرسة / مشرف القسم', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
+                      const Text('توقيع المدير العام / مشرف القسم', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
                           Text('مشرف القسم: ${_supervisorNameController.text.isEmpty ? 'مشرف القسم' : _supervisorNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
                           const SizedBox(width: 14),
-                          Text('مدير المدرسة: ${_secretaryNameController.text.isEmpty ? 'مدير المدرسة' : _secretaryNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                          Text('المدير العام: ${_secretaryNameController.text.isEmpty ? 'المدير العام' : _secretaryNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
                         ],
                       ),
                       const SizedBox(height: 12),

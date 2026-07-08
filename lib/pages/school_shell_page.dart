@@ -326,13 +326,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'student_sorting', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'data_center', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'data_center', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
     if (const <String>{'admin_dashboard', 'admin_identity'}.contains(pageId)) {
       return 'administration';
     }
-    if (pageId == 'exams') {
+    if (const <String>{'exams', 'student_sorting'}.contains(pageId)) {
       return 'exams';
     }
     return 'accounting';
@@ -2787,7 +2787,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('certificates', 'الشهادات'),
           _NavItem('documents', 'الوثائق والمرفقات'),
           _NavItem('reports', 'التقارير'),
-          _NavItem('student_sorting', '🔍 فرز الطلاب'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
           _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
           _NavItem('data_center', '📁 مركز البيانات المحلي'),
@@ -2801,7 +2800,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         title: 'الامتحانات',
         primaryColor: const Color(0xFF1E7A79),
         secondaryColor: const Color(0xFF123A78),
-        items: const <_NavItem>[_NavItem('exams', 'لوحة الامتحانات')],
+        items: const <_NavItem>[
+          _NavItem('exams', 'لوحة الامتحانات'),
+          _NavItem('student_sorting', '🔍 فرز الطلاب'),
+        ],
       ),
       _NavGroup(
         id: 'accounting',
@@ -3109,7 +3111,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'student_sorting':
         return const _PageInfo(
           '🔍 فرز الطلاب',
-          'أمانة السر، فرز الطلاب',
+          'الامتحانات، فرز الطلاب',
           'فرز الطلاب حسب الصفوف أو حسب الصف والشعبة مع ترتيب حسب الأعلى درجات.',
         );
       case 'data_center':

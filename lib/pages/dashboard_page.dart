@@ -107,8 +107,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 14),
 
-          // ─── Third row: quick actions ───────────────────────────
-          _buildQuickActions(),
+          // ─── Third row: (removed)
         ],
       ),
     );
