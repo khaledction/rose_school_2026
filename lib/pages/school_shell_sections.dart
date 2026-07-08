@@ -762,7 +762,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     _primaryFormRow('رقم التسلسل', child: _serialValueBox()),
                     _primaryFormRow('الاسم *', child: _tabInput(_fullNameController, hint: 'اسم الطالب', node: _formFocusNodes[0], nextNode: _formFocusNodes[1])),
                     _primaryFormRow('الأب', child: _tabInput(_fatherNameController, hint: 'اسم الأب', node: _formFocusNodes[1], nextNode: _formFocusNodes[2])),
-                    _primaryFormRow('الكنية', child: _tabInput(_grandfatherNameController, hint: 'الكنية', node: _formFocusNodes[2], nextNode: _formFocusNodes[3])),
+                    _primaryFormRow('الكنية', child: _tabInput(_nicknameController, hint: 'الكنية', node: _formFocusNodes[2], nextNode: _formFocusNodes[3])),
                     _primaryFormRow('اسم الأم', child: _tabInput(_motherNameController, hint: 'اسم الأم', node: _formFocusNodes[3], nextNode: _formFocusNodes[4])),
                     _primaryFormRow('الجد', child: _tabInput(_grandfatherNameController, hint: 'الجد', node: _formFocusNodes[4], nextNode: _formFocusNodes[5])),
                     _primaryFormRow('الجنس', child: _genderChoices()),
@@ -774,22 +774,22 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 child: Column(
                   children: <Widget>[
                     _primaryFormRow(
-                      'مكان القيد / رقم القيد',
+                      'مكان الولادة / تاريخ الولادة',
                       child: Row(
                         children: <Widget>[
-                          Expanded(child: _tabInput(_registryPlaceController, hint: 'مكان القيد', node: _formFocusNodes[5], nextNode: _formFocusNodes[6])),
+                          Expanded(child: _tabInput(_birthPlaceController, hint: 'مكان الولادة', node: _formFocusNodes[5], nextNode: _formFocusNodes[6])),
                           const SizedBox(width: 10),
-                          Expanded(child: _tabInput(_registryNumberController, hint: 'رقم القيد', node: _formFocusNodes[6], nextNode: _formFocusNodes[7])),
+                          Expanded(child: _tabInput(_birthDateController, hint: 'تاريخ الولادة', node: _formFocusNodes[6], nextNode: _formFocusNodes[7])),
                         ],
                       ),
                     ),
                     _primaryFormRow(
-                      'مكان الولادة / تاريخ الولادة',
+                      'مكان القيد / رقم القيد',
                       child: Row(
                         children: <Widget>[
-                          Expanded(child: _tabInput(_birthPlaceController, hint: 'مكان الولادة', node: _formFocusNodes[7], nextNode: _formFocusNodes[8])),
+                          Expanded(child: _tabInput(_registryPlaceController, hint: 'مكان القيد', node: _formFocusNodes[7], nextNode: _formFocusNodes[8])),
                           const SizedBox(width: 10),
-                          Expanded(child: _tabInput(_birthDateController, hint: 'تاريخ الولادة', node: _formFocusNodes[8], nextNode: _formFocusNodes[9])),
+                          Expanded(child: _tabInput(_registryNumberController, hint: 'رقم القيد', node: _formFocusNodes[8], nextNode: null)),
                         ],
                       ),
                     ),

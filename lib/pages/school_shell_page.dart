@@ -155,6 +155,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final TextEditingController _fatherNameController = TextEditingController();
   final TextEditingController _motherNameController = TextEditingController();
   final TextEditingController _grandfatherNameController = TextEditingController();
+  final TextEditingController _nicknameController = TextEditingController();
   final TextEditingController _birthPlaceController = TextEditingController();
   final TextEditingController _birthDateController = TextEditingController();
   final TextEditingController _registryPlaceController = TextEditingController();
@@ -2118,6 +2119,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _fatherNameController,
       _motherNameController,
       _grandfatherNameController,
+      _nicknameController,
       _birthPlaceController,
       _birthDateController,
       _registryPlaceController,
@@ -2350,6 +2352,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _fatherNameController,
       _motherNameController,
       _grandfatherNameController,
+      _nicknameController,
       _birthPlaceController,
       _birthDateController,
       _registryPlaceController,
@@ -3428,7 +3431,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _studentSortingPageWrapped() {
-    return StudentSortingPage(students: _students);
+    return StudentSortingPage(students: _students, examResults: _examResults);
   }
 
   Widget _parentMeetingsPageWrapped() {

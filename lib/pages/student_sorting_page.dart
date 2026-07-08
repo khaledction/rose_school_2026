@@ -91,9 +91,9 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
   double _studentScore(int studentId) {
     double total = 0;
     int count = 0;
-    for (final s in widget.students) {
-      if (s.id == studentId) {
-        total += double.tryParse(s.grade) ?? 0;
+    for (final r in widget.examResults) {
+      if (r.studentId == studentId) {
+        total += r.finalAverage;
         count++;
       }
     }
@@ -101,7 +101,8 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
   }
 
   String _scoreDisplay(StudentRecord student) {
-    return '--';
+    final score = _studentScore(student.id);
+    return score > 0 ? score.toStringAsFixed(1) : '--';
   }
 
   @override
