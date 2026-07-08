@@ -845,7 +845,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       focusNode: node,
       maxLines: maxLines,
       textInputAction: nextNode != null ? TextInputAction.next : TextInputAction.done,
-      onSubmitted: nextNode != null ? (_) => nextNode.requestFocus() : null,
+      onEditingComplete: nextNode != null ? () => nextNode.requestFocus() : null,
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
