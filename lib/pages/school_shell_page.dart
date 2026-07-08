@@ -2767,7 +2767,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
           _NavItem('dashboard', '📊 لوحة القيادة'),
-          _NavItem('employees', '👥 الموظفين'),
           _NavItem('employee_review', '🔍 مراجعة الموظفين'),
           _NavItem('admin_dashboard', 'لوحة الإدارة'),
           _NavItem('admin_identity', 'الهوية والاعتماد'),
@@ -2780,6 +2779,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF0D1D43),
         items: const <_NavItem>[
           _NavItem('students', 'قائمة الطلاب'),
+          _NavItem('employees', '👥 الموظفين'),
           _NavItem('form', 'استمارة طالب'),
           _NavItem('attendance', 'الحضور والغياب'),
           _NavItem('donations', 'التبرعات'),
