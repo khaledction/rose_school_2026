@@ -715,6 +715,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
+  final List<FocusNode> _formFocusNodes = List<FocusNode>.generate(12, (_) => FocusNode());
+
   Widget _mainFormPanel() {
     return Container(
       decoration: BoxDecoration(
@@ -760,11 +762,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 child: Column(
                   children: <Widget>[
                     _primaryFormRow('رقم التسلسل', child: _serialValueBox()),
-                    _primaryFormRow('الاسم *', child: _simpleInput(_fullNameController, hint: 'اسم الطالب')),
-                    _primaryFormRow('الكنية', child: _simpleInput(_grandfatherNameController, hint: 'الكنية')),
-                    _primaryFormRow('اسم الأب', child: _simpleInput(_fatherNameController, hint: 'اسم الأب')),
-                    _primaryFormRow('اسم الأم', child: _simpleInput(_motherNameController, hint: 'اسم الأم')),
-                    _primaryFormRow('الجد', child: _simpleInput(_grandfatherNameController, hint: 'الجد')),
+                    _primaryFormRow('الاسم *', child: _tabInput(_fullNameController, hint: 'اسم الطالب', node: _formFocusNodes[0], nextNode: _formFocusNodes[1])),
+                    _primaryFormRow('الأب', child: _tabInput(_fatherNameController, hint: 'اسم الأب', node: _formFocusNodes[1], nextNode: _formFocusNodes[2])),
+                    _primaryFormRow('الكنية', child: _tabInput(_grandfatherNameController, hint: 'الكنية', node: _formFocusNodes[2], nextNode: _formFocusNodes[3])),
+                    _primaryFormRow('اسم الأم', child: _tabInput(_motherNameController, hint: 'اسم الأم', node: _formFocusNodes[3], nextNode: _formFocusNodes[4])),
+                    _primaryFormRow('الجد', child: _tabInput(_grandfatherNameController, hint: 'الجد', node: _formFocusNodes[4], nextNode: _formFocusNodes[5])),
                     _primaryFormRow('الجنس', child: _genderChoices()),
                   ],
                 ),
@@ -777,9 +779,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       'مكان القيد / رقم القيد',
                       child: Row(
                         children: <Widget>[
-                          Expanded(child: _simpleInput(_registryPlaceController, hint: 'مكان القيد')),
+                          Expanded(child: _tabInput(_registryPlaceController, hint: 'مكان القيد', node: _formFocusNodes[5], nextNode: _formFocusNodes[6])),
                           const SizedBox(width: 10),
-                          Expanded(child: _simpleInput(_registryNumberController, hint: 'رقم القيد')),
+                          Expanded(child: _tabInput(_registryNumberController, hint: 'رقم القيد', node: _formFocusNodes[6], nextNode: _formFocusNodes[7])),
                         ],
                       ),
                     ),
@@ -787,9 +789,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       'مكان الولادة / تاريخ الولادة',
                       child: Row(
                         children: <Widget>[
-                          Expanded(child: _simpleInput(_birthPlaceController, hint: 'مكان الولادة')),
+                          Expanded(child: _tabInput(_birthPlaceController, hint: 'مكان الولادة', node: _formFocusNodes[7], nextNode: _formFocusNodes[8])),
                           const SizedBox(width: 10),
-                          Expanded(child: _datePickerField(_birthDateController, hint: 'اختر التاريخ')),
+                          Expanded(child: _tabInput(_birthDateController, hint: 'تاريخ الولادة', node: _formFocusNodes[8], nextNode: _formFocusNodes[9])),
                         ],
                       ),
                     ),
@@ -835,6 +837,30 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _tabInput(TextEditingController controller, {required String hint, required FocusNode node, FocusNode? nextNode, int maxLines = 1}) {
+    return TextField(
+      controller: controller,
+      focusNode: node,
+      maxLines: maxLines,
+      textInputAction: nextNode != null ? TextInputAction.next : TextInputAction.done,
+      onSubmitted: nextNode != null ? (_) => nextNode.requestFocus() : null,
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: const Color(0xFFFBFDFF),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+        ),
       ),
     );
   }

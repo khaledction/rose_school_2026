@@ -2178,6 +2178,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _supervisorNameController,
       _principalNameController,
       _generalSupervisorController,
+      ..._formFocusNodes,
       _loginUsernameController,
       _loginPasswordController,
       _adminUsernameController,
