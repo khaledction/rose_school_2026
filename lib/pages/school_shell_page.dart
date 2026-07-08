@@ -237,6 +237,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   String _currentPage = 'dashboard';
   final List<NotificationItem> _notifications = [];
+  final List<FocusNode> _formFocusNodes = List<FocusNode>.generate(12, (_) => FocusNode());
   int? _selectedStudentId = 1;
   String _gender = 'ذكر';
   String _status = 'نشط';
@@ -2108,6 +2109,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   @override
   void dispose() {
     _database.close();
+    for (final node in _formFocusNodes) {
+      node.dispose();
+    }
     for (final controller in <TextEditingController>[
       _serialController,
       _fullNameController,
@@ -2178,7 +2182,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _supervisorNameController,
       _principalNameController,
       _generalSupervisorController,
-      ..._formFocusNodes,
       _loginUsernameController,
       _loginPasswordController,
       _adminUsernameController,

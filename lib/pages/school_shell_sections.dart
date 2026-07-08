@@ -715,8 +715,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
-  final List<FocusNode> _formFocusNodes = List<FocusNode>.generate(12, (_) => FocusNode());
-
   Widget _mainFormPanel() {
     return Container(
       decoration: BoxDecoration(
