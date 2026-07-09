@@ -136,7 +136,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 ),
               ],
             ),
-            ),
           ),
           const SizedBox(height: 14),
           Container(
@@ -2679,9 +2678,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     }
 
     final List<Map<String, dynamic>> paymentDrafts = <Map<String, dynamic>>[
-      createPaymentDraft(
-        amount: initialAmount > 0 ? initialAmount.toStringAsFixed(0) : '',
-      ),
+      createPaymentDraft(),
     ];
 
     void disposePaymentDraft(Map<String, dynamic> draft) {
@@ -3064,9 +3061,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     }
 
     final List<Map<String, dynamic>> paymentDrafts = <Map<String, dynamic>>[
-      createPaymentDraft(
-        amount: initialAmount > 0 ? initialAmount.toStringAsFixed(0) : '',
-      ),
+      createPaymentDraft(),
     ];
 
     void disposePaymentDraft(Map<String, dynamic> draft) {
@@ -3649,7 +3644,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     }
 
     final List<Map<String, dynamic>> paymentDrafts = <Map<String, dynamic>>[
-      createDraft(),
+      createDraft(
+        amount: initialAmount > 0 ? initialAmount.toStringAsFixed(0) : '',
+      ),
     ];
     Object? selectedRaw;
 
