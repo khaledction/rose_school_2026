@@ -47,13 +47,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _adminIdentityPageSection() {
+    // Labels/placeholders must match exactly.
     final identityFields = <MapEntry<String, TextEditingController>>[
       MapEntry('إيميل المدرسة المعتمد', _schoolEmailController),
       MapEntry('موبايل المدرسة واتساب', _schoolWhatsappController),
       MapEntry('موبايل المدرسة للتواصل', _schoolMobileController),
       MapEntry('هاتف المدرسة الأرضي', _schoolLandlineController),
-      MapEntry('المدير العام', _secretaryNameController),
-      MapEntry('مشرف القسم', _supervisorNameController),
+      MapEntry('المدير العام', _secretaryNameController), // placeholder: المدير العام
+      MapEntry('مشرف القسم', _supervisorNameController), // placeholder: مشرف القسم (بدل الموجه)
       MapEntry('مدير المدرسة', _principalNameController),
       MapEntry('أمين السر', _secretaryRoleNameController),
       MapEntry('المشرف العام', _generalSupervisorController),

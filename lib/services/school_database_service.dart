@@ -437,6 +437,19 @@ class SchoolDatabaseService {
   }
 
   SchoolIdentityEntry schoolIdentityFromJson(Map<String, dynamic> item) {
+    String normalizeTitle(String value, {required String oldLabel, required String newLabel}) {
+      final text = value.trim();
+      if (text.isEmpty || text == oldLabel) {
+        return newLabel;
+      }
+      return text;
+    }
+
+    // Legacy keys may still store old titles in the value itself.
+    final rawManager = item['schoolManagerName']?.toString() ?? item['secretaryName']?.toString() ?? '';
+    final rawSupervisor = item['sectionSupervisorName']?.toString() ?? item['supervisorName']?.toString() ?? '';
+    final rawSecretary = item['secretaryName']?.toString() ?? '';
+
     return SchoolIdentityEntry(
       email: item['email']?.toString() ?? '',
       whatsapp: item['whatsapp']?.toString() ?? '',
@@ -444,10 +457,10 @@ class SchoolDatabaseService {
       landline: item['landline']?.toString() ?? '',
       website: item['website']?.toString() ?? '',
       facebookPage: item['facebookPage']?.toString() ?? '',
-      schoolManagerName: item['schoolManagerName']?.toString() ?? '',
-      sectionSupervisorName: item['sectionSupervisorName']?.toString() ?? item['supervisorName']?.toString() ?? '',
+      schoolManagerName: normalizeTitle(rawManager, oldLabel: 'أمين السر', newLabel: 'المدير العام'),
+      sectionSupervisorName: normalizeTitle(rawSupervisor, oldLabel: 'الموجه', newLabel: 'مشرف القسم'),
       principalName: item['principalName']?.toString() ?? '',
-      secretaryName: item['secretaryName']?.toString() ?? '',
+      secretaryName: rawSecretary.trim().isEmpty ? 'أمين السر' : rawSecretary.trim(),
       generalSupervisorName: item['generalSupervisorName']?.toString() ?? '',
       sealImagePath: item['sealImagePath']?.toString() ?? '',
       signatureImagePath: item['signatureImagePath']?.toString() ?? '',

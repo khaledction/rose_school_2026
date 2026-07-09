@@ -391,16 +391,37 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   void _loadSchoolIdentityDraft() {
+    String normalizeTitle(String value, {required String oldLabel, required String newLabel}) {
+      final text = value.trim();
+      if (text.isEmpty || text == oldLabel) {
+        return newLabel;
+      }
+      return text;
+    }
+
     _schoolEmailController.text = _schoolIdentity.email;
     _schoolWhatsappController.text = _schoolIdentity.whatsapp;
     _schoolMobileController.text = _schoolIdentity.mobile;
     _schoolLandlineController.text = _schoolIdentity.landline;
     _schoolWebsiteController.text = _schoolIdentity.website;
     _schoolFacebookController.text = _schoolIdentity.facebookPage;
-    _secretaryNameController.text = _schoolIdentity.schoolManagerName;
-    _supervisorNameController.text = _schoolIdentity.sectionSupervisorName;
-    _principalNameController.text = _schoolIdentity.principalName;
-    _secretaryRoleNameController.text = _schoolIdentity.secretaryName;
+    // Label + placeholder must stay: المدير العام / مشرف القسم
+    _secretaryNameController.text = normalizeTitle(
+      _schoolIdentity.schoolManagerName,
+      oldLabel: 'أمين السر',
+      newLabel: 'المدير العام',
+    );
+    _supervisorNameController.text = normalizeTitle(
+      _schoolIdentity.sectionSupervisorName,
+      oldLabel: 'الموجه',
+      newLabel: 'مشرف القسم',
+    );
+    _principalNameController.text = _schoolIdentity.principalName.trim().isEmpty
+        ? 'مدير المدرسة'
+        : _schoolIdentity.principalName.trim();
+    _secretaryRoleNameController.text = _schoolIdentity.secretaryName.trim().isEmpty
+        ? 'أمين السر'
+        : _schoolIdentity.secretaryName.trim();
     _generalSupervisorController.text = _schoolIdentity.generalSupervisorName;
     _sealImagePath = _schoolIdentity.sealImagePath;
     _signatureImagePath = _schoolIdentity.signatureImagePath;
