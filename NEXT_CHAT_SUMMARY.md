@@ -8,7 +8,7 @@
 >
 > الفرع: `main`
 >
-> آخر commit: `f9febc4` — merge admin hub, parent comms, remove donations nav, rename results
+> آخر commit: `6e50afe` — rename exams menu, color parent tabs, nest data center under admin
 >
 > المجلد المحلي ويندوز: `C:\Users\khaledction\Desktop\new-rose`
 
@@ -229,3 +229,25 @@ flutter run -d windows
 3. Wire-up: حماية المدير + Export + Dark Mode
 4. Backup ZIP حقيقي
 5. Checklist ويندوز
+
+
+---
+
+## ✅ إغلاق جلسة 2026-07-10
+
+### آخر لمسات قبل الإغلاق
+- إعادة تسمية: **لوحة الامتحانات → الدرجات والجلاء المدرسي**
+- تمييز لوني لتبويبي أولياء الأمور: اجتماعات (أخضر) / مراسلات (أزرق)
+- حذف **مركز البيانات المحلي** من السايدبار كبند مستقل، مع الإبقاء عليه داخل خيارات **الإدارة**
+- مراجعة توازن الأقواس وتنظيف الحالة: working tree نظيف
+- المستودع مرفوع على `main` @ `6e50afe`
+
+### للمستخدم على Desktop
+```powershell
+cd C:\Users\khaledction\Desktop\new-rose
+git fetch origin
+git reset --hard origin/main
+flutter clean
+flutter pub get
+flutter run -d windows
+```
