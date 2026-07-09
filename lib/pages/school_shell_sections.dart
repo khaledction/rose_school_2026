@@ -96,6 +96,49 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             ),
           ),
           const SizedBox(height: 14),
+          // ─── Installment & Transport Fees Config ──────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text('الأقساط والمواصلات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
+                const SizedBox(height: 10),
+                const Text('تحديد القيم المالية للاقساط والمواصلات. هذه القيم هي التي ستستخدم عند إضافة أقساط من باب المحاسبة.', style: TextStyle(color: AppPalette.muted)),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: <Widget>[
+                    _editableField('القسط السنوي (ل.س)', _installmentAnnualController),
+                    _editableField('القسط الشهري (ل.س)', _installmentMonthlyController),
+                    _editableField('عدد الأقساط', _installmentCountController),
+                    _editableField('قيمة المواصلات (شهرياً)', _transportMonthlyController),
+                    _editableField('قيمة المواصلات (سنوياً)', _transportAnnualController),
+                    _editableField('قيمة منحة المواصلات', _transportGrantController),
+                    _editableField('عدد أشهر الإعفاء', _exemptionMonthsController),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    _actionButton('حفظ الإعدادات', AppPalette.goldDark, Colors.white, _saveInstallmentConfig),
+                    _actionButton('إلغاء', Colors.white, const Color(0xFF667586), _loadInstallmentConfig),
+                  ],
+                ),
+              ],
+            ),
+            ),
+          ),
+          const SizedBox(height: 14),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
@@ -967,73 +1010,119 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
   Widget _bloodTypeChoices() {
     const bloods = <String>['?','O+','O-','A+','A-','B+','B-','AB+','AB-'];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: bloods.map((type) {
-        final active = _bloodType == type;
-        return InkWell(
-          onTap: () => setState(() => _bloodType = type),
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              color: active ? AppPalette.goldDark : const Color(0xFFEDF5FB),
-              border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFD8E7F4)),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFDFF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9E7F3)),
+      ),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: bloods.map((type) {
+          final active = _bloodType == type;
+          return InkWell(
+            onTap: () => setState(() => _bloodType = type),
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: active ? AppPalette.goldDark : const Color(0xFFEDF5FB),
+                border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFD8E7F4)),
+              ),
+              child: Text(type, style: TextStyle(color: active ? Colors.white : const Color(0xFF29446F), fontWeight: FontWeight.w800, fontSize: 10)),
             ),
-            child: Text(type, style: TextStyle(color: active ? Colors.white : const Color(0xFF29446F), fontWeight: FontWeight.w800, fontSize: 12)),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
   Widget _genderChoices() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: <Widget>[
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Radio<String>(value: 'أنثى', groupValue: _gender, onChanged: (v) => setState(() => _gender = v ?? 'أنثى')),
-            const Text('أنثى'),
-          ],
-        ),
-        const SizedBox(width: 12),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Radio<String>(value: 'ذكر', groupValue: _gender, onChanged: (v) => setState(() => _gender = v ?? 'ذكر')),
-            const Text('ذكر'),
-          ],
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFDFF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9E7F3)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(() => _gender = 'ذكر'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _gender == 'ذكر' ? AppPalette.royalBlue : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text('ذكر', style: TextStyle(
+                    color: _gender == 'ذكر' ? Colors.white : AppPalette.deepNavySoft,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  )),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => setState(() => _gender = 'أنثى'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: _gender == 'أنثى' ? AppPalette.roseRed : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text('أنثى', style: TextStyle(
+                    color: _gender == 'أنثى' ? Colors.white : AppPalette.deepNavySoft,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  )),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _religionDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _religionController.text.isEmpty ? 'إسلامية' : _religionController.text,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: const Color(0xFFFBFDFF),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFDFF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFD9E7F3)),
       ),
-      items: const <String>['إسلامية', 'مسيحية', 'أخرى']
-          .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
-          .toList(),
-      onChanged: (v) {
-        if (v != null) setState(() => _religionController.text = v);
-      },
+      child: Row(
+        children: <Widget>[
+          const Text('الديانة: ', style: TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 12)),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _religionController.text.isEmpty ? 'إسلامية' : _religionController.text,
+                isExpanded: true,
+                items: const <String>['إسلامية', 'مسيحية', 'أخرى']
+                    .map((e) => DropdownMenuItem<String>(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _religionController.text = v);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1067,9 +1156,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
-                gradient: active
-                    ? const LinearGradient(colors: <Color>[AppPalette.goldDark, AppPalette.gold])
-                    : null,
+                color: active ? AppPalette.goldDark : null,
+                gradient: active ? const LinearGradient(colors: <Color>[AppPalette.goldDark, AppPalette.gold]) : null,
               ),
               child: Row(
                 children: <Widget>[
@@ -2591,7 +2679,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     }
 
     final List<Map<String, dynamic>> paymentDrafts = <Map<String, dynamic>>[
-      createPaymentDraft(),
+      createPaymentDraft(
+        amount: initialAmount > 0 ? initialAmount.toStringAsFixed(0) : '',
+      ),
     ];
 
     void disposePaymentDraft(Map<String, dynamic> draft) {
@@ -2974,7 +3064,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     }
 
     final List<Map<String, dynamic>> paymentDrafts = <Map<String, dynamic>>[
-      createPaymentDraft(),
+      createPaymentDraft(
+        amount: initialAmount > 0 ? initialAmount.toStringAsFixed(0) : '',
+      ),
     ];
 
     void disposePaymentDraft(Map<String, dynamic> draft) {
@@ -3437,11 +3529,41 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         .fold<double>(0, (sum, e) => sum + e.amount);
   }
 
-  Future<void> _showInstallmentDialog() async {
+  Future<void> _showInstallmentPresetDialog({String presetType = 'normal'}) async {
     final student = _selectedStudent ?? _students.first;
     final items = _studentInvoices(student.id);
+    
+    // Get config values from the state
+    String title = '';
+    double presetAmount = 0;
+    String note = '';
+    
+    final monthly = double.tryParse(_installmentMonthlyController.text.trim()) ?? 20000;
+    final transportMonthly = double.tryParse(_transportMonthlyController.text.trim()) ?? 5000;
+    final grantAmount = double.tryParse(_transportGrantController.text.trim()) ?? 25000;
+    final count = int.tryParse(_installmentCountController.text.trim()) ?? 10;
+    final exemptionMonths = int.tryParse(_exemptionMonthsController.text.trim()) ?? 3;
+    
+    switch (presetType) {
+      case 'normal':
+        title = 'قسط عادي';
+        presetAmount = monthly * count;
+        break;
+      case 'transport':
+        title = 'قسط + مواصلات';
+        presetAmount = (monthly + transportMonthly) * count;
+        note = 'تشمل المواصلات';
+        break;
+      case 'grant':
+        title = 'قسط + منحة مواصلات';
+        presetAmount = (monthly + grantAmount) * count;
+        note = 'منحة مواصلات - إعفاء $exemptionMonths شهراً';
+        break;
+    }
+    
     await _showAccountingEntryDialog(
-      dialogTitle: 'إضافة قسط',
+      dialogTitle: title,
+      initialAmount: presetAmount,
       existingItems: items
           .map((entry) => <String, dynamic>{
                 'title': entry.title,
@@ -3451,13 +3573,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 'raw': entry,
               })
           .toList(),
-      onSave: (title, amount, currency, date) {
+      onSave: (savedTitle, amount, currency, date) {
         setState(() {
           _invoices.insert(
             0,
             AccountingInvoiceEntry(
               studentId: student.id,
-              title: title,
+              title: '$savedTitle${note.isNotEmpty ? ' ($note)' : ''}',
               amount: amount,
               currency: currency,
               date: date,
@@ -3466,14 +3588,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         });
         _persistAll();
       },
-      onEdit: (raw, title, amount, currency, date) {
+      onEdit: (raw, editTitle, amount, currency, date) {
         final entry = raw as AccountingInvoiceEntry;
         final index = _invoices.indexOf(entry);
         if (index < 0) return;
         setState(() {
           _invoices[index] = AccountingInvoiceEntry(
             studentId: entry.studentId,
-            title: title,
+            title: editTitle,
             amount: amount,
             currency: currency,
             date: date,
@@ -3487,6 +3609,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         _persistAll();
       },
     );
+  }
+
+  Future<void> _showInstallmentDialog() async {
+    await _showInstallmentPresetDialog(presetType: 'normal');
   }
 
   Future<void> _showAccountingDonationDialog() async {
@@ -3503,6 +3629,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     required void Function(String title, double amount, String currency, String date) onSave,
     required void Function(Object raw, String title, double amount, String currency, String date) onEdit,
     required void Function(Object raw) onDelete,
+    double initialAmount = 0,
   }) async {
     final today = DateTime.now().toIso8601String().split('T').first;
     Map<String, dynamic> createDraft({
@@ -4356,9 +4483,17 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 spacing: 8,
                 runSpacing: 8,
                 children: <Widget>[
-                  _actionButton('إضافة قسط', AppPalette.goldDark, Colors.white, () {
+                  _actionButton('📘 قسط عادي', const Color(0xFFF7F3EA), AppPalette.goldDark, () {
                     setState(() => _accountingView = 'installments');
-                    _showInstallmentDialog();
+                    _showInstallmentPresetDialog(presetType: 'normal');
+                  }),
+                  _actionButton('🚌 قسط + مواصلات', const Color(0xFFEDF6FF), AppPalette.royalBlue, () {
+                    setState(() => _accountingView = 'installments');
+                    _showInstallmentPresetDialog(presetType: 'transport');
+                  }),
+                  _actionButton('🎓 قسط + منحة مواصلات', const Color(0xFFE7F7EE), AppPalette.leafGreen, () {
+                    setState(() => _accountingView = 'installments');
+                    _showInstallmentPresetDialog(presetType: 'grant');
                   }),
                   _actionButton('إضافة تبرع', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
                     setState(() => _accountingView = 'donations');

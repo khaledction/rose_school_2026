@@ -220,6 +220,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final TextEditingController _supervisorNameController = TextEditingController(); // مشرف القسم (old name kept for sections file compat)
   final TextEditingController _principalNameController = TextEditingController();
   final TextEditingController _generalSupervisorController = TextEditingController(); // المشرف العام
+  // ─── Installment config controllers ───
+  final TextEditingController _installmentAnnualController = TextEditingController(text: '200000');
+  final TextEditingController _installmentMonthlyController = TextEditingController(text: '20000');
+  final TextEditingController _installmentCountController = TextEditingController(text: '10');
+  final TextEditingController _transportMonthlyController = TextEditingController(text: '5000');
+  final TextEditingController _transportAnnualController = TextEditingController(text: '50000');
+  final TextEditingController _transportGrantController = TextEditingController(text: '25000');
+  final TextEditingController _exemptionMonthsController = TextEditingController(text: '3');
   String _sealImagePath = '';
   String _signatureImagePath = '';
   final TextEditingController _loginUsernameController = TextEditingController(text: 'admin');
@@ -550,6 +558,33 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     });
     await _database.saveJson('school_identity', _database.schoolIdentityToJson(_schoolIdentity));
     _showSnack('تم حفظ بيانات المدرسة المعتمدة بنجاح.');
+  }
+
+  Future<void> _saveInstallmentConfig() async {
+    await _database.saveJson('installment_config', {
+      'annual': _installmentAnnualController.text.trim(),
+      'monthly': _installmentMonthlyController.text.trim(),
+      'count': _installmentCountController.text.trim(),
+      'transportMonthly': _transportMonthlyController.text.trim(),
+      'transportAnnual': _transportAnnualController.text.trim(),
+      'transportGrant': _transportGrantController.text.trim(),
+      'exemptionMonths': _exemptionMonthsController.text.trim(),
+    });
+    _showSnack('تم حفظ إعدادات الأقساط والمواصلات بنجاح.');
+  }
+
+  Future<void> _loadInstallmentConfig() async {
+    final json = await _database.readJson('installment_config');
+    if (json != null) {
+      final data = jsonDecode(json) as Map<String, dynamic>;
+      _installmentAnnualController.text = data['annual']?.toString() ?? '200000';
+      _installmentMonthlyController.text = data['monthly']?.toString() ?? '20000';
+      _installmentCountController.text = data['count']?.toString() ?? '10';
+      _transportMonthlyController.text = data['transportMonthly']?.toString() ?? '5000';
+      _transportAnnualController.text = data['transportAnnual']?.toString() ?? '50000';
+      _transportGrantController.text = data['transportGrant']?.toString() ?? '25000';
+      _exemptionMonthsController.text = data['exemptionMonths']?.toString() ?? '3';
+    }
   }
 
   void _login() {
@@ -1966,6 +2001,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (schoolIdentityExisting == null) {
       await _database.saveJson('school_identity', _database.schoolIdentityToJson(_schoolIdentity));
     }
+    await _loadInstallmentConfig();
     await _migrateStoredMediaFiles();
     if (!mounted) return;
     setState(() => _isDatabaseReady = true);
@@ -2184,6 +2220,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _supervisorNameController,
       _principalNameController,
       _generalSupervisorController,
+      _installmentAnnualController,
+      _installmentMonthlyController,
+      _installmentCountController,
+      _transportMonthlyController,
+      _transportAnnualController,
+      _transportGrantController,
+      _exemptionMonthsController,
       _loginUsernameController,
       _loginPasswordController,
       _adminUsernameController,
@@ -2789,7 +2832,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('employees', '👥 الموظفين'),
           _NavItem('form', 'استمارة طالب'),
           _NavItem('attendance', 'الحضور والغياب'),
-          _NavItem('donations', 'التبرعات'),
           _NavItem('discipline', 'المكافآت والعقوبات'),
           _NavItem('certificates', 'الشهادات'),
           _NavItem('documents', 'الوثائق والمرفقات'),
@@ -2819,6 +2861,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF2F9A8E),
         items: const <_NavItem>[
           _NavItem('accounting', 'لوحة المحاسبة'),
+          _NavItem('donations', 'التبرعات'),
           _NavItem('income_expenses', '💰 الإيرادات والصرفيات'),
         ],
       ),
@@ -3088,7 +3131,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'donations':
         return const _PageInfo(
           'التبرعات',
-          'أمانة السر، التبرعات',
+          'المحاسبة، التبرعات',
           'إدارة التبرعات العينية والمادية مع ربطها بسجل الطالب والبيانات المالية.',
         );
       case 'reports':
