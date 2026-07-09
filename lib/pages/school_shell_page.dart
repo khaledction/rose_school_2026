@@ -2895,7 +2895,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
           _NavItem('admin_hub', '🏛️ الإدارة'),
-          _NavItem('data_center', '📁 مركز البيانات المحلي'),
           _NavItem('employee_review', '🔍 مراجعة الموظفين'),
           _NavItem('admin_identity', 'الهوية والاعتماد'),
         ],
@@ -2926,7 +2925,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         primaryColor: const Color(0xFF1E7A79),
         secondaryColor: const Color(0xFF123A78),
         items: const <_NavItem>[
-          _NavItem('exams', 'لوحة الامتحانات'),
+          _NavItem('exams', '📚 الدرجات والجلاء المدرسي'),
           _NavItem('student_sorting', '📊 النتائج والمعدلات'),
         ],
       ),
@@ -3281,7 +3280,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         );
       case 'exams':
         return const _PageInfo(
-          'الامتحانات',
+          '📚 الدرجات والجلاء المدرسي',
           'الامتحانات، الدرجات والجلاء المدرسي',
           'إدخال درجات كل مادة للفصلين مع احتساب المحصلات تلقائيًا، وتحديث الجلاء المدرسي مع أزرار معاينة وطباعة بشكل بصري قريب من النموذج المعتمد.',
         );
@@ -3313,7 +3312,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'parent_meetings': '📅 اجتماعات ومراسلات أولياء الأمور',
       'data_center': '📁 مركز البيانات المحلي',
       'messages': '📅 اجتماعات ومراسلات أولياء الأمور',
-      'exams': 'لوحة الامتحانات',
+      'exams': '📚 الدرجات والجلاء المدرسي',
       'accounting': 'لوحة المحاسبة',
     };
     return labels[id] ?? id;
@@ -3640,24 +3639,59 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const <Widget>[
-                Text(
+              children: <Widget>[
+                const Text(
                   '📅 اجتماعات ومراسلات أولياء الأمور',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
                 ),
-                SizedBox(height: 6),
-                Text(
+                const SizedBox(height: 6),
+                const Text(
                   'قسم موحّد يجمع إدارة الاجتماعات وتوثيق الحضور مع مراسلات أولياء الأمور لنفس بيانات الطلاب.',
                   style: TextStyle(color: AppPalette.muted, height: 1.6),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 12),
                 TabBar(
-                  labelColor: AppPalette.deepNavy,
-                  unselectedLabelColor: AppPalette.muted,
-                  indicatorColor: AppPalette.goldDark,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.transparent,
+                  ),
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 4),
                   tabs: <Widget>[
-                    Tab(text: 'الاجتماعات والحضور'),
-                    Tab(text: 'المراسلات'),
+                    Tab(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7F7EE),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppPalette.leafGreen.withOpacity(0.45)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'الاجتماعات والحضور',
+                            style: TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w900, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Tab(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDF6FF),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppPalette.royalBlue.withOpacity(0.45)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'المراسلات',
+                            style: TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w900, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -3729,7 +3763,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                   children: <Widget>[
                     _actionButton('الهوية', Colors.white, AppPalette.deepNavy, () => setState(() => _currentPage = 'admin_identity')),
                     _actionButton('الموظفون', const Color(0xFFF7F3EA), AppPalette.goldDark, () => setState(() => _currentPage = 'employee_review')),
-                    _actionButton('البيانات', const Color(0xFFEDF6FF), AppPalette.royalBlue, () => setState(() => _currentPage = 'data_center')),
+                    _actionButton('📁 مركز البيانات المحلي', const Color(0xFFEDF6FF), AppPalette.royalBlue, () => setState(() => _currentPage = 'data_center')),
                   ],
                 ),
               ],
