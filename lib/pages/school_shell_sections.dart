@@ -55,6 +55,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       MapEntry('المدير العام', _secretaryNameController),
       MapEntry('مشرف القسم', _supervisorNameController),
       MapEntry('مدير المدرسة', _principalNameController),
+      MapEntry('أمين السر', _secretaryRoleNameController),
       MapEntry('المشرف العام', _generalSupervisorController),
       MapEntry('موقع المدرسة على الإنترنت', _schoolWebsiteController),
       MapEntry('صفحة المدرسة على فيسبوك', _schoolFacebookController),
@@ -107,7 +108,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       _editableField(
                         identityFields[i].key,
                         identityFields[i].value,
-                        span2: i >= 8,
+                        span2: i >= 9,
                         focusNode: _identityFocusNodes[i],
                         nextFocusNode: i < identityFields.length - 1 ? _identityFocusNodes[i + 1] : null,
                       ),

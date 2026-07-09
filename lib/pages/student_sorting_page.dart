@@ -719,22 +719,25 @@ const SizedBox(height: 14),
 
   Widget _sortingStatsRow() {
     final total = _ranked.length;
+    final males = _ranked.where((r) => r.student.gender == 'ذكر').length;
+    final females = _ranked.where((r) => r.student.gender == 'أنثى').length;
     final scored = _ranked.where((r) => r.average > 0).toList();
-    final scoredCount = scored.isEmpty ? 1 : scored.length;
-    final over90 = scored.where((r) => r.average >= 90).length;
-    final over80 = scored.where((r) => r.average >= 80).length;
-    final over50 = scored.where((r) => r.average >= 50).length;
-    String pct(int n) => '${((n / scoredCount) * 100).toStringAsFixed(1)}%';
+    final scoredCount = scored.isEmpty ? 0 : scored.length;
+    final passCount = scored.where((r) => r.average >= 50).length;
+    final failCount = scored.where((r) => r.average < 50).length;
+    String pct(int n) => scoredCount == 0 ? '0%' : '${((n / scoredCount) * 100).toStringAsFixed(1)}%';
 
     return Row(
       children: <Widget>[
-        _miniStat('عدد الطلاب', '$total', AppPalette.goldDark),
+        _miniStat('إجمالي عدد الطلاب', '$total', AppPalette.goldDark),
         const SizedBox(width: 10),
-        _miniStat('فوق 90%', pct(over90), AppPalette.leafGreen),
+        _miniStat('إجمالي عدد الذكور', '$males', AppPalette.royalBlue),
         const SizedBox(width: 10),
-        _miniStat('فوق 80%', pct(over80), AppPalette.royalBlue),
+        _miniStat('إجمالي عدد الإناث', '$females', AppPalette.roseRed),
         const SizedBox(width: 10),
-        _miniStat('فوق 50%', pct(over50), AppPalette.deepNavySoft),
+        _miniStat('نسبة النجاح', pct(passCount), AppPalette.leafGreen),
+        const SizedBox(width: 10),
+        _miniStat('نسبة الرسوب', pct(failCount), AppPalette.deepNavySoft),
       ],
     );
   }

@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../models/finance_models.dart';
-import '../services/employee_service.dart';
 import '../services/finance_service.dart';
-import '../services/school_database_service.dart';
 import '../theme/app_palette.dart';
 
 class AccountingIncomeExpensesPage extends StatefulWidget {
@@ -18,7 +15,6 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
   String _tab = 'summary'; // 'summary', 'income', 'expenses', 'categories'
   String _incomeCategoryFilter = 'الكل';
   String _expenseCategoryFilter = 'الكل';
-  int _studentsCount = 0;
 
   // Form controllers
   final _incomeAmountController = TextEditingController();
@@ -38,28 +34,6 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
   // New category
   final _newCategoryController = TextEditingController();
   String _newCategoryType = 'income';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCounts();
-  }
-
-  Future<void> _loadCounts() async {
-    await EmployeeService.instance.init();
-    final studentsJson = await SchoolDatabaseService.instance.readJson('students');
-    int students = 0;
-    if (studentsJson != null && studentsJson.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(studentsJson);
-        if (decoded is List) students = decoded.length;
-      } catch (_) {
-        students = 0;
-      }
-    }
-    if (!mounted) return;
-    setState(() => _studentsCount = students);
-  }
 
   @override
   void dispose() {
@@ -190,21 +164,9 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
 
   @override
   Widget build(BuildContext context) {
-    final employees = EmployeeService.instance.all;
-    final teachers = employees.where((e) => e.jobType == 'معلم').length;
     return SingleChildScrollView(
       child: Column(
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              _peopleStatCard('إجمالي عدد الطلاب', '$_studentsCount', AppPalette.goldDark),
-              const SizedBox(width: 10),
-              _peopleStatCard('إجمالي عدد المعلمين', '$teachers', AppPalette.royalBlue),
-              const SizedBox(width: 10),
-              _peopleStatCard('إجمالي عدد الموظفين', '${employees.length}', AppPalette.leafGreen),
-            ],
-          ),
-          const SizedBox(height: 14),
           // ─── Tabs ────────────────────────────────────────────
           _buildTabs(),
           const SizedBox(height: 14),
@@ -853,30 +815,6 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
     );
   }
 
-
-  Widget _peopleStatCard(String label, String value, Color color) {
-    return Expanded(
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppPalette.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
     return MouseRegion(

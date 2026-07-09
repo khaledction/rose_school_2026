@@ -216,9 +216,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final TextEditingController _schoolLandlineController = TextEditingController();
   final TextEditingController _schoolWebsiteController = TextEditingController();
   final TextEditingController _schoolFacebookController = TextEditingController();
-  final TextEditingController _secretaryNameController = TextEditingController(); // مدير المدرسة (old name kept for sections file compat)
-  final TextEditingController _supervisorNameController = TextEditingController(); // مشرف القسم (old name kept for sections file compat)
-  final TextEditingController _principalNameController = TextEditingController();
+  final TextEditingController _secretaryNameController = TextEditingController(); // المدير العام
+  final TextEditingController _supervisorNameController = TextEditingController(); // مشرف القسم
+  final TextEditingController _principalNameController = TextEditingController(); // مدير المدرسة
+  final TextEditingController _secretaryRoleNameController = TextEditingController(); // أمين السر
   final TextEditingController _generalSupervisorController = TextEditingController(); // المشرف العام
   // ─── Installment config controllers ───
   final TextEditingController _installmentAnnualController = TextEditingController(text: '200000');
@@ -234,7 +235,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _exemptionSection = 'الكل';
   int? _exemptionStudentId;
   // Focus chains: identity (10) + installment amounts (6) + admin user form (5)
-  final List<FocusNode> _identityFocusNodes = List<FocusNode>.generate(10, (_) => FocusNode());
+  final List<FocusNode> _identityFocusNodes = List<FocusNode>.generate(11, (_) => FocusNode());
   final List<FocusNode> _installmentFocusNodes = List<FocusNode>.generate(6, (_) => FocusNode());
   final List<FocusNode> _adminUserFocusNodes = List<FocusNode>.generate(5, (_) => FocusNode());
   String _sealImagePath = '';
@@ -399,6 +400,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     _secretaryNameController.text = _schoolIdentity.schoolManagerName;
     _supervisorNameController.text = _schoolIdentity.sectionSupervisorName;
     _principalNameController.text = _schoolIdentity.principalName;
+    _secretaryRoleNameController.text = _schoolIdentity.secretaryName;
     _generalSupervisorController.text = _schoolIdentity.generalSupervisorName;
     _sealImagePath = _schoolIdentity.sealImagePath;
     _signatureImagePath = _schoolIdentity.signatureImagePath;
@@ -560,6 +562,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         schoolManagerName: _secretaryNameController.text.trim(),
         sectionSupervisorName: _supervisorNameController.text.trim(),
         principalName: _principalNameController.text.trim(),
+        secretaryName: _secretaryRoleNameController.text.trim(),
         generalSupervisorName: _generalSupervisorController.text.trim(),
         sealImagePath: _sealImagePath,
         signatureImagePath: _signatureImagePath,
@@ -2272,6 +2275,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _secretaryNameController,
       _supervisorNameController,
       _principalNameController,
+      _secretaryRoleNameController,
       _generalSupervisorController,
       _installmentAnnualController,
       _installmentMonthlyController,

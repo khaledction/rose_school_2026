@@ -622,12 +622,13 @@ class SchoolIdentityEntry {
     required this.landline,
     required this.website,
     required this.facebookPage,
-    required this.schoolManagerName,    // سابقاً: أمين السر ← مدير المدرسة
-    required this.sectionSupervisorName, // سابقاً: الموجه ← مشرف القسم
-    required this.principalName,         // يبقى المدير
-    this.generalSupervisorName = '',     // جديد: المشرف العام
-    this.sealImagePath = '',             // جديد: صورة الخاتم
-    this.signatureImagePath = '',        // جديد: صورة التوقيع
+    required this.schoolManagerName,    // المدير العام
+    required this.sectionSupervisorName, // مشرف القسم
+    required this.principalName,         // مدير المدرسة
+    this.secretaryName = '',             // أمين السر
+    this.generalSupervisorName = '',     // المشرف العام
+    this.sealImagePath = '',
+    this.signatureImagePath = '',
   });
 
   final String email;
@@ -639,6 +640,7 @@ class SchoolIdentityEntry {
   final String schoolManagerName;
   final String sectionSupervisorName;
   final String principalName;
+  final String secretaryName;
   final String generalSupervisorName;
   final String sealImagePath;
   final String signatureImagePath;
@@ -653,6 +655,7 @@ class SchoolIdentityEntry {
     String? schoolManagerName,
     String? sectionSupervisorName,
     String? principalName,
+    String? secretaryName,
     String? generalSupervisorName,
     String? sealImagePath,
     String? signatureImagePath,
@@ -667,6 +670,7 @@ class SchoolIdentityEntry {
       schoolManagerName: schoolManagerName ?? this.schoolManagerName,
       sectionSupervisorName: sectionSupervisorName ?? this.sectionSupervisorName,
       principalName: principalName ?? this.principalName,
+      secretaryName: secretaryName ?? this.secretaryName,
       generalSupervisorName: generalSupervisorName ?? this.generalSupervisorName,
       sealImagePath: sealImagePath ?? this.sealImagePath,
       signatureImagePath: signatureImagePath ?? this.signatureImagePath,
