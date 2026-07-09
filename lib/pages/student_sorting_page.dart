@@ -193,7 +193,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                   children: <pw.Widget>[
                     pw.Text(widget.schoolName, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 4),
-                    pw.Text('فرز الطلاب حسب المعدل والدرجات', style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text('النتائج والمعدلات', style: const pw.TextStyle(fontSize: 12)),
                     pw.Text('$scope • $order', style: const pw.TextStyle(fontSize: 10)),
                   ],
                 ),
@@ -364,7 +364,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
                     child: Text(
-                      '🔍 فرز الطلاب حسب المعدل والدرجات',
+                      '📊 النتائج والمعدلات',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                     ),
                   ),
@@ -553,7 +553,7 @@ const SizedBox(height: 14),
                                 ),
                                 const SizedBox(height: 4),
                                 const Text(
-                                  'جدول الفرز حسب المعدل والدرجات',
+                                  'جدول النتائج والمعدلات',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12),

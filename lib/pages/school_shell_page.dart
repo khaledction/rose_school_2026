@@ -254,7 +254,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final List<TextEditingController> _regularPaidControllers = List<TextEditingController>.generate(10, (_) => TextEditingController());
   final List<TextEditingController> _regularDateControllers = List<TextEditingController>.generate(10, (_) => TextEditingController());
 
-  String _currentPage = 'dashboard';
+  String _currentPage = 'admin_hub';
   final List<NotificationItem> _notifications = [];
   final List<FocusNode> _formFocusNodes = List<FocusNode>.generate(12, (_) => FocusNode());
   int? _selectedStudentId = 1;
@@ -346,10 +346,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'attendance', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_comms', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
-    if (const <String>{'admin_dashboard', 'admin_identity', 'data_center', 'employee_review'}.contains(pageId)) {
+    if (const <String>{'admin_hub', 'admin_dashboard', 'admin_identity', 'data_center', 'employee_review', 'dashboard'}.contains(pageId)) {
       return 'administration';
     }
     if (const <String>{'exams', 'student_sorting'}.contains(pageId)) {
@@ -370,7 +370,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   String _firstAllowedPage(AdminUserEntry user) {
-    return 'dashboard';
+    return 'admin_hub';
     /*if (_userHasDoorPermission(user, 'administration')) return 'admin_dashboard';
     if (_userHasDoorPermission(user, 'secretariat')) return 'students';
     if (_userHasDoorPermission(user, 'exams')) return 'exams';
@@ -2894,10 +2894,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         primaryColor: const Color(0xFFA82A38),
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
-          _NavItem('dashboard', '📊 لوحة القيادة'),
+          _NavItem('admin_hub', '🏛️ الإدارة'),
           _NavItem('data_center', '📁 مركز البيانات المحلي'),
           _NavItem('employee_review', '🔍 مراجعة الموظفين'),
-          _NavItem('admin_dashboard', 'لوحة الإدارة'),
           _NavItem('admin_identity', 'الهوية والاعتماد'),
         ],
       ),
@@ -2917,9 +2916,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('reports', 'التقارير'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
           _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
-          _NavItem('parent_meetings', '📅 اجتماعات أولياء الأمور'),
+          _NavItem('parent_comms', '📅 اجتماعات ومراسلات أولياء الأمور'),
           _NavItem('transport', 'النقل المدرسي'),
-          _NavItem('messages', 'مراسلات أولياء الأمور'),
         ],
       ),
       _NavGroup(
@@ -2929,7 +2927,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF123A78),
         items: const <_NavItem>[
           _NavItem('exams', 'لوحة الامتحانات'),
-          _NavItem('student_sorting', '🔍 فرز الطلاب حسب المعدل والدرجات'),
+          _NavItem('student_sorting', '📊 النتائج والمعدلات'),
         ],
       ),
       _NavGroup(
@@ -2939,7 +2937,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF2F9A8E),
         items: const <_NavItem>[
           _NavItem('accounting', 'لوحة المحاسبة'),
-          _NavItem('donations', 'التبرعات'),
           _NavItem('income_expenses', '💰 الإيرادات والصرفيات'),
         ],
       ),
@@ -3152,11 +3149,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   _PageInfo _pageInfo() {
     switch (_currentPage) {
+      case 'admin_hub':
       case 'dashboard':
+      case 'admin_dashboard':
         return const _PageInfo(
-          '📊 لوحة القيادة',
-          'الصفحة الرئيسية',
-          'مرحباً بك في نظام روز التعليمي. هذه لوحة القيادة الرئيسية تعرض لك إحصائيات حية عن الطلاب والإيرادات والصرفيات وآخر الإشعارات.',
+          '🏛️ الإدارة',
+          'الإدارة، لوحة القيادة والإدارة',
+          'مركز إداري موحّد يجمع لوحة القيادة ولوحة الإدارة مع إحصائيات حية وصلاحيات المستخدم والوصول السريع للعمليات.',
         );
       case 'employees':
         return const _PageInfo(
@@ -3224,11 +3223,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'أمانة السر، بطاقة الطالب والطباعة',
           'يمكنك الآن معاينة البطاقة المدرسية الفعلية وتجهيزها كـ PDF وصورة جاهزة للطباعة مع اللوغو وصورة الطالب وQR.',
         );
+      case 'parent_comms':
       case 'parent_meetings':
+      case 'messages':
         return const _PageInfo(
-          '📅 اجتماعات أولياء الأمور',
-          'أمانة السر، اجتماعات أولياء الأمور',
-          'إدارة اجتماعات أولياء الأمور، تسجيل الحضور والغياب، وعرض تقارير إحصائية عن نسب الحضور.',
+          '📅 اجتماعات ومراسلات أولياء الأمور',
+          'أمانة السر، اجتماعات ومراسلات أولياء الأمور',
+          'قسم موحّد للاجتماعات وتوثيق الحضور والمراسلات مع أولياء الأمور، مع الحفاظ على كل البيانات والخيارات السابقة.',
         );
       case 'backup':
         return const _PageInfo(
@@ -3238,9 +3239,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         );
       case 'student_sorting':
         return const _PageInfo(
-          '🔍 فرز الطلاب حسب المعدل والدرجات',
-          'الامتحانات، فرز الطلاب حسب المعدل والدرجات',
-          'فرز الطلاب حسب الصفوف أو حسب الصف والشعبة مع ترتيب تصاعدي/تنازلي وتصدير PDF أو Excel.',
+          '📊 النتائج والمعدلات',
+          'الامتحانات، النتائج والمعدلات',
+          'عرض نتائج الطلاب ومعدلاتهم حسب الصفوف أو الصف والشعبة مع ترتيب تصاعدي/تنازلي وتصدير PDF أو Excel.',
         );
       case 'data_center':
         return const _PageInfo(
@@ -3295,21 +3296,23 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   static String _pageLabel(String id) {
     const labels = <String, String>{
-      'dashboard': '📊 لوحة القيادة',
+      'admin_hub': '🏛️ الإدارة',
+      'dashboard': '🏛️ الإدارة',
       'employees': '👥 الموظفين',
       'employee_review': '🔍 مراجعة الموظفين',
-      'admin_dashboard': 'لوحة الإدارة',
+      'admin_dashboard': '🏛️ الإدارة',
       'admin_identity': 'الهوية والاعتماد',
       'attendance': 'الحضور والغياب',
-      'donations': 'التبرعات',
+      'donations': 'لوحة المحاسبة',
       'discipline': 'المكافآت والعقوبات',
       'certificates': 'الشهادات',
       'documents': 'الوثائق والمرفقات',
       'transport': 'النقل المدرسي',
-      'student_sorting': '🔍 فرز الطلاب حسب المعدل والدرجات',
-      'parent_meetings': '📅 اجتماعات أولياء الأمور',
+      'student_sorting': '📊 النتائج والمعدلات',
+      'parent_comms': '📅 اجتماعات ومراسلات أولياء الأمور',
+      'parent_meetings': '📅 اجتماعات ومراسلات أولياء الأمور',
       'data_center': '📁 مركز البيانات المحلي',
-      'messages': 'مراسلات أولياء الأمور',
+      'messages': '📅 اجتماعات ومراسلات أولياء الأمور',
       'exams': 'لوحة الامتحانات',
       'accounting': 'لوحة المحاسبة',
     };
@@ -3421,18 +3424,27 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _buildStats() {
+    // Hide top people cards on results page (keeps internal ranking stats only).
+    if (_currentPage == 'student_sorting') {
+      return const SizedBox.shrink();
+    }
+
     final totalStudents = _students.length;
     final employees = EmployeeService.instance.all;
     final totalTeachers = employees.where((e) => e.jobType == 'معلم').length;
     final totalEmployees = employees.length;
+
+    // On employees screens: never show total students card.
+    final bool employeesContext = _currentPage == 'employees' || _currentPage == 'employee_review';
     final stats = <Map<String, dynamic>>[
-      {
-        'value': '$totalStudents',
-        'label': 'إجمالي عدد الطلاب',
-        'c1': AppPalette.gold,
-        'c2': AppPalette.goldDark,
-        'icon': '■',
-      },
+      if (!employeesContext)
+        {
+          'value': '$totalStudents',
+          'label': 'إجمالي عدد الطلاب',
+          'c1': AppPalette.gold,
+          'c2': AppPalette.goldDark,
+          'icon': '■',
+        },
       {
         'value': '$totalTeachers',
         'label': 'إجمالي عدد المعلمين',
@@ -3448,6 +3460,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         'icon': '👥',
       },
     ];
+    if (stats.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return SizedBox(
       height: 108,
@@ -3513,14 +3528,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _buildPageBody() {
     switch (_currentPage) {
+      case 'admin_hub':
       case 'dashboard':
-        return _dashboardPageWrapped();
+      case 'admin_dashboard':
+        return _adminHubPage();
       case 'employees':
         return _employeesPageWrapped();
       case 'employee_review':
         return _employeeReviewPageWrapped();
-      case 'admin_dashboard':
-        return _adminDashboardPage();
       case 'admin_identity':
         return _adminIdentityPage();
       case 'students':
@@ -3534,21 +3549,22 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'attendance':
         return _attendancePage();
       case 'donations':
-        return _donationsPage();
+        // التبرعات أصبحت داخل لوحة المحاسبة فقط
+        return _accountingPage();
       case 'documents':
         return _documentsPage();
       case 'student_sorting':
         return _studentSortingPageWrapped();
+      case 'parent_comms':
       case 'parent_meetings':
-        return _parentMeetingsPageWrapped();
+      case 'messages':
+        return _parentCommsPageWrapped();
       case 'backup':
         return _backupPage();
       case 'data_center':
         return _dataCenterPageWrapped();
       case 'transport':
         return _transportPage();
-      case 'messages':
-        return _messagesPage();
       case 'discipline':
         return _disciplinePage();
       case 'certificates':
@@ -3606,6 +3622,182 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       onNavigate: (pageId, {String? targetId}) {
         setState(() => _currentPage = pageId);
       },
+    );
+  }
+
+  Widget _parentCommsPageWrapped() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const <Widget>[
+                Text(
+                  '📅 اجتماعات ومراسلات أولياء الأمور',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'قسم موحّد يجمع إدارة الاجتماعات وتوثيق الحضور مع مراسلات أولياء الأمور لنفس بيانات الطلاب.',
+                  style: TextStyle(color: AppPalette.muted, height: 1.6),
+                ),
+                SizedBox(height: 10),
+                TabBar(
+                  labelColor: AppPalette.deepNavy,
+                  unselectedLabelColor: AppPalette.muted,
+                  indicatorColor: AppPalette.goldDark,
+                  tabs: <Widget>[
+                    Tab(text: 'الاجتماعات والحضور'),
+                    Tab(text: 'المراسلات'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: TabBarView(
+              children: <Widget>[
+                _parentMeetingsPageWrapped(),
+                _messagesPage(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _adminHubPage() {
+    final user = _authenticatedUser;
+    final studentCount = _students.length;
+    final maleCount = _students.where((s) => s.gender == 'ذكر').length;
+    final femaleCount = _students.where((s) => s.gender == 'أنثى').length;
+    final employees = EmployeeService.instance.all;
+    final teachers = employees.where((e) => e.jobType == 'معلم').length;
+
+    double totalIncome = 0;
+    for (final d in _accountingDonations) {
+      totalIncome += d.amount;
+    }
+    for (final i in _invoices) {
+      totalIncome += i.amount;
+    }
+    double totalExpenses = 0;
+    for (final r in _receipts) {
+      totalExpenses += r.amount;
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          // Admin identity strip
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: <Color>[Color(0xFFA82A38), Color(0xFF10295A)]),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Text('🏛️ مركز الإدارة', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 6),
+                      Text(
+                        'المستخدم: ${user?.username ?? '-'} • الصلاحيات: ${user?.permissions.length ?? 0}',
+                        style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: <Widget>[
+                    _actionButton('الهوية', Colors.white, AppPalette.deepNavy, () => setState(() => _currentPage = 'admin_identity')),
+                    _actionButton('الموظفون', const Color(0xFFF7F3EA), AppPalette.goldDark, () => setState(() => _currentPage = 'employee_review')),
+                    _actionButton('البيانات', const Color(0xFFEDF6FF), AppPalette.royalBlue, () => setState(() => _currentPage = 'data_center')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Permissions
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text('صلاحيات المستخدم الحالي', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
+                const SizedBox(height: 10),
+                if (user == null || user.permissions.isEmpty)
+                  const Text('لا توجد صلاحيات مرتبطة بالمستخدم الحالي.', style: TextStyle(color: AppPalette.muted))
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: user.permissions
+                        .map((permission) => _pill(permission, const Color(0xFFEDF6FF), AppPalette.royalBlue))
+                        .toList(),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Dashboard content without duplicating top people cards
+          SizedBox(
+            height: 720,
+            child: DashboardPage(
+              studentCount: studentCount,
+              studentMaleCount: maleCount,
+              studentFemaleCount: femaleCount,
+              employeeCount: employees.length,
+              userCount: _adminUsers.length,
+              totalIncome: totalIncome,
+              totalExpenses: totalExpenses,
+              onNavigate: (pageId, {String? targetId}) {
+                // Redirect old standalone pages to merged destinations.
+                final mapped = pageId == 'donations'
+                    ? 'accounting'
+                    : (pageId == 'messages' || pageId == 'parent_meetings')
+                        ? 'parent_comms'
+                        : (pageId == 'dashboard' || pageId == 'admin_dashboard')
+                            ? 'admin_hub'
+                            : pageId == 'student_sorting'
+                                ? 'student_sorting'
+                                : pageId;
+                setState(() => _currentPage = mapped);
+              },
+              onRefresh: () => setState(() {}),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'المعلمون: $teachers • الموظفون: ${employees.length} • المستخدمون: ${_adminUsers.length}',
+            style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
     );
   }
 
