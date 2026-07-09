@@ -47,6 +47,40 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _adminIdentityPageSection() {
+    final identityFields = <MapEntry<String, TextEditingController>>[
+      MapEntry('إيميل المدرسة المعتمد', _schoolEmailController),
+      MapEntry('موبايل المدرسة واتساب', _schoolWhatsappController),
+      MapEntry('موبايل المدرسة للتواصل', _schoolMobileController),
+      MapEntry('هاتف المدرسة الأرضي', _schoolLandlineController),
+      MapEntry('المدير العام', _secretaryNameController),
+      MapEntry('مشرف القسم', _supervisorNameController),
+      MapEntry('مدير المدرسة', _principalNameController),
+      MapEntry('المشرف العام', _generalSupervisorController),
+      MapEntry('موقع المدرسة على الإنترنت', _schoolWebsiteController),
+      MapEntry('صفحة المدرسة على فيسبوك', _schoolFacebookController),
+    ];
+
+    final installmentAmountFields = <MapEntry<String, TextEditingController>>[
+      MapEntry('القسط السنوي', _installmentAnnualController),
+      MapEntry('القسط الشهري', _installmentMonthlyController),
+      MapEntry('عدد الأقساط', _installmentCountController),
+      MapEntry('قيمة المواصلات شهرياً', _transportMonthlyController),
+      MapEntry('قيمة المواصلات سنوياً', _transportAnnualController),
+      MapEntry('قيمة منحة المواصلات', _transportGrantController),
+    ];
+
+    final adminUserFields = <MapEntry<String, TextEditingController>>[
+      MapEntry('اسم المستخدم *', _adminUsernameController),
+      MapEntry('الإيميل *', _adminEmailController),
+      MapEntry('كلمة المرور *', _adminPasswordController),
+      MapEntry('تأكيد كلمة المرور *', _adminConfirmPasswordController),
+      MapEntry('الموبايل *', _adminMobileController),
+    ];
+
+    final studentOptions = _students
+        .map((s) => MapEntry(s.id, '${s.fullName} — ${s.grade}/${s.section}'))
+        .toList();
+
     return SingleChildScrollView(
       child: Column(
         children: <Widget>[
@@ -63,22 +97,20 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               children: <Widget>[
                 const Text('بيانات المدرسة المعتمدة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
                 const SizedBox(height: 10),
-                const Text('يمكنك تعديل هذه البيانات ثم حفظها، وسيتم تخزينها فعليًا داخل SQLite.', style: TextStyle(color: AppPalette.muted)),
+                const Text('يمكنك تعديل هذه البيانات ثم حفظها، وسيتم تخزينها فعليًا داخل SQLite. استخدم Tab أو Enter للانتقال للحقل التالي.', style: TextStyle(color: AppPalette.muted)),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: <Widget>[
-                    _editableField('ايميل المدرسة المعتمد', _schoolEmailController),
-                    _editableField('موبايل المدرسة وتس أب', _schoolWhatsappController),
-                    _editableField('موبايل المدرسة للتواصل', _schoolMobileController),
-                    _editableField('هاتف المدرسة الارضي', _schoolLandlineController),
-                    _editableField('المدير العام', _secretaryNameController),
-                    _editableField('مشرف القسم', _supervisorNameController),
-                    _editableField('اسم المدير', _principalNameController),
-                    _editableField('المشرف العام', _generalSupervisorController),
-                    _editableField('موقع المدرسة على الانتر نت', _schoolWebsiteController, span2: true),
-                    _editableField('صفحة المدرسة على الفيس بوك', _schoolFacebookController, span2: true),
+                    for (var i = 0; i < identityFields.length; i++)
+                      _editableField(
+                        identityFields[i].key,
+                        identityFields[i].value,
+                        span2: i >= 8,
+                        focusNode: _identityFocusNodes[i],
+                        nextFocusNode: i < identityFields.length - 1 ? _identityFocusNodes[i + 1] : null,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -110,19 +142,78 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               children: <Widget>[
                 const Text('الأقساط والمواصلات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
                 const SizedBox(height: 10),
-                const Text('تحديد القيم المالية للاقساط والمواصلات. هذه القيم هي التي ستستخدم عند إضافة أقساط من باب المحاسبة.', style: TextStyle(color: AppPalette.muted)),
+                const Text('تحديد القيم المالية للأقساط والمواصلات. هذه القيم تُستخدم عند إضافة أقساط من باب المحاسبة.', style: TextStyle(color: AppPalette.muted)),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: <Widget>[
-                    _editableField('القسط السنوي (ل.س)', _installmentAnnualController),
-                    _editableField('القسط الشهري (ل.س)', _installmentMonthlyController),
-                    _editableField('عدد الأقساط', _installmentCountController),
-                    _editableField('قيمة المواصلات (شهرياً)', _transportMonthlyController),
-                    _editableField('قيمة المواصلات (سنوياً)', _transportAnnualController),
-                    _editableField('قيمة منحة المواصلات', _transportGrantController),
+                    _dropdownField(
+                      'العملة',
+                      _installmentCurrency,
+                      const <String>['ليرة سورية', 'دولار', 'يورو'],
+                      (value) => setState(() => _installmentCurrency = value),
+                    ),
+                    for (var i = 0; i < installmentAmountFields.length; i++)
+                      _editableField(
+                        installmentAmountFields[i].key,
+                        installmentAmountFields[i].value,
+                        focusNode: _installmentFocusNodes[i],
+                        nextFocusNode: i < installmentAmountFields.length - 1 ? _installmentFocusNodes[i + 1] : null,
+                      ),
                     _editableField('عدد أشهر الإعفاء', _exemptionMonthsController),
+                    _dropdownField(
+                      'نطاق الإعفاء',
+                      _exemptionScope,
+                      const <String>['الكل', 'الصف', 'الصف والشعبة', 'الطالب'],
+                      (value) {
+                        setState(() {
+                          _exemptionScope = value;
+                          if (value == 'الكل') {
+                            _exemptionGrade = 'الكل';
+                            _exemptionSection = 'الكل';
+                            _exemptionStudentId = null;
+                          } else if (value == 'الصف') {
+                            _exemptionSection = 'الكل';
+                            _exemptionStudentId = null;
+                          } else if (value == 'الصف والشعبة') {
+                            _exemptionStudentId = null;
+                          }
+                        });
+                      },
+                      span2: true,
+                    ),
+                    if (_exemptionScope == 'الصف' || _exemptionScope == 'الصف والشعبة')
+                      _dropdownField(
+                        'الصف',
+                        _knownGrades.contains(_exemptionGrade) ? _exemptionGrade : 'الكل',
+                        _knownGrades,
+                        (value) => setState(() => _exemptionGrade = value),
+                      ),
+                    if (_exemptionScope == 'الصف والشعبة')
+                      _dropdownField(
+                        'الشعبة',
+                        _knownSections.contains(_exemptionSection) ? _exemptionSection : 'الكل',
+                        _knownSections,
+                        (value) => setState(() => _exemptionSection = value),
+                      ),
+                    if (_exemptionScope == 'الطالب')
+                      _dropdownField(
+                        'الطالب',
+                        studentOptions.any((e) => e.key == _exemptionStudentId)
+                            ? studentOptions.firstWhere((e) => e.key == _exemptionStudentId).value
+                            : (studentOptions.isEmpty ? 'لا يوجد طلاب' : studentOptions.first.value),
+                        studentOptions.isEmpty
+                            ? const <String>['لا يوجد طلاب']
+                            : studentOptions.map((e) => e.value).toList(),
+                        (value) {
+                          final match = studentOptions.where((e) => e.value == value);
+                          setState(() {
+                            _exemptionStudentId = match.isEmpty ? null : match.first.key;
+                          });
+                        },
+                        span2: true,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -131,7 +222,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   runSpacing: 8,
                   children: <Widget>[
                     _actionButton('حفظ الإعدادات', AppPalette.goldDark, Colors.white, _saveInstallmentConfig),
-                    _actionButton('إلغاء', Colors.white, const Color(0xFF667586), _loadInstallmentConfig),
+                    _actionButton('إلغاء', Colors.white, const Color(0xFF667586), () {
+                      _loadInstallmentConfig().then((_) {
+                        if (mounted) setState(() {});
+                      });
+                    }),
                   ],
                 ),
               ],
@@ -149,7 +244,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text('انشاء مستخدم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
+                const Text('إنشاء مستخدم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
                 const SizedBox(height: 10),
                 const Text('جميع الحقول مطلوبة ويجب التأكد من تطابق كلمة المرور وتأكيدها مع اختيار الصلاحيات المطلوبة.', style: TextStyle(color: AppPalette.muted)),
                 const SizedBox(height: 14),
@@ -157,11 +252,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   spacing: 12,
                   runSpacing: 12,
                   children: <Widget>[
-                    _editableField('اسم المستخدم *', _adminUsernameController),
-                    _editableField('الايميل *', _adminEmailController),
-                    _editableField('كلمة المرور *', _adminPasswordController),
-                    _editableField('تاكيد كلمة المرور *', _adminConfirmPasswordController),
-                    _editableField('الموبايل *', _adminMobileController, span2: true),
+                    for (var i = 0; i < adminUserFields.length; i++)
+                      _editableField(
+                        adminUserFields[i].key,
+                        adminUserFields[i].value,
+                        span2: i == adminUserFields.length - 1,
+                        focusNode: _adminUserFocusNodes[i],
+                        nextFocusNode: i < adminUserFields.length - 1 ? _adminUserFocusNodes[i + 1] : null,
+                      ),
                     _choiceField(
                       'الصلاحيات *',
                       <String, bool>{
@@ -941,11 +1039,21 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
-  Widget _simpleInput(TextEditingController controller, {required String hint, int maxLines = 1, VoidCallback? onTap}) {
+  Widget _simpleInput(
+    TextEditingController controller, {
+    required String hint,
+    int maxLines = 1,
+    VoidCallback? onTap,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
+  }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       maxLines: maxLines,
       onTap: onTap,
+      textInputAction: nextFocusNode != null ? TextInputAction.next : TextInputAction.done,
+      onEditingComplete: nextFocusNode != null ? () => nextFocusNode.requestFocus() : null,
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
@@ -1244,7 +1352,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
-  Widget _editableField(String label, TextEditingController controller, {bool span2 = false, int maxLines = 1}) {
+  Widget _editableField(
+    String label,
+    TextEditingController controller, {
+    bool span2 = false,
+    int maxLines = 1,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
+  }) {
     return SizedBox(
       width: span2 ? 760 : 374,
       child: Container(
@@ -1263,6 +1378,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               controller,
               hint: label,
               maxLines: maxLines,
+              focusNode: focusNode,
+              nextFocusNode: nextFocusNode,
               onTap: (label.contains('ملاحظات') || label.contains('ملاحظة'))
                   ? () => _clearNoteFieldOnFirstTap(controller)
                   : null,
@@ -3643,9 +3760,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       };
     }
 
+    final defaultCurrency = const <String>['ليرة سورية', 'دولار', 'يورو'].contains(_installmentCurrency)
+        ? _installmentCurrency
+        : 'ليرة سورية';
     final List<Map<String, dynamic>> paymentDrafts = <Map<String, dynamic>>[
       createDraft(
         amount: initialAmount > 0 ? initialAmount.toStringAsFixed(0) : '',
+        currency: defaultCurrency,
       ),
     ];
     Object? selectedRaw;
@@ -3672,7 +3793,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
             void addDraft() {
               setDialogState(() {
-                paymentDrafts.add(createDraft());
+                paymentDrafts.add(createDraft(currency: defaultCurrency));
               });
             }
 
@@ -3697,7 +3818,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 amountController.text = '0';
               }
               dateController.text = today;
-              draft['currency'] = 'ليرة سورية';
+              draft['currency'] = defaultCurrency;
               (draft['otherCurrencyController'] as TextEditingController).clear();
               setDialogState(() {});
             }

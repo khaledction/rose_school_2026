@@ -228,6 +228,15 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final TextEditingController _transportAnnualController = TextEditingController(text: '50000');
   final TextEditingController _transportGrantController = TextEditingController(text: '25000');
   final TextEditingController _exemptionMonthsController = TextEditingController(text: '3');
+  String _installmentCurrency = 'ليرة سورية';
+  String _exemptionScope = 'الكل'; // الكل | الصف | الصف والشعبة | الطالب
+  String _exemptionGrade = 'الكل';
+  String _exemptionSection = 'الكل';
+  int? _exemptionStudentId;
+  // Focus chains: identity (10) + installment amounts (6) + admin user form (5)
+  final List<FocusNode> _identityFocusNodes = List<FocusNode>.generate(10, (_) => FocusNode());
+  final List<FocusNode> _installmentFocusNodes = List<FocusNode>.generate(6, (_) => FocusNode());
+  final List<FocusNode> _adminUserFocusNodes = List<FocusNode>.generate(5, (_) => FocusNode());
   String _sealImagePath = '';
   String _signatureImagePath = '';
   final TextEditingController _loginUsernameController = TextEditingController(text: 'admin');
@@ -336,10 +345,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'data_center', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'attendance', 'donations', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
-    if (const <String>{'admin_dashboard', 'admin_identity'}.contains(pageId)) {
+    if (const <String>{'admin_dashboard', 'admin_identity', 'data_center', 'employee_review'}.contains(pageId)) {
       return 'administration';
     }
     if (const <String>{'exams', 'student_sorting'}.contains(pageId)) {
@@ -569,6 +578,11 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'transportAnnual': _transportAnnualController.text.trim(),
       'transportGrant': _transportGrantController.text.trim(),
       'exemptionMonths': _exemptionMonthsController.text.trim(),
+      'currency': _installmentCurrency,
+      'exemptionScope': _exemptionScope,
+      'exemptionGrade': _exemptionGrade,
+      'exemptionSection': _exemptionSection,
+      'exemptionStudentId': _exemptionStudentId,
     });
     _showSnack('تم حفظ إعدادات الأقساط والمواصلات بنجاح.');
   }
@@ -584,7 +598,37 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _transportAnnualController.text = data['transportAnnual']?.toString() ?? '50000';
       _transportGrantController.text = data['transportGrant']?.toString() ?? '25000';
       _exemptionMonthsController.text = data['exemptionMonths']?.toString() ?? '3';
+      _installmentCurrency = data['currency']?.toString() ?? 'ليرة سورية';
+      _exemptionScope = data['exemptionScope']?.toString() ?? 'الكل';
+      _exemptionGrade = data['exemptionGrade']?.toString() ?? 'الكل';
+      _exemptionSection = data['exemptionSection']?.toString() ?? 'الكل';
+      final rawStudentId = data['exemptionStudentId'];
+      if (rawStudentId is num) {
+        _exemptionStudentId = rawStudentId.toInt();
+      } else {
+        _exemptionStudentId = int.tryParse(rawStudentId?.toString() ?? '');
+      }
     }
+  }
+
+  List<String> get _knownGrades {
+    final grades = _students
+        .map((s) => s.grade.trim())
+        .where((g) => g.isNotEmpty && g != '?')
+        .toSet()
+        .toList()
+      ..sort();
+    return <String>['الكل', ...grades];
+  }
+
+  List<String> get _knownSections {
+    final sections = _students
+        .map((s) => s.section.trim())
+        .where((s) => s.isNotEmpty && s != '?')
+        .toSet()
+        .toList()
+      ..sort();
+    return <String>['الكل', ...sections];
   }
 
   void _login() {
@@ -2149,6 +2193,15 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     for (final node in _formFocusNodes) {
       node.dispose();
     }
+    for (final node in _identityFocusNodes) {
+      node.dispose();
+    }
+    for (final node in _installmentFocusNodes) {
+      node.dispose();
+    }
+    for (final node in _adminUserFocusNodes) {
+      node.dispose();
+    }
     for (final controller in <TextEditingController>[
       _serialController,
       _fullNameController,
@@ -2817,6 +2870,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
           _NavItem('dashboard', '📊 لوحة القيادة'),
+          _NavItem('data_center', '📁 مركز البيانات المحلي'),
           _NavItem('employee_review', '🔍 مراجعة الموظفين'),
           _NavItem('admin_dashboard', 'لوحة الإدارة'),
           _NavItem('admin_identity', 'الهوية والاعتماد'),
@@ -2838,7 +2892,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('reports', 'التقارير'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
           _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
-          _NavItem('data_center', '📁 مركز البيانات المحلي'),
           _NavItem('parent_meetings', '📅 اجتماعات أولياء الأمور'),
           _NavItem('transport', 'النقل المدرسي'),
           _NavItem('messages', 'مراسلات أولياء الأمور'),
