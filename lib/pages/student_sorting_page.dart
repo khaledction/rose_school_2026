@@ -1,6 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../models/school_models.dart';
+import '../services/app_storage_paths_service.dart';
 import '../theme/app_palette.dart';
 
 class StudentSortingPage extends StatefulWidget {
@@ -8,103 +17,70 @@ class StudentSortingPage extends StatefulWidget {
     super.key,
     required this.students,
     this.examResults = const [],
+    this.schoolName = 'مدرسة روز التعليمية',
+    this.sectionSupervisorName = 'مشرف القسم',
+    this.schoolManagerName = 'مدير المدرسة',
   });
 
   final List<StudentRecord> students;
   final List<ExamResultEntry> examResults;
+  final String schoolName;
+  final String sectionSupervisorName;
+  final String schoolManagerName;
 
   @override
   State<StudentSortingPage> createState() => _StudentSortingPageState();
 }
 
 class _StudentSortingPageState extends State<StudentSortingPage> {
-  String _sortMode = 'grade'; // 'grade' or 'grade_section'
+  String _sortMode = 'grade'; // grade | grade_section
   String _selectedGrade = '';
   String _selectedSection = '';
-  List<StudentRecord> _sorted = [];
-  bool _descending = true; // true = descending (highest first), which is default for scores
-
-  // School-wide top scores
-  List<int> _schoolTop3Ids = [];
+  bool _descending = true;
+  List<_RankedStudent> _ranked = <_RankedStudent>[];
+  Map<int, int> _schoolWideRank = <int, int>{};
+  bool _exporting = false;
 
   @override
   void initState() {
     super.initState();
-    _computeSchoolTop3();
     _applySort();
   }
 
-  void _computeSchoolTop3() {
-    final scored = widget.students
-        .map((s) => (id: s.id, score: _studentScore(s.id)))
-        .where((e) => e.score > 0)
-        .toList();
-    scored.sort((a, b) => b.score.compareTo(a.score));
-    _schoolTop3Ids = scored.take(3).map((e) => e.id).toList();
+  @override
+  void didUpdateWidget(covariant StudentSortingPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.students != widget.students || oldWidget.examResults != widget.examResults) {
+      _applySort();
+    }
   }
 
   List<String> get _availableGrades {
     final grades = widget.students
         .map((s) => s.grade.trim())
-        .where((g) => g.isNotEmpty)
+        .where((g) => g.isNotEmpty && g != '?')
         .toSet()
-        .toList();
-    grades.sort((a, b) {
-      final ai = int.tryParse(a) ?? 0;
-      final bi = int.tryParse(b) ?? 0;
-      return ai.compareTo(bi);
-    });
+        .toList()
+      ..sort((a, b) {
+        final ai = int.tryParse(a) ?? 0;
+        final bi = int.tryParse(b) ?? 0;
+        if (ai != 0 || bi != 0) return ai.compareTo(bi);
+        return a.compareTo(b);
+      });
     return grades;
   }
 
   List<String> get _availableSections {
-    final sections = widget.students
-        .where((s) => _selectedGrade.isEmpty || s.grade.trim() == _selectedGrade)
+    final source = _selectedGrade.isEmpty
+        ? widget.students
+        : widget.students.where((s) => s.grade.trim() == _selectedGrade);
+    final sections = source
         .map((s) => s.section.trim())
-        .where((s) => s.isNotEmpty)
+        .where((s) => s.isNotEmpty && s != '?')
         .toSet()
-        .toList();
-    sections.sort();
+        .toList()
+      ..sort();
     return sections;
-  }
-
-  void _applySort() {
-    final students = widget.students;
-    List<StudentRecord> result;
-
-    if (_sortMode == 'grade') {
-      if (_selectedGrade.isEmpty) {
-        result = List.from(students);
-        result.sort((a, b) {
-          final ag = int.tryParse(a.grade.trim()) ?? 0;
-          final bg = int.tryParse(b.grade.trim()) ?? 0;
-          return ag.compareTo(bg);
-        });
-      } else {
-        result = students.where((s) => s.grade.trim() == _selectedGrade).toList();
-        result.sort((a, b) => _descending
-            ? _studentScore(b.id).compareTo(_studentScore(a.id))
-            : _studentScore(a.id).compareTo(_studentScore(b.id)));
-      }
-    } else {
-      // grade_section
-      if (_selectedGrade.isEmpty || _selectedSection.isEmpty) {
-        result = [];
-      } else {
-        result = students
-            .where((s) => s.grade.trim() == _selectedGrade && s.section.trim() == _selectedSection)
-            .toList();
-        result.sort((a, b) {
-          final scoreA = _studentScore(a.id);
-          final scoreB = _studentScore(b.id);
-          return _descending
-              ? scoreB.compareTo(scoreA)
-              : scoreA.compareTo(scoreB);
-        });
-      }
-    }
-
-    setState(() => _sorted = result);
   }
 
   double _studentScore(int studentId) {
@@ -119,9 +95,246 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
     return count > 0 ? total / count : 0;
   }
 
-  String _scoreDisplay(StudentRecord student) {
-    final score = _studentScore(student.id);
-    return score > 0 ? score.toStringAsFixed(1) : '--';
+  void _applySort() {
+    // School-wide ranking (among scored students)
+    final schoolScored = widget.students
+        .map((s) => (student: s, score: _studentScore(s.id)))
+        .where((e) => e.score > 0)
+        .toList()
+      ..sort((a, b) => b.score.compareTo(a.score));
+    final schoolRanks = <int, int>{};
+    for (var i = 0; i < schoolScored.length; i++) {
+      schoolRanks[schoolScored[i].student.id] = i + 1;
+    }
+    _schoolWideRank = schoolRanks;
+
+    Iterable<StudentRecord> source = widget.students;
+    if (_selectedGrade.isNotEmpty) {
+      source = source.where((s) => s.grade.trim() == _selectedGrade);
+    }
+    if (_sortMode == 'grade_section' && _selectedSection.isNotEmpty) {
+      source = source.where((s) => s.section.trim() == _selectedSection);
+    }
+
+    final list = source.map((s) {
+      final score = _studentScore(s.id);
+      return _RankedStudent(
+        student: s,
+        average: score,
+        schoolRank: schoolRanks[s.id],
+      );
+    }).toList();
+
+    if (_sortMode == 'grade_section' && _selectedGrade.isEmpty) {
+      // Group by grade then section then score
+      list.sort((a, b) {
+        final g = a.student.grade.compareTo(b.student.grade);
+        if (g != 0) return g;
+        final sec = a.student.section.compareTo(b.student.section);
+        if (sec != 0) return sec;
+        return _descending ? b.average.compareTo(a.average) : a.average.compareTo(b.average);
+      });
+    } else if (_sortMode == 'grade' && _selectedGrade.isEmpty) {
+      list.sort((a, b) {
+        final g = a.student.grade.compareTo(b.student.grade);
+        if (g != 0) return g;
+        return _descending ? b.average.compareTo(a.average) : a.average.compareTo(b.average);
+      });
+    } else {
+      list.sort((a, b) => _descending ? b.average.compareTo(a.average) : a.average.compareTo(b.average));
+    }
+
+    // Local ranks within current filtered list (by average, ties share sequential order)
+    final byScore = List<_RankedStudent>.from(list)
+      ..sort((a, b) => b.average.compareTo(a.average));
+    final localRank = <int, int>{};
+    for (var i = 0; i < byScore.length; i++) {
+      localRank[byScore[i].student.id] = i + 1;
+    }
+
+    setState(() {
+      _ranked = list
+          .map((e) => e.copyWith(localRank: localRank[e.student.id] ?? 0))
+          .toList();
+    });
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  Future<void> _exportPdf() async {
+    if (_ranked.isEmpty) {
+      _showSnack('لا توجد بيانات للتصدير.');
+      return;
+    }
+    setState(() => _exporting = true);
+    try {
+      final doc = pw.Document();
+      final scope = _sortMode == 'grade_section'
+          ? 'حسب الصف والشعبة${_selectedGrade.isEmpty ? '' : ' — الصف $_selectedGrade'}${_selectedSection.isEmpty ? '' : ' / شعبة $_selectedSection'}'
+          : 'حسب الصف${_selectedGrade.isEmpty ? '' : ' — الصف $_selectedGrade'}';
+      final order = _descending ? 'تنازلي' : 'تصاعدي';
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(28),
+          build: (context) => <pw.Widget>[
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: <pw.Widget>[
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: <pw.Widget>[
+                    pw.Text(widget.schoolName, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('فرز الطلاب حسب المعدل والدرجات', style: const pw.TextStyle(fontSize: 12)),
+                    pw.Text('$scope • $order', style: const pw.TextStyle(fontSize: 10)),
+                  ],
+                ),
+                pw.Text('Rose School 2026', style: const pw.TextStyle(fontSize: 10)),
+              ],
+            ),
+            pw.SizedBox(height: 16),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: 0.5),
+              columnWidths: {
+                0: const pw.FixedColumnWidth(45),
+                1: const pw.FlexColumnWidth(2.4),
+                2: const pw.FixedColumnWidth(45),
+                3: const pw.FixedColumnWidth(45),
+                4: const pw.FixedColumnWidth(50),
+                5: const pw.FlexColumnWidth(2.2),
+              },
+              children: <pw.TableRow>[
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
+                  children: <String>['الترتيب', 'اسم الطالب', 'الصف', 'الشعبة', 'المعدل', 'ملاحظة']
+                      .map((h) => pw.Padding(
+                            padding: const pw.EdgeInsets.all(5),
+                            child: pw.Text(h, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9)),
+                          ))
+                      .toList(),
+                ),
+                ..._ranked.map((row) {
+                  final note = (row.schoolRank != null && row.schoolRank! <= 3)
+                      ? 'من أعلى 3 على مستوى المدرسة (المرتبة ${row.schoolRank})'
+                      : (row.schoolRank != null ? 'ترتيب المدرسة: ${row.schoolRank}' : '');
+                  final cells = <String>[
+                    '${row.localRank}',
+                    row.student.fullName,
+                    row.student.grade,
+                    row.student.section,
+                    row.average > 0 ? row.average.toStringAsFixed(1) : '--',
+                    note,
+                  ];
+                  return pw.TableRow(
+                    children: cells
+                        .map((c) => pw.Padding(
+                              padding: const pw.EdgeInsets.all(5),
+                              child: pw.Text(c, style: const pw.TextStyle(fontSize: 8)),
+                            ))
+                        .toList(),
+                  );
+                }),
+              ],
+            ),
+            pw.SizedBox(height: 28),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: <pw.Widget>[
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: <pw.Widget>[
+                    pw.Text('مشرف القسم', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                    pw.SizedBox(height: 6),
+                    pw.Text(widget.sectionSupervisorName, style: const pw.TextStyle(fontSize: 10)),
+                    pw.SizedBox(height: 18),
+                    pw.Container(width: 120, height: 1, color: PdfColors.grey600),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: <pw.Widget>[
+                    pw.Text('مدير المدرسة', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                    pw.SizedBox(height: 6),
+                    pw.Text(widget.schoolManagerName, style: const pw.TextStyle(fontSize: 10)),
+                    pw.SizedBox(height: 18),
+                    pw.Container(width: 120, height: 1, color: PdfColors.grey600),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      final reports = await AppStoragePathsService.instance.reportsDir;
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final filePath = p.join(reports.path, 'student_sorting_$stamp.pdf');
+      await File(filePath).writeAsBytes(bytes, flush: true);
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'student_sorting_$stamp.pdf');
+      _showSnack('تم تصدير PDF: $filePath');
+    } catch (e) {
+      _showSnack('تعذر تصدير PDF: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _exportExcelCsv() async {
+    if (_ranked.isEmpty) {
+      _showSnack('لا توجد بيانات للتصدير.');
+      return;
+    }
+    setState(() => _exporting = true);
+    try {
+      final buffer = StringBuffer();
+      buffer.writeln('الترتيب,اسم الطالب,الصف,الشعبة,المعدل,ترتيب على مستوى المدرسة,ملاحظة');
+      for (final row in _ranked) {
+        final note = (row.schoolRank != null && row.schoolRank! <= 3)
+            ? 'من أعلى 3 على مستوى المدرسة'
+            : '';
+        buffer.writeln(
+          '${row.localRank},'
+          '"${row.student.fullName}",'
+          '"${row.student.grade}",'
+          '"${row.student.section}",'
+          '${row.average > 0 ? row.average.toStringAsFixed(1) : ''},'
+          '${row.schoolRank ?? ''},'
+          '"$note"',
+        );
+      }
+      final reports = await AppStoragePathsService.instance.reportsDir;
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final filePath = p.join(reports.path, 'student_sorting_$stamp.csv');
+      await File(filePath).writeAsString(buffer.toString(), flush: true);
+      // Also put a JSON companion for Excel import tools if needed
+      final jsonPath = p.join(reports.path, 'student_sorting_$stamp.json');
+      await File(jsonPath).writeAsString(
+        jsonEncode(_ranked
+            .map((r) => {
+                  'rank': r.localRank,
+                  'name': r.student.fullName,
+                  'grade': r.student.grade,
+                  'section': r.student.section,
+                  'average': r.average,
+                  'schoolRank': r.schoolRank,
+                })
+            .toList()),
+        flush: true,
+      );
+      await Clipboard.setData(ClipboardData(text: filePath));
+      _showSnack('تم تصدير Excel/CSV: $filePath');
+    } catch (e) {
+      _showSnack('تعذر تصدير Excel: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   @override
@@ -133,18 +346,28 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
             children: <Widget>[
               const Expanded(
                 child: Text(
-                  '🔍 فرز الطلاب',
+                  '🔍 فرز الطلاب حسب المعدل والدرجات',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                 ),
               ),
-              _actionButton('📄 تصدير PDF', Colors.white, AppPalette.deepNavySoft, () {
-                _showSnack('سيتم تفعيل التصدير لاحقاً');
-              }),
+              _actionButton(
+                _exporting ? 'جارٍ التصدير...' : '📄 PDF',
+                Colors.white,
+                AppPalette.deepNavySoft,
+                _exporting ? () {} : _exportPdf,
+              ),
+              const SizedBox(width: 8),
+              _actionButton(
+                _exporting ? '...' : '📊 Excel',
+                const Color(0xFFE7F7EE),
+                AppPalette.leafGreen,
+                _exporting ? () {} : _exportExcelCsv,
+              ),
             ],
           ),
           const SizedBox(height: 14),
 
-          // ─── Sort controls ──────────────────────────────────
+          // Controls
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -157,13 +380,12 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
               children: <Widget>[
                 const Text('خيارات الفرز', style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft, fontSize: 15)),
                 const SizedBox(height: 12),
-                // Two sort modes always visible
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: <Widget>[
-                    _sortChip('📋 حسب الصف', 'grade'),
-                    _sortChip('📋 حسب الصف + الشعبة', 'grade_section'),
+                    _sortChip('📋 حسب الصفوف', 'grade'),
+                    _sortChip('📋 حسب الصفوف والشعب معاً', 'grade_section'),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -193,7 +415,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                         width: 150,
                         child: DropdownButtonFormField<String>(
                           value: _selectedSection.isEmpty ? null : _selectedSection,
-                          hint: const Text('اختر'),
+                          hint: const Text('كل الشعب'),
                           items: _availableSections
                               .map((s) => DropdownMenuItem(value: s, child: Text('شعبة $s')))
                               .toList(),
@@ -210,10 +432,12 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                     const Spacer(),
                     InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      onTap: () => setState(() {
-                        _descending = !_descending;
-                        _applySort();
-                      }),
+                      onTap: () {
+                        setState(() {
+                          _descending = !_descending;
+                          _applySort();
+                        });
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
@@ -244,73 +468,180 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                     ),
                   ],
                 ),
-                // Info note
-                if (_sortMode == 'grade' && _selectedGrade.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppPalette.goldDark.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppPalette.goldDark.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        const Icon(Icons.info_outline, size: 14, color: AppPalette.goldDark),
-                        const SizedBox(width: 6),
-                        Text(
-                          'ترتيب طلاب الصف $_selectedGrade حسب المعدل العام',
-                          style: const TextStyle(color: AppPalette.goldDark, fontSize: 11, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_sortMode == 'grade_section' && _selectedGrade.isNotEmpty && _selectedSection.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppPalette.goldDark.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppPalette.goldDark.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        const Icon(Icons.info_outline, size: 14, color: AppPalette.goldDark),
-                        const SizedBox(width: 6),
-                        Text(
-                          'ترتيب طلاب الشعبة $_selectedSection من الصف $_selectedGrade حسب المعدل',
-                          style: const TextStyle(color: AppPalette.goldDark, fontSize: 11, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
               ],
             ),
           ),
           const SizedBox(height: 14),
 
-          // ─── Results ────────────────────────────────────────
-          if (_sortMode == 'grade' && _selectedGrade.isEmpty)
-            _buildGradeGroupedView()
-          else
-            _buildFlatListView(),
-
-          if (_sorted.isEmpty && !(_sortMode == 'grade' && _selectedGrade.isEmpty))
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(
-                child: Column(
-                  children: <Widget>[
-                    Icon(Icons.search_off, size: 64, color: AppPalette.muted),
-                    SizedBox(height: 12),
-                    Text('اختر الصف للعرض', style: TextStyle(color: AppPalette.muted, fontSize: 16)),
-                  ],
-                ),
-              ),
+          // Official table card
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.98),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppPalette.line),
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color.fromRGBO(20, 40, 90, 0.06), blurRadius: 16, offset: Offset(0, 8)),
+              ],
             ),
+            child: Column(
+              children: <Widget>[
+                // Header with logo + school name
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(colors: <Color>[Color(0xFF123A78), Color(0xFF1E7A79)]),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: Image.asset(
+                          'image/logo.jpg',
+                          width: 58,
+                          height: 58,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 58,
+                            height: 58,
+                            color: Colors.white24,
+                            child: const Icon(Icons.school, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              widget.schoolName,
+                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'جدول فرز الطلاب حسب المعدل والدرجات',
+                              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.14),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'العدد: ${_ranked.length}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Table
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(const Color(0xFFF3F7FB)),
+                    columns: const <DataColumn>[
+                      DataColumn(label: Text('الترتيب', style: TextStyle(fontWeight: FontWeight.w900))),
+                      DataColumn(label: Text('اسم الطالب', style: TextStyle(fontWeight: FontWeight.w900))),
+                      DataColumn(label: Text('الصف', style: TextStyle(fontWeight: FontWeight.w900))),
+                      DataColumn(label: Text('الشعبة', style: TextStyle(fontWeight: FontWeight.w900))),
+                      DataColumn(label: Text('المعدل', style: TextStyle(fontWeight: FontWeight.w900))),
+                      DataColumn(label: Text('ملاحظة الترتيب', style: TextStyle(fontWeight: FontWeight.w900))),
+                    ],
+                    rows: _ranked.isEmpty
+                        ? <DataRow>[
+                            const DataRow(
+                              cells: <DataCell>[
+                                DataCell(Text('--')),
+                                DataCell(Text('لا توجد نتائج ضمن الفرز الحالي')),
+                                DataCell(Text('--')),
+                                DataCell(Text('--')),
+                                DataCell(Text('--')),
+                                DataCell(Text('--')),
+                              ],
+                            ),
+                          ]
+                        : _ranked.map((row) {
+                            final topSchool = row.schoolRank != null && row.schoolRank! <= 3;
+                            final note = topSchool
+                                ? '⭐ من أعلى 3 على مستوى المدرسة (المرتبة ${row.schoolRank})'
+                                : (row.schoolRank != null ? 'ترتيب المدرسة: ${row.schoolRank}' : '—');
+                            return DataRow(
+                              color: WidgetStateProperty.resolveWith((_) {
+                                if (topSchool) return const Color(0xFFFFF8E8);
+                                if (row.localRank <= 3) return const Color(0xFFF3FAF6);
+                                return null;
+                              }),
+                              cells: <DataCell>[
+                                DataCell(Text('${row.localRank}', style: const TextStyle(fontWeight: FontWeight.w800))),
+                                DataCell(Text(row.student.fullName, style: const TextStyle(fontWeight: FontWeight.w700))),
+                                DataCell(Text(row.student.grade)),
+                                DataCell(Text(row.student.section)),
+                                DataCell(Text(row.average > 0 ? row.average.toStringAsFixed(1) : '--')),
+                                DataCell(
+                                  Text(
+                                    note,
+                                    style: TextStyle(
+                                      color: topSchool ? AppPalette.goldDark : AppPalette.muted,
+                                      fontWeight: topSchool ? FontWeight.w800 : FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                  ),
+                ),
+
+                // Footer signatures
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: Color(0xFFE6EEF5))),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Text('مشرف القسم', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                            const SizedBox(height: 6),
+                            Text(widget.sectionSupervisorName, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 16),
+                            Container(height: 1, color: const Color(0xFFB7C5D6)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 40),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: <Widget>[
+                            const Text('مدير المدرسة', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                            const SizedBox(height: 6),
+                            Text(widget.schoolManagerName, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 16),
+                            Container(height: 1, color: const Color(0xFFB7C5D6)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -319,243 +650,29 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
   Widget _sortChip(String label, String mode) {
     final active = _sortMode == mode;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(999),
       onTap: () {
         setState(() {
           _sortMode = mode;
-          _selectedSection = '';
+          if (mode == 'grade') _selectedSection = '';
           _applySort();
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          gradient: active ? const LinearGradient(colors: [Color(0xFF123A78), Color(0xFF1E7A79)]) : null,
-          color: active ? null : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: active ? Colors.transparent : AppPalette.line),
-          boxShadow: active
-              ? [BoxShadow(color: const Color(0xFF123A78).withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 3))]
-              : null,
+          color: active ? AppPalette.royalBlue : const Color(0xFFEDF6FF),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: active ? AppPalette.royalBlue : AppPalette.line),
         ),
         child: Text(
           label,
           style: TextStyle(
+            color: active ? Colors.white : AppPalette.royalBlue,
             fontWeight: FontWeight.w800,
-            color: active ? Colors.white : AppPalette.muted,
-            fontSize: 13,
+            fontSize: 12,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGradeGroupedView() {
-    final byGrade = <String, List<StudentRecord>>{};
-    for (final s in _sorted) {
-      byGrade.putIfAbsent(s.grade.trim(), () => []).add(s);
-    }
-    final sortedGrades = byGrade.keys.toList()..sort((a, b) {
-      final ai = int.tryParse(a) ?? 0;
-      final bi = int.tryParse(b) ?? 0;
-      return ai.compareTo(bi);
-    });
-
-    return Column(
-      children: sortedGrades.map((grade) {
-        final students = byGrade[grade]!;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppPalette.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(colors: [AppPalette.goldDark, AppPalette.gold]),
-                      borderRadius: BorderRadius.all(Radius.circular(12)),
-                    ),
-                    child: Text('الصف $grade', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-                  ),
-                  const SizedBox(width: 10),
-                  Text('${students.length} طالب', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
-                ],
-              ),
-              const SizedBox(height: 10),
-              ...students.asMap().entries.map((entry) => Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(
-                        color: entry.key < students.length - 1 ? const Color(0xFFEEF2F7) : Colors.transparent,
-                      )),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Container(
-                          width: 28, height: 28,
-                          decoration: BoxDecoration(color: AppPalette.royalBlue.withOpacity(0.1), borderRadius: BorderRadius.circular(999)),
-                          child: Center(child: Text('${entry.key + 1}', style: const TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w800, fontSize: 12))),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(entry.value.fullName, style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w600))),
-                        Text('شعبة ${entry.value.section.isEmpty ? '?' : entry.value.section}', style: const TextStyle(color: AppPalette.muted, fontSize: 12)),
-                      ],
-                    ),
-                  )),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildFlatListView() {
-    // Compute school-wide rankings for badges
-    final sortedByScore = List<StudentRecord>.from(widget.students)
-      ..sort((a, b) => _studentScore(b.id).compareTo(_studentScore(a.id)));
-    final rankMap = <int, int>{};
-    for (var i = 0; i < sortedByScore.length; i++) {
-      rankMap[sortedByScore[i].id] = i + 1;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppPalette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(colors: [AppPalette.goldDark, AppPalette.gold]),
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                ),
-                child: Text(
-                  _selectedGrade.isNotEmpty
-                      ? 'الصف $_selectedGrade${_selectedSection.isNotEmpty ? ' شعبة $_selectedSection' : ''}'
-                      : 'نتائج الفرز',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text('${_sorted.length} طالب', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              Text(_descending ? 'تنازلي' : 'تصاعدي', style: const TextStyle(color: AppPalette.muted, fontSize: 11)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          if (_sorted.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(30),
-              child: Center(child: Text('لا يوجد طلاب في هذا التصنيف', style: TextStyle(color: AppPalette.muted))),
-            )
-          else
-            ..._sorted.asMap().entries.map((entry) {
-              final student = entry.value;
-              final score = _studentScore(student.id);
-              final inTop3 = _schoolTop3Ids.contains(student.id);
-              final schoolRank = rankMap[student.id] ?? 0;
-
-              return Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(
-                    color: entry.key < _sorted.length - 1 ? const Color(0xFFEEF2F7) : Colors.transparent,
-                  )),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    // Rank badge
-                    Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color: entry.key < 3
-                            ? [const Color(0xFFFFD700), const Color(0xFFC0C0C0), const Color(0xFFCD7F32)][entry.key].withOpacity(0.2)
-                            : AppPalette.muted.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Center(
-                        child: entry.key < 3
-                            ? Text(['🥇', '🥈', '🥉'][entry.key], style: const TextStyle(fontSize: 18))
-                            : Text('${entry.key + 1}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 12)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Student info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Text(student.fullName, style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w700)),
-                              if (inTop3) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFD700).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    '#$schoolRank على المدرسة',
-                                    style: const TextStyle(color: Color(0xFFB8860B), fontSize: 9, fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          Text(student.serial, style: const TextStyle(color: AppPalette.muted, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                    // Section for grade mode
-                    if (_sortMode == 'grade')
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Text('شعبة ${student.section.isEmpty ? '?' : student.section}', style: const TextStyle(color: AppPalette.muted, fontSize: 12)),
-                      ),
-                    // Score badge
-                    if (score > 0)
-                      Container(
-                        margin: const EdgeInsets.only(left: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: entry.key < 3
-                              ? [const Color(0xFFFFD700), const Color(0xFFC0C0C0), const Color(0xFFCD7F32)][entry.key].withOpacity(0.15)
-                              : AppPalette.leafGreen.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          _scoreDisplay(student),
-                          style: TextStyle(
-                            color: entry.key < 3
-                                ? [const Color(0xFFB8860B), const Color(0xFF6B6B6B), const Color(0xFF8B4513)][entry.key]
-                                : AppPalette.leafGreen,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            }),
-        ],
       ),
     );
   }
@@ -565,34 +682,48 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
       labelText: label,
       filled: true,
       fillColor: const Color(0xFFFBFDFF),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     );
   }
 
   Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppPalette.line),
+        ),
+        child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12)),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
     );
   }
+}
 
-  void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+class _RankedStudent {
+  const _RankedStudent({
+    required this.student,
+    required this.average,
+    this.schoolRank,
+    this.localRank = 0,
+  });
+
+  final StudentRecord student;
+  final double average;
+  final int? schoolRank;
+  final int localRank;
+
+  _RankedStudent copyWith({int? localRank}) {
+    return _RankedStudent(
+      student: student,
+      average: average,
+      schoolRank: schoolRank,
+      localRank: localRank ?? this.localRank,
     );
   }
 }

@@ -2904,7 +2904,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         secondaryColor: const Color(0xFF123A78),
         items: const <_NavItem>[
           _NavItem('exams', 'لوحة الامتحانات'),
-          _NavItem('student_sorting', '🔍 فرز الطلاب'),
+          _NavItem('student_sorting', '🔍 فرز الطلاب حسب المعدل والدرجات'),
         ],
       ),
       _NavGroup(
@@ -3213,9 +3213,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         );
       case 'student_sorting':
         return const _PageInfo(
-          '🔍 فرز الطلاب',
-          'الامتحانات، فرز الطلاب',
-          'فرز الطلاب حسب الصفوف أو حسب الصف والشعبة مع ترتيب حسب الأعلى درجات.',
+          '🔍 فرز الطلاب حسب المعدل والدرجات',
+          'الامتحانات، فرز الطلاب حسب المعدل والدرجات',
+          'فرز الطلاب حسب الصفوف أو حسب الصف والشعبة مع ترتيب تصاعدي/تنازلي وتصدير PDF أو Excel.',
         );
       case 'data_center':
         return const _PageInfo(
@@ -3281,7 +3281,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'certificates': 'الشهادات',
       'documents': 'الوثائق والمرفقات',
       'transport': 'النقل المدرسي',
-      'student_sorting': '🔍 فرز الطلاب',
+      'student_sorting': '🔍 فرز الطلاب حسب المعدل والدرجات',
       'parent_meetings': '📅 اجتماعات أولياء الأمور',
       'data_center': '📁 مركز البيانات المحلي',
       'messages': 'مراسلات أولياء الأمور',
@@ -3527,7 +3527,19 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _studentSortingPageWrapped() {
-    return StudentSortingPage(students: _students, examResults: _examResults);
+    return StudentSortingPage(
+      students: _students,
+      examResults: _examResults,
+      schoolName: 'مدرسة روز التعليمية',
+      sectionSupervisorName: _supervisorNameController.text.trim().isEmpty
+          ? (_schoolIdentity.sectionSupervisorName.isEmpty ? 'مشرف القسم' : _schoolIdentity.sectionSupervisorName)
+          : _supervisorNameController.text.trim(),
+      schoolManagerName: _principalNameController.text.trim().isEmpty
+          ? (_schoolIdentity.principalName.isEmpty
+              ? (_secretaryNameController.text.trim().isEmpty ? 'مدير المدرسة' : _secretaryNameController.text.trim())
+              : _schoolIdentity.principalName)
+          : _principalNameController.text.trim(),
+    );
   }
 
   Widget _parentMeetingsPageWrapped() {

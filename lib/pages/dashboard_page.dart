@@ -420,7 +420,7 @@ class _DashboardPageState extends State<DashboardPage> {
               _quickActionChip('💾 نسخة احتياطية', Icons.backup, AppPalette.deepNavySoft, () {
                 widget.onNavigate('backup');
               }),
-              _quickActionChip('📊 فرز الطلاب', Icons.sort, const Color(0xFF1E7A79), () {
+              _quickActionChip('📊 فرز الطلاب حسب المعدل', Icons.sort, const Color(0xFF1E7A79), () {
                 widget.onNavigate('students');
               }),
             ],

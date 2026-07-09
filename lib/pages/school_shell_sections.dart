@@ -3644,18 +3644,20 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   Future<void> _showInstallmentPresetDialog({String presetType = 'normal'}) async {
     final student = _selectedStudent ?? _students.first;
     final items = _studentInvoices(student.id);
-    
-    // Get config values from the state
+
     String title = '';
     double presetAmount = 0;
     String note = '';
-    
+
     final monthly = double.tryParse(_installmentMonthlyController.text.trim()) ?? 20000;
     final transportMonthly = double.tryParse(_transportMonthlyController.text.trim()) ?? 5000;
     final grantAmount = double.tryParse(_transportGrantController.text.trim()) ?? 25000;
     final count = int.tryParse(_installmentCountController.text.trim()) ?? 10;
     final exemptionMonths = int.tryParse(_exemptionMonthsController.text.trim()) ?? 3;
-    
+    final currency = const <String>['ليرة سورية', 'دولار', 'يورو'].contains(_installmentCurrency)
+        ? _installmentCurrency
+        : 'ليرة سورية';
+
     switch (presetType) {
       case 'normal':
         title = 'قسط عادي';
@@ -3672,55 +3674,228 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         note = 'منحة مواصلات - إعفاء $exemptionMonths شهراً';
         break;
     }
-    
-    await _showAccountingEntryDialog(
-      dialogTitle: title,
-      initialAmount: presetAmount,
-      existingItems: items
-          .map((entry) => <String, dynamic>{
-                'title': entry.title,
-                'amount': entry.amount,
-                'currency': entry.currency,
-                'date': entry.date,
-                'raw': entry,
-              })
-          .toList(),
-      onSave: (savedTitle, amount, currency, date) {
-        setState(() {
-          _invoices.insert(
-            0,
-            AccountingInvoiceEntry(
-              studentId: student.id,
-              title: '$savedTitle${note.isNotEmpty ? ' ($note)' : ''}',
-              amount: amount,
-              currency: currency,
-              date: date,
+
+    final displayTitle = '$title${note.isNotEmpty ? ' ($note)' : ''}';
+    final studentReceipts = _studentReceipts(student.id);
+    final paidTotal = studentReceipts.fold<double>(0, (sum, e) => sum + e.amount);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: const <Widget>[
+              Icon(Icons.lock_outline, color: AppPalette.goldDark),
+              SizedBox(width: 10),
+              Expanded(child: Text('عرض القسط (للقراءة فقط)')),
+            ],
+          ),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('الطالب: ${student.fullName}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
+                const SizedBox(height: 8),
+                Text('نوع القسط: $displayTitle', style: const TextStyle(color: AppPalette.muted, height: 1.6)),
+                const SizedBox(height: 6),
+                Text('المبلغ المعتمد: ${presetAmount.toStringAsFixed(0)} $currency', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                const SizedBox(height: 6),
+                Text('إجمالي الدفعات المسجّلة للطالب: ${paidTotal.toStringAsFixed(0)} $currency', style: const TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                const Text('ملاحظة: لا يمكن تعديل القسط من المحاسبة. لإضافة مبلغ مدفوع استخدم زر «دفعة».', style: TextStyle(color: AppPalette.muted, height: 1.6, fontSize: 12)),
+                if (items.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 14),
+                  const Text('أقساط مسجّلة سابقاً', style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 160,
+                    child: ListView.builder(
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final entry = items[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF7F3EA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppPalette.line),
+                          ),
+                          child: Text(
+                            '${entry.title} • ${entry.amount.toStringAsFixed(0)} ${entry.currency} • ${entry.date}',
+                            style: const TextStyle(fontSize: 12, height: 1.5),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ],
             ),
-          );
-        });
-        _persistAll();
-      },
-      onEdit: (raw, editTitle, amount, currency, date) {
-        final entry = raw as AccountingInvoiceEntry;
-        final index = _invoices.indexOf(entry);
-        if (index < 0) return;
-        setState(() {
-          _invoices[index] = AccountingInvoiceEntry(
-            studentId: entry.studentId,
-            title: editTitle,
-            amount: amount,
-            currency: currency,
-            date: date,
-          );
-        });
-        _persistAll();
-      },
-      onDelete: (raw) {
-        final entry = raw as AccountingInvoiceEntry;
-        setState(() => _invoices.remove(entry));
-        _persistAll();
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                // Ensure the calculated installment exists once for the student ledger.
+                final alreadyExists = items.any((e) => e.title == displayTitle && e.amount == presetAmount);
+                if (!alreadyExists && presetAmount > 0) {
+                  setState(() {
+                    _invoices.insert(
+                      0,
+                      AccountingInvoiceEntry(
+                        studentId: student.id,
+                        title: displayTitle,
+                        amount: presetAmount,
+                        currency: currency,
+                        date: DateTime.now().toIso8601String().split('T').first,
+                      ),
+                    );
+                  });
+                  _persistAll();
+                }
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('إغلاق'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _showStudentPaymentDialog(student: student);
+              },
+              child: const Text('إضافة دفعة لهذا الطالب'),
+            ),
+          ],
+        );
       },
     );
+  }
+
+  Future<void> _showStudentPaymentDialog({StudentRecord? student}) async {
+    final target = student ?? _selectedStudent ?? (_students.isEmpty ? null : _students.first);
+    if (target == null) {
+      _showSnack('لا يوجد طالب لإضافة دفعة.');
+      return;
+    }
+
+    final titleController = TextEditingController(text: 'دفعة');
+    final amountController = TextEditingController();
+    final noteController = TextEditingController();
+    final dateController = TextEditingController(text: DateTime.now().toIso8601String().split('T').first);
+    String currency = const <String>['ليرة سورية', 'دولار', 'يورو'].contains(_installmentCurrency)
+        ? _installmentCurrency
+        : 'ليرة سورية';
+    int selectedStudentId = target.id;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('💵 إضافة دفعة'),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    DropdownButtonFormField<int>(
+                      value: selectedStudentId,
+                      decoration: const InputDecoration(labelText: 'الطالب'),
+                      items: _students
+                          .map((s) => DropdownMenuItem<int>(value: s.id, child: Text(s.fullName)))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => selectedStudentId = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(labelText: 'بيان الدفعة', hintText: 'دفعة'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'المبلغ', hintText: 'المبلغ'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: currency,
+                      decoration: const InputDecoration(labelText: 'العملة'),
+                      items: const <String>['ليرة سورية', 'دولار', 'يورو']
+                          .map((c) => DropdownMenuItem<String>(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => currency = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: dateController,
+                      decoration: const InputDecoration(labelText: 'التاريخ', hintText: 'YYYY-MM-DD'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(labelText: 'ملاحظة', hintText: 'ملاحظة'),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('إلغاء'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final amount = double.tryParse(amountController.text.trim()) ?? 0;
+                    if (amount <= 0) {
+                      _showSnack('أدخل مبلغ دفعة صالحاً.');
+                      return;
+                    }
+                    setState(() {
+                      _receipts.insert(
+                        0,
+                        AccountingReceiptEntry(
+                          studentId: selectedStudentId,
+                          title: titleController.text.trim().isEmpty ? 'دفعة' : titleController.text.trim(),
+                          amount: amount,
+                          currency: currency,
+                          date: dateController.text.trim().isEmpty
+                              ? DateTime.now().toIso8601String().split('T').first
+                              : dateController.text.trim(),
+                          note: noteController.text.trim().isEmpty ? 'دفعة من المحاسبة' : noteController.text.trim(),
+                        ),
+                      );
+                      _accountingView = 'payments';
+                      _accountingFilterStudentId = selectedStudentId;
+                    });
+                    _persistAll();
+                    Navigator.of(dialogContext).pop();
+                    _showSnack('تمت إضافة الدفعة إلى حساب الطالب بنجاح.');
+                  },
+                  child: const Text('حفظ الدفعة'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    titleController.dispose();
+    amountController.dispose();
+    noteController.dispose();
+    dateController.dispose();
   }
 
   Future<void> _showInstallmentDialog() async {
@@ -4471,11 +4646,27 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       return _accountingRecordTile(
         student: student,
         title: entry.title,
-        subtitle: 'المبلغ: ${entry.amount.toStringAsFixed(0)} ${entry.currency} • التاريخ: ${entry.date.isEmpty ? 'بدون تاريخ' : entry.date}',
+        subtitle: 'المبلغ: ${entry.amount.toStringAsFixed(0)} ${entry.currency} • التاريخ: ${entry.date.isEmpty ? 'بدون تاريخ' : entry.date} • للقراءة فقط',
         pillText: 'قسط',
         accent: AppPalette.goldDark,
         soft: const Color(0xFFF7F3EA),
         icon: Icons.account_balance_wallet_outlined,
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildAccountingPaymentTiles(List<AccountingReceiptEntry> entries) {
+    return entries.map((entry) {
+      final student = _studentById(entry.studentId);
+      if (student == null) return const SizedBox.shrink();
+      return _accountingRecordTile(
+        student: student,
+        title: entry.title,
+        subtitle: 'المبلغ: ${entry.amount.toStringAsFixed(0)} ${entry.currency} • التاريخ: ${entry.date.isEmpty ? 'بدون تاريخ' : entry.date}${entry.note.isEmpty ? '' : ' • ${entry.note}'}',
+        pillText: 'دفعة',
+        accent: const Color(0xFF0F766E),
+        soft: const Color(0xFFE8F8F5),
+        icon: Icons.payments_outlined,
       );
     }).toList();
   }
@@ -4575,8 +4766,17 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             ? const <Widget>[Text('لا توجد مساعدات أو حسومات ضمن الفرز الحالي.', style: TextStyle(color: AppPalette.muted))]
             : _buildAccountingAidTiles(aidEntries);
         break;
+      case 'payments':
+        focusedTitle = 'شاشة الدفعات';
+        focusedSubtitle = '${_accountingScopeText(filteredStudents.length)} • عرض ${receiptEntries.length} دفعة';
+        focusedAccent = const Color(0xFF0F766E);
+        focusedIcon = Icons.payments_outlined;
+        focusedChildren = receiptEntries.isEmpty
+            ? const <Widget>[Text('لا توجد دفعات ضمن الفرز الحالي. استخدم زر «دفعة» لإضافة دفعة.', style: TextStyle(color: AppPalette.muted))]
+            : _buildAccountingPaymentTiles(receiptEntries);
+        break;
       default:
-        focusedTitle = 'شاشة الأقساط المضافة';
+        focusedTitle = 'شاشة الأقساط (قراءة فقط)';
         focusedSubtitle = '${_accountingScopeText(filteredStudents.length)} • عرض ${installmentEntries.length} سجلًا';
         focusedAccent = AppPalette.goldDark;
         focusedIcon = Icons.account_balance_wallet_outlined;
@@ -4612,6 +4812,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   _actionButton('🎓 قسط + منحة مواصلات', const Color(0xFFE7F7EE), AppPalette.leafGreen, () {
                     setState(() => _accountingView = 'installments');
                     _showInstallmentPresetDialog(presetType: 'grant');
+                  }),
+                  _actionButton('💵 دفعة', const Color(0xFFE8F8F5), const Color(0xFF0F766E), () {
+                    setState(() => _accountingView = 'payments');
+                    _showStudentPaymentDialog();
                   }),
                   _actionButton('إضافة تبرع', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
                     setState(() => _accountingView = 'donations');
@@ -4685,7 +4889,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 const SizedBox(height: 14),
                 _subSectionBanner(
                   'لوحة المدفوعات الحديثة',
-                  subtitle: 'تم الاستغناء عن "سجل الرسوم الأساسية" هنا، وأصبح التركيز فقط على القسط والتبرع والمساعدة مع فرز كامل حسب الطالب وحسب الشعبة.',
+                  subtitle: 'الأقساط للعرض فقط. أضف الدفعات من زر «دفعة» دون الحاجة لتدخل الإدارة. التبرعات والمساعدات تبقى كما هي مع فرز حسب الطالب/الشعبة.',
                 ),
                 const SizedBox(height: 14),
                 Wrap(
@@ -4788,12 +4992,22 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     _accountingTypeCard(
                       id: 'installments',
                       title: 'الأقساط',
-                      subtitle: 'جميع الأقساط المضافة من داخل باب المحاسبة.',
+                      subtitle: 'عرض فقط — بدون تعديل من المحاسبة.',
                       count: installmentEntries.length,
                       value: installmentsTotal.toStringAsFixed(0),
                       accent: AppPalette.goldDark,
                       soft: const Color(0xFFF7F3EA),
                       icon: Icons.account_balance_wallet_outlined,
+                    ),
+                    _accountingTypeCard(
+                      id: 'payments',
+                      title: 'الدفعات',
+                      subtitle: 'دفعات يضيفها المحاسب مباشرة لحساب الطالب.',
+                      count: receiptEntries.length,
+                      value: receiptsTotal.toStringAsFixed(0),
+                      accent: const Color(0xFF0F766E),
+                      soft: const Color(0xFFE8F8F5),
+                      icon: Icons.payments_outlined,
                     ),
                     _accountingTypeCard(
                       id: 'donations',
@@ -6707,8 +6921,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             ),
           ),
           const SizedBox(height: 20),
+          // RTL visual: right side = مشرف القسم / مدير المدرسة, left side = المشرف العام
           Directionality(
-            textDirection: TextDirection.ltr,
+            textDirection: TextDirection.rtl,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -6716,10 +6931,18 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const Text('توقيع المدير العام', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 6),
-                      Text(_principalNameController.text.isEmpty ? 'المدير العام' : _principalNameController.text, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 16),
+                      const Text('مشرف القسم / مدير المدرسة', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 8),
+                      Text(
+                        'مشرف القسم: ${_supervisorNameController.text.isEmpty ? 'مشرف القسم' : _supervisorNameController.text}',
+                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'مدير المدرسة: ${_principalNameController.text.isEmpty ? (_secretaryNameController.text.isEmpty ? 'مدير المدرسة' : _secretaryNameController.text) : _principalNameController.text}',
+                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 12),
                       const Divider(thickness: 1.2, color: Color(0xFFB7C5D6)),
                     ],
                   ),
@@ -6744,15 +6967,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: <Widget>[
-                      const Text('توقيع المدير العام / مشرف القسم', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
+                      const Text('المشرف العام', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: <Widget>[
-                          Text('مشرف القسم: ${_supervisorNameController.text.isEmpty ? 'مشرف القسم' : _supervisorNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
-                          const SizedBox(width: 14),
-                          Text('المدير العام: ${_secretaryNameController.text.isEmpty ? 'المدير العام' : _secretaryNameController.text}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
-                        ],
+                      Text(
+                        _generalSupervisorController.text.isEmpty ? 'المشرف العام' : _generalSupervisorController.text,
+                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 12),
                       const Divider(thickness: 1.2, color: Color(0xFFB7C5D6)),

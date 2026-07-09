@@ -36,9 +36,18 @@ class _EmployeesPageState extends State<EmployeesPage> {
   final _qualificationController = TextEditingController();
   final _specializationController = TextEditingController();
   final _hireDateController = TextEditingController();
-  final _departmentController = TextEditingController();
   final _notesController = TextEditingController();
 
+  static const List<String> _departmentOptions = <String>[
+    'روضة',
+    'تعليم اساسي حلقة 1',
+    'تعليم اساسي حلقة 2',
+    'تعليم ثنوي - علمي',
+    'تعليم ثانوي - أدبي',
+    'تعليم ثانوي - أخر',
+  ];
+
+  String _department = 'روضة';
   String _jobType = 'معلم';
   String _photoPath = '';
   int? _selectedEmployeeId;
@@ -57,7 +66,6 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _qualificationController.dispose();
     _specializationController.dispose();
     _hireDateController.dispose();
-    _departmentController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -80,7 +88,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _qualificationController.clear();
     _specializationController.clear();
     _hireDateController.clear();
-    _departmentController.clear();
+    _department = _departmentOptions.first;
     _notesController.clear();
     _jobType = 'معلم';
     _photoPath = '';
@@ -98,7 +106,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _qualificationController.text = emp.qualification;
     _specializationController.text = emp.specialization;
     _hireDateController.text = emp.hireDate;
-    _departmentController.text = emp.department;
+    _department = _departmentOptions.contains(emp.department) ? emp.department : _departmentOptions.first;
     _notesController.text = emp.notes;
     _jobType = emp.jobType;
     _photoPath = emp.photoPath;
@@ -148,7 +156,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
       specialization: _specializationController.text.trim(),
       hireDate: _hireDateController.text.trim(),
       jobType: _jobType,
-      department: _departmentController.text.trim(),
+      department: _department,
       photoPath: _photoPath,
       notes: _notesController.text.trim(),
       status: 'بانتظار المراجعة',
@@ -285,7 +293,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
                 _field('المؤهل العلمي', _qualificationController),
                 _field('الاختصاص', _specializationController),
                 _field('تاريخ التعيين', _hireDateController),
-                _field('القسم', _departmentController, span2: true),
+                _departmentDropdown(),
                 _jobTypeDropdown(),
                 _field('ملاحظات', _notesController, span2: true, maxLines: 3),
               ],
@@ -421,6 +429,30 @@ class _EmployeesPageState extends State<EmployeesPage> {
             borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _departmentDropdown() {
+    return SizedBox(
+      width: 540,
+      child: DropdownButtonFormField<String>(
+        value: _departmentOptions.contains(_department) ? _department : _departmentOptions.first,
+        items: _departmentOptions.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        onChanged: (v) => setState(() => _department = v ?? _departmentOptions.first),
+        decoration: const InputDecoration(
+          labelText: 'القسم *',
+          filled: true,
+          fillColor: Color(0xFFFBFDFF),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
         ),
       ),
     );
