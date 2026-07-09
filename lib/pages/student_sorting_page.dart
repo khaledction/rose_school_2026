@@ -388,20 +388,22 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                   ),
                 ],
               ),
+const SizedBox(height: 14),
+              _sortingStatsRow(),
               const SizedBox(height: 14),
 
-              // Controls
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppPalette.line),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
+          // Controls
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
                     const Text('خيارات الفرز', style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft, fontSize: 15)),
                     const SizedBox(height: 12),
                     Wrap(
@@ -715,6 +717,52 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
     );
   }
 
+  Widget _sortingStatsRow() {
+    final total = _ranked.length;
+    final scored = _ranked.where((r) => r.average > 0).toList();
+    final scoredCount = scored.isEmpty ? 1 : scored.length;
+    final over90 = scored.where((r) => r.average >= 90).length;
+    final over80 = scored.where((r) => r.average >= 80).length;
+    final over50 = scored.where((r) => r.average >= 50).length;
+    String pct(int n) => '${((n / scoredCount) * 100).toStringAsFixed(1)}%';
+
+    return Row(
+      children: <Widget>[
+        _miniStat('عدد الطلاب', '$total', AppPalette.goldDark),
+        const SizedBox(width: 10),
+        _miniStat('فوق 90%', pct(over90), AppPalette.leafGreen),
+        const SizedBox(width: 10),
+        _miniStat('فوق 80%', pct(over80), AppPalette.royalBlue),
+        const SizedBox(width: 10),
+        _miniStat('فوق 50%', pct(over50), AppPalette.deepNavySoft),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Expanded(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppPalette.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _sortChip(String label, String mode) {
     final active = _sortMode == mode;
     return InkWell(
@@ -757,17 +805,27 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
   }
 
   Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: bg,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppPalette.line),
+          onTap: onPressed,
+          hoverColor: AppPalette.gold.withOpacity(0.16),
+          splashColor: AppPalette.gold.withOpacity(0.22),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12)),
+            ),
+          ),
         ),
-        child: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12)),
       ),
     );
   }

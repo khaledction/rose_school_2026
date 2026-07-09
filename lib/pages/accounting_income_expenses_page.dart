@@ -816,17 +816,28 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
   }
 
   Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(14),
+          hoverColor: AppPalette.gold.withOpacity(0.16),
+          splashColor: AppPalette.gold.withOpacity(0.22),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: bg == Colors.white ? const Color(0xFFD6E4F1) : bg.withOpacity(0.15)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, color: fg)),
+            ),
+          ),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
     );
   }
 }

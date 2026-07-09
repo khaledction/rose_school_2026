@@ -1865,9 +1865,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
   Widget _reportsPageSection() {
     final total = _students.length;
-    final active = _students.where((s) => s.status == 'نشط').length;
-    final males = _students.where((s) => s.gender == 'ذكر').length;
-    final females = _students.where((s) => s.gender == 'أنثى').length;
     final transport = _countBy(_students, (s) => s.transportSubscription);
     final gender = _countBy(_students, (s) => s.gender);
     final status = _countBy(_students, (s) => s.status);
@@ -1899,29 +1896,12 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           const SizedBox(height: 12),
           Row(
             children: <Widget>[
-              _summaryTile('إجمالي الطلاب', total.toString(), AppPalette.goldDark),
+              _summaryTile('إجمالي عدد الطلاب', total.toString(), AppPalette.goldDark),
               const SizedBox(width: 12),
-              _summaryTile('النشطون', active.toString(), AppPalette.leafGreen),
+              _summaryTile('إجمالي عدد المعلمين', EmployeeService.instance.all.where((e) => e.jobType == 'معلم').length.toString(), AppPalette.royalBlue),
               const SizedBox(width: 12),
-              _summaryTile('ذكور', males.toString(), AppPalette.royalBlue),
-              const SizedBox(width: 12),
-              _summaryTile('إناث', females.toString(), AppPalette.roseRed),
+              _summaryTile('إجمالي عدد الموظفين', EmployeeService.instance.all.length.toString(), AppPalette.leafGreen),
             ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppPalette.line),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                ],
-            ),
           ),
           const SizedBox(height: 14),
           Wrap(

@@ -3396,11 +3396,32 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _buildStats() {
-    const stats = <Map<String, dynamic>>[
-      {'value': '421', 'label': 'إناث', 'c1': AppPalette.roseRed, 'c2': Color(0xFF7E1F2A), 'icon': '♀'},
-      {'value': '421', 'label': 'ذكور', 'c1': AppPalette.royalBlue, 'c2': Color(0xFF0E2F66), 'icon': '♂'},
-      {'value': '798', 'label': 'نشطون', 'c1': AppPalette.leafGreen, 'c2': Color(0xFF166534), 'icon': '✓'},
-      {'value': '842', 'label': 'إجمالي الطلاب', 'c1': AppPalette.gold, 'c2': AppPalette.goldDark, 'icon': '■'},
+    final totalStudents = _students.length;
+    final employees = EmployeeService.instance.all;
+    final totalTeachers = employees.where((e) => e.jobType == 'معلم').length;
+    final totalEmployees = employees.length;
+    final stats = <Map<String, dynamic>>[
+      {
+        'value': '$totalStudents',
+        'label': 'إجمالي عدد الطلاب',
+        'c1': AppPalette.gold,
+        'c2': AppPalette.goldDark,
+        'icon': '■',
+      },
+      {
+        'value': '$totalTeachers',
+        'label': 'إجمالي عدد المعلمين',
+        'c1': AppPalette.royalBlue,
+        'c2': const Color(0xFF0E2F66),
+        'icon': '📚',
+      },
+      {
+        'value': '$totalEmployees',
+        'label': 'إجمالي عدد الموظفين',
+        'c1': AppPalette.leafGreen,
+        'c2': const Color(0xFF166534),
+        'icon': '👥',
+      },
     ];
 
     return SizedBox(
@@ -3409,42 +3430,54 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         children: List<Widget>.generate(stats.length, (index) {
           final stat = stats[index];
           return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(left: index == stats.length - 1 ? 0 : 14),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: AppPalette.line),
-              ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        Text(
-                          stat['value'] as String,
-                          style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: AppPalette.text, height: 1),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(stat['label'] as String, style: const TextStyle(color: AppPalette.muted, fontSize: 15)),
-                      ],
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                margin: EdgeInsets.only(left: index == stats.length - 1 ? 0 : 14),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppPalette.line),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(color: Color.fromRGBO(20, 40, 90, 0.04), blurRadius: 10, offset: Offset(0, 4)),
+                  ],
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            stat['value'] as String,
+                            style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: AppPalette.text, height: 1),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            stat['label'] as String,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: AppPalette.muted, fontSize: 14),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      gradient: LinearGradient(colors: <Color>[stat['c1'] as Color, stat['c2'] as Color]),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: LinearGradient(colors: <Color>[stat['c1'] as Color, stat['c2'] as Color]),
+                      ),
+                      child: Center(
+                        child: Text(stat['icon'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      ),
                     ),
-                    child: Center(
-                      child: Text(stat['icon'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
@@ -3618,18 +3651,34 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   Widget _placeholderPage(String title) => _placeholderPageSection(title);
 
   Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: bg == Colors.white ? const BorderSide(color: Color(0xFFD6E4F1)) : BorderSide.none,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(14),
+            hoverColor: AppPalette.gold.withOpacity(0.16),
+            splashColor: AppPalette.gold.withOpacity(0.22),
+            highlightColor: AppPalette.gold.withOpacity(0.10),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: bg == Colors.white ? const Color(0xFFD6E4F1) : bg.withOpacity(0.2),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, color: fg)),
+              ),
+            ),
+          ),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
     );
   }
 

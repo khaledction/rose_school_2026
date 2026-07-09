@@ -171,10 +171,28 @@ class _EmployeeFinanceReviewPageState extends State<EmployeeFinanceReviewPage> {
     _rejectionReasonController.clear();
   }
 
+  List<EmployeeRecord> get _allEmployees => EmployeeService.instance.all;
+  int get _maleEmployees => _allEmployees.where((e) => e.gender != 'أنثى').length;
+  int get _femaleEmployees => _allEmployees.where((e) => e.gender == 'أنثى').length;
+  int get _maleTeachers => _allEmployees.where((e) => e.jobType == 'معلم' && e.gender != 'أنثى').length;
+  int get _femaleTeachers => _allEmployees.where((e) => e.jobType == 'معلم' && e.gender == 'أنثى').length;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
+        Row(
+          children: <Widget>[
+            _statCard('الموظفون الذكور', '$_maleEmployees', AppPalette.royalBlue),
+            const SizedBox(width: 10),
+            _statCard('الموظفات الإناث', '$_femaleEmployees', AppPalette.roseRed),
+            const SizedBox(width: 10),
+            _statCard('المعلمون الذكور', '$_maleTeachers', AppPalette.deepNavySoft),
+            const SizedBox(width: 10),
+            _statCard('المعلمات الإناث', '$_femaleTeachers', AppPalette.goldDark),
+          ],
+        ),
+        const SizedBox(height: 12),
         // ─── Tabs ───────────────────────────────────────────────
         Row(
           children: <Widget>[
@@ -192,6 +210,30 @@ class _EmployeeFinanceReviewPageState extends State<EmployeeFinanceReviewPage> {
           child: _buildList(),
         ),
       ],
+    );
+  }
+
+  Widget _statCard(String label, String value, Color color) {
+    return Expanded(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppPalette.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -410,17 +452,28 @@ class _EmployeeFinanceReviewPageState extends State<EmployeeFinanceReviewPage> {
   }
 
   Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        shape: RoundedRectangleBorder(
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
           borderRadius: BorderRadius.circular(12),
+          hoverColor: AppPalette.gold.withOpacity(0.16),
+          splashColor: AppPalette.gold.withOpacity(0.22),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: bg.withOpacity(0.15)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: fg)),
+            ),
+          ),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
     );
   }
 }

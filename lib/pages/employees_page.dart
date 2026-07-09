@@ -49,6 +49,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
 
   String _department = 'روضة';
   String _jobType = 'معلم';
+  String _gender = 'ذكر';
   String _photoPath = '';
   int? _selectedEmployeeId;
   bool _showForm = false;
@@ -91,6 +92,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _department = _departmentOptions.first;
     _notesController.clear();
     _jobType = 'معلم';
+    _gender = 'ذكر';
     _photoPath = '';
   }
 
@@ -109,6 +111,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _department = _departmentOptions.contains(emp.department) ? emp.department : _departmentOptions.first;
     _notesController.text = emp.notes;
     _jobType = emp.jobType;
+    _gender = (emp.gender == 'أنثى') ? 'أنثى' : 'ذكر';
     _photoPath = emp.photoPath;
     _showForm = true;
   }
@@ -157,6 +160,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
       hireDate: _hireDateController.text.trim(),
       jobType: _jobType,
       department: _department,
+      gender: _gender,
       photoPath: _photoPath,
       notes: _notesController.text.trim(),
       status: 'بانتظار المراجعة',
@@ -213,6 +217,12 @@ class _EmployeesPageState extends State<EmployeesPage> {
     setState(() {});
   }
 
+  List<EmployeeRecord> get _allEmployees => EmployeeService.instance.all;
+  int get _maleEmployees => _allEmployees.where((e) => e.gender != 'أنثى').length;
+  int get _femaleEmployees => _allEmployees.where((e) => e.gender == 'أنثى').length;
+  int get _maleTeachers => _allEmployees.where((e) => e.jobType == 'معلم' && e.gender != 'أنثى').length;
+  int get _femaleTeachers => _allEmployees.where((e) => e.jobType == 'معلم' && e.gender == 'أنثى').length;
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -241,6 +251,8 @@ class _EmployeesPageState extends State<EmployeesPage> {
               Text('العدد: ${_filteredEmployees.length}', style: const TextStyle(color: AppPalette.muted)),
             ],
           ),
+          const SizedBox(height: 12),
+          _employeeStatsRow(),
 
           // ─── Employee Form ────────────────────────────────────
           if (_showForm) ...<Widget>[
@@ -258,6 +270,44 @@ class _EmployeesPageState extends State<EmployeesPage> {
               child: Center(child: Text('لا يوجد موظفون', style: TextStyle(color: AppPalette.muted))),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _employeeStatsRow() {
+    return Row(
+      children: <Widget>[
+        _statCard('الموظفون الذكور', '$_maleEmployees', AppPalette.royalBlue),
+        const SizedBox(width: 10),
+        _statCard('الموظفات الإناث', '$_femaleEmployees', AppPalette.roseRed),
+        const SizedBox(width: 10),
+        _statCard('المعلمون الذكور', '$_maleTeachers', AppPalette.deepNavySoft),
+        const SizedBox(width: 10),
+        _statCard('المعلمات الإناث', '$_femaleTeachers', AppPalette.goldDark),
+      ],
+    );
+  }
+
+  Widget _statCard(String label, String value, Color color) {
+    return Expanded(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppPalette.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(value, style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -295,6 +345,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
                 _field('تاريخ التعيين', _hireDateController),
                 _departmentDropdown(),
                 _jobTypeDropdown(),
+                _genderDropdown(),
                 _field('ملاحظات', _notesController, span2: true, maxLines: 3),
               ],
             ),
@@ -482,19 +533,53 @@ class _EmployeesPageState extends State<EmployeesPage> {
     );
   }
 
-  Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        backgroundColor: bg,
-        foregroundColor: fg,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: bg == Colors.white ? const BorderSide(color: Color(0xFFD6E4F1)) : BorderSide.none,
+  Widget _genderDropdown() {
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<String>(
+        value: _gender,
+        items: const <String>['ذكر', 'أنثى'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        onChanged: (v) => setState(() => _gender = v ?? 'ذكر'),
+        decoration: const InputDecoration(
+          labelText: 'الجنس *',
+          filled: true,
+          fillColor: Color(0xFFFBFDFF),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+    );
+  }
+
+  Widget _actionButton(String label, Color bg, Color fg, VoidCallback onPressed) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          hoverColor: AppPalette.gold.withOpacity(0.16),
+          splashColor: AppPalette.gold.withOpacity(0.22),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: bg == Colors.white ? const Color(0xFFD6E4F1) : bg.withOpacity(0.2)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Text(label, style: TextStyle(fontWeight: FontWeight.w800, color: fg)),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

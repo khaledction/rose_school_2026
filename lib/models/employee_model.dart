@@ -13,6 +13,7 @@ class EmployeeRecord {
     required this.hireDate,
     required this.jobType,
     required this.department,
+    this.gender = 'ذكر',
     this.photoPath = '',
     this.notes = '',
     this.status = 'بانتظار المراجعة',
@@ -40,6 +41,7 @@ class EmployeeRecord {
   final String hireDate;
   final String jobType;
   final String department;
+  final String gender; // ذكر | أنثى
   final String photoPath;
   final String notes;
   final String status; // 'بانتظار المراجعة', 'نشط', 'مرفوض'
@@ -68,6 +70,7 @@ class EmployeeRecord {
     String? hireDate,
     String? jobType,
     String? department,
+    String? gender,
     String? photoPath,
     String? notes,
     String? status,
@@ -94,6 +97,7 @@ class EmployeeRecord {
       hireDate: hireDate ?? this.hireDate,
       jobType: jobType ?? this.jobType,
       department: department ?? this.department,
+      gender: gender ?? this.gender,
       photoPath: photoPath ?? this.photoPath,
       notes: notes ?? this.notes,
       status: status ?? this.status,
@@ -122,6 +126,7 @@ class EmployeeRecord {
         'hireDate': hireDate,
         'jobType': jobType,
         'department': department,
+        'gender': gender,
         'photoPath': photoPath,
         'notes': notes,
         'status': status,
@@ -149,6 +154,7 @@ class EmployeeRecord {
         hireDate: json['hireDate']?.toString() ?? '',
         jobType: json['jobType']?.toString() ?? '',
         department: json['department']?.toString() ?? '',
+        gender: json['gender']?.toString() ?? 'ذكر',
         photoPath: json['photoPath']?.toString() ?? '',
         notes: json['notes']?.toString() ?? '',
         status: json['status']?.toString() ?? 'بانتظار المراجعة',
