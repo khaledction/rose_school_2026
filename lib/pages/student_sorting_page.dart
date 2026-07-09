@@ -361,8 +361,8 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 alignment: WrapAlignment.spaceBetween,
                 children: <Widget>[
-                  const ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: 520),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
                     child: Text(
                       '🔍 فرز الطلاب حسب المعدل والدرجات',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
