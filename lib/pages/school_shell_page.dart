@@ -3220,7 +3220,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'data_center':
         return const _PageInfo(
           '📁 مركز البيانات المحلي',
-          'أمانة السر، مركز البيانات',
+          'الإدارة، مركز البيانات',
           'إدارة قاعدة البيانات المحلية والملفات. إنشاء واستعادة النسخ الاحتياطية، مراقبة حالة التخزين، وتصدير البيانات.',
         );
       case 'transport':
