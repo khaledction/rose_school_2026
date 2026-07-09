@@ -1,16 +1,34 @@
-# rose_school
+# Rose School 2026
 
-A new Flutter project.
+نظام إدارة مدرسي محلي لويندوز — Flutter + SQLite (عربي / RTL).
 
-## Getting Started
+## التشغيل على ويندوز
 
-This project is a starting point for a Flutter application.
+```cmd
+cd C:\Users\khaledction\Desktop\new-rose
+git pull
+flutter clean
+flutter pub get
+flutter run -d windows
+```
 
-A few resources to get you started if this is your first Flutter project:
+## المستودع
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+https://github.com/khaledction/rose_school_2026
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## الوثائق
+
+| ملف | الغرض |
+|-----|--------|
+| `NEXT_CHAT_SUMMARY.md` | **المرجع الحي** — حالة التنفيذ والأولوية التالية |
+| `ROSE_SCHOOL_2026_FULL_PLAN.md` | الخطة الكاملة + لوحة حالة محدّثة |
+| `WINDOWS_FULL_IMPLEMENTATION_PLAN.md` | خطة ويندوز والمراحل المتبقية |
+| `WINDOWS_TEST_CHECKLIST.md` | 83 حالة اختبار يدوي |
+
+## التخزين المحلي
+
+`Documents/Rose_School_edu/` → `data/` · `files/` · `backups/` · `reports/` · `config/`
+
+## ملاحظة
+
+Flutter غير متاح في بيئات التحرير السحابية لبعض الجلسات؛ الاختبار الفعلي يتم محلياً على ويندوز.
