@@ -1,273 +1,231 @@
 # ملخص الجلسة للمحادثة القادمة
 
-> تاريخ التحديث: **2026-07-09**
+> تاريخ التحديث: **2026-07-10**
 >
 > المشروع: `rose_school_2026`
 >
-> المستودع: https://github.com/khaledction/rose_school_2026.git
+> المستودع: https://github.com/khaledction/rose_school_2026
 >
 > الفرع: `main`
 >
-> آخر commit: `5318953` — *UX overhaul: form layout, preset installments, compact widgets, sidebar fixes*
+> آخر commit: `f9febc4` — merge admin hub, parent comms, remove donations nav, rename results
 >
-> المجلد المحلي على ويندوز: `C:\Users\khaledction\Desktop\new-rose`
+> المجلد المحلي ويندوز: `C:\Users\khaledction\Desktop\new-rose`
 
 ---
 
 ## ⚠️ تنبيه أمني
-
-إذا سبق مشاركة GitHub token في أي محادثة: **ألغِه فوراً** من GitHub Settings → Tokens وأنشئ توكن جديد.
-
----
-
-## 🎯 ملخص تنفيذي سريع
-
-المشروع تطبيقة Flutter لويندوز (RTL / عربي) لإدارة مدرسة **Rose School 2026**.
-
-- **~19,300 سطر Dart** في `lib/`
-- **22 commit** على `main`
-- المراحل الأساسية من الخطة **مكتوبة كملفات** (Dashboard → Dark Mode)
-- لكن **بعض الوظائف موجودة ككود ولم تُربط بعد** بالواجهة (Export / حماية المدير / Dark Mode)
-- **Flutter غير متاح داخل Arena** — التعديلات static، والاختبار محلياً على ويندوز
+إذا ظهر GitHub token في محادثة: **ألغه فوراً** من GitHub Settings → Tokens وأنشئ جديداً عند الحاجة.
 
 ---
 
-## 🖥️ تشغيل محلي (ويندوز)
+## 🖥️ تشغيل / مزامنة Desktop
 
-```cmd
+```powershell
 cd C:\Users\khaledction\Desktop\new-rose
-git pull
+git fetch origin
+git reset --hard origin/main
+git rev-parse HEAD
 flutter clean
 flutter pub get
 flutter run -d windows
 ```
 
-أو استنساخ نظيف:
-
-```cmd
-cd /d C:\Users\khaledction\Desktop
-git clone https://github.com/khaledction/rose_school_2026.git rose-school-new
-cd /d C:\Users\khaledction\Desktop\rose-school-new
-flutter clean
-flutter pub get
-flutter run -d windows
-```
+> Flutter غير متاح داخل Arena — الاختبار دائماً محلي على ويندوز.
 
 ---
 
-## 📂 بنية التخزين المحلي
+## 📍 أين وصلنا؟ (ملخص تنفيذي)
 
-```
-Documents/
-└── Rose_School_edu/
-    ├── data/          ← rose_school_2026.db
-    ├── files/
-    │   ├── students/
-    │   ├── employees/
-    │   └── school/    ← ختم، توقيع، شعار
-    ├── backups/       ← ROSE_BACKUP_*.zip (حالياً JSON+base64 وليس ZIP حقيقي)
-    ├── reports/       ← تقارير التصدير
-    └── config/
-```
+تطبيق Flutter لويندوز (عربي/RTL) لإدارة مدرسة Rose School 2026.
+تم في هذه المحادثة: إصلاح أخطاء compile، تحسين UX كبير، دمج أقسام، إعادة تسمية، تنظيف، ورفع كل شيء إلى GitHub.
 
-الخدمة المركزية: `lib/services/app_storage_paths_service.dart`  
-**قاعدة:** لا تستخدم `getApplicationDocumentsDirectory()` مباشرة في ملفات جديدة.
+### الحالة العامة
+- المراحل الأساسية السابقة (Dashboard/موظفين/محاسبة/اجتماعات/Backup/Export/DarkMode...) موجودة في الكود.
+- هذه الجلسة ركّزت على: **إصلاح التشغيل + تحسين المحاسبة/الهوية/الفرز/التنقل + دمج الإدارات + تنظيف ورفع**.
 
 ---
 
-## 🗺️ حالة المراحل (بعد المراجعة الفعلية للكود — 2026-07-09)
+## ✅ ما تم إنجازه في هذه المحادثة (بالتفصيل)
 
-| # | المرحلة | الحالة | ملاحظات |
-|---|---------|--------|---------|
-| A | توحيد مسارات التخزين | ✅ مكتمل | `app_storage_paths_service.dart` مربوط بـ DB وملفات الطلاب |
-| 1 | لوحة القيادة + إشعارات | ✅ مكتمل تقريباً | `dashboard_page.dart` + `notification_service.dart` + جرس في الهيدر |
-| 2 | الموظفون | ✅ مكتمل تقريباً | استمارة أمانة السر + مراجعة مالية للإدارة؛ التنقل تحت أمانة السر |
-| 3 | الإيرادات والصرفيات | ✅ مكتمل تقريباً | `accounting_income_expenses_page.dart` + `finance_service.dart` |
-| 4 | اجتماعات أولياء الأمور | ✅ مكتمل تقريباً | `parent_meetings_page.dart` + `meeting_service.dart` |
-| 5 | مركز البيانات المحلي | 🟡 جزئي | UI موجود؛ Backup/Restore يعملان بأسلوب JSON؛ **لا أزرار Export**؛ فتح المجلد = نسخ مسار |
-| 6 | تغيير الأسماء + ختم/توقيع | ✅ مكتمل | مدير عام / مشرف القسم / المشرف العام + صور ختم وتوقيع |
-| 7 | فرز الطلاب | ✅ مكتمل + تحسينات | حسب الصف / الصف+شعبة + أعلى 3 على مستوى المدرسة |
-| 8 | النسخ الاحتياطي | 🟡 جزئي | `BackupService` موجود لكن الـ "zip" هو JSON+base64 (لا حزمة `archive`) |
-| 9 | التصدير | 🟡 كود فقط | `ExportService` (JSON/CSV) **غير مستدعى** من أي صفحة |
-| 10 | حماية المدير | 🟡 كود فقط | `AdminPasswordDialog` **غير مربوط** بعمليات Backup/Restore/Export |
-| 11 | أقساط ذكية | 🟡 جزئي | إعدادات أقساط/مواصلات + presets (عادي / +مواصلات / +منحة) في المحاسبة |
-| 12 | Dark Mode | 🟡 كود فقط | `DarkModeProvider` موجود؛ **غير مدمج** في `main.dart` ولا زر في الهيدر |
-| 13 | طباعة جماعية | 🟡 جزئي | طباعة جماعية للجلاء موجودة؛ باقي التقارير الجماعية حسب الخطة غير مكتملة |
-| 14 | أرشفة تلقائية | ❌ غير منفّذ | لا منطق نهاية سنة / فلتر أرشيف |
-| 15 | اختبار ويندوز الشامل | ⏳ معلّق | `WINDOWS_TEST_CHECKLIST.md` جاهز (83 حالة) — يحتاج تشغيل محلي |
+### A) تشغيل المشروع وإصلاح build
+1. تشخيص أن أوامر Flutter يجب تشغيلها من جذر المشروع (`new-rose`).
+2. إصلاح أخطاء compile في `school_shell_sections.dart`:
+   - قوس زائد في قسم الأقساط/المواصلات.
+   - `initialAmount` غير معرّف في تبرعات/مساعدات.
+   - تمرير preset الأقساط بشكل صحيح.
+3. إصلاح `const ConstrainedBox` غير الصالح في `student_sorting_page.dart`.
+4. إصلاح تلف ترميز عربي محلي عند المستخدم عبر استعادة الملف من Git (`git checkout origin/main -- ...`).
+
+### B) مركز البيانات والتنقل الإداري
+5. نقل **مركز البيانات المحلي** من أمانة السر إلى **الإدارة** بعد لوحة القيادة.
+6. لاحقاً دمج لوحة القيادة + لوحة الإدارة في باب واحد: **🏛️ الإدارة (`admin_hub`)**.
+7. إزالة التكرار الإداري مع الإبقاء على:
+   - مركز البيانات
+   - مراجعة الموظفين
+   - الهوية والاعتماد
+
+### C) الهوية والاعتماد
+8. Tab/Enter للتنقل بين الحقول (identity + installment + admin users).
+9. Placeholder = اسم الحقل.
+10. تصحيح التسميات:
+    - المدير العام
+    - مشرف القسم
+    - مدير المدرسة
+    - إضافة حقل **أمين السر**
+    - المشرف العام
+11. ترحيل قيم قديمة محفوظة في DB:
+    - `أمين السر` داخل حقل المدير العام → `المدير العام`
+    - `الموجه` → `مشرف القسم`
+12. إعدادات الأقساط والمواصلات:
+    - عملة منسدلة
+    - مبالغ بدون (ل.س) بجانب كل حقل
+    - نطاق إعفاء: الكل / الصف / الصف والشعبة / الطالب
+
+### D) المحاسبة
+13. أزرار الأقساط (عادي / +مواصلات / +منحة) = **قراءة فقط**.
+14. زر **💵 دفعة** لإضافة دفعة لحساب الطالب مباشرة (بدون إدارة).
+15. بطاقة/شاشة **الدفعات** منفصلة عن الأقساط.
+16. حذف بند **التبرعات** المستقل من السايدبار (بقيت داخل لوحة المحاسبة).
+17. إزالة تكرار بطاقات طلاب/معلمين/موظفين من داخل صفحة الإيرادات والصرفيات.
+
+### E) الامتحانات / النتائج
+18. إعادة تسمية:
+    - من: فرز الطلاب حسب المعدل والدرجات
+    - إلى: **النتائج والمعدلات**
+19. جدول رسمي: شعار + اسم مدرسة + ترتيب/اسم/صف/شعبة/معدل/ملاحظة + توقيعات.
+20. تصدير PDF و Excel/CSV.
+21. بطاقات علوية داخل الصفحة:
+    - إجمالي عدد الطلاب
+    - إجمالي عدد الذكور
+    - إجمالي عدد الإناث
+    - نسبة النجاح
+    - نسبة الرسوب
+22. إخفاء بطاقات الشريط العلوي المشتركة (طلاب/معلمين/موظفين) داخل صفحة النتائج لتجنب التكرار.
+
+### F) الموظفون
+23. قسم الموظف قائمة منسدلة:
+    - روضة
+    - تعليم اساسي حلقة 1
+    - تعليم اساسي حلقة 2
+    - تعليم ثنوي - علمي
+    - تعليم ثانوي - أدبي
+    - تعليم ثانوي - أخر
+24. إضافة حقل **الجنس**.
+25. بطاقات:
+    - الموظفون الذكور
+    - الموظفات الإناث
+    - المعلمون الذكور
+    - المعلمات الإناث
+26. نفس البطاقات في مراجعة الموظفين.
+27. إخفاء بطاقة إجمالي الطلاب من شاشات الموظفين.
+
+### G) أولياء الأمور
+28. دمج:
+    - اجتماعات أولياء الأمور
+    - مراسلات أولياء الأمور
+    في بند واحد: **اجتماعات ومراسلات أولياء الأمور** مع تبويبين.
+
+### H) الجلاء المدرسي
+29. التوقيعات:
+    - اليمين: مشرف القسم / مدير المدرسة
+    - الوسط: الخاتم
+    - اليسار: المشرف العام
+
+### I) Hover
+30. تأثير hover ذهبي + مؤشر يد على أزرار رئيسية (shell/accounting/employees/sorting...).
+
+### J) التنظيف والرفع
+31. تنظيف كود مكرر/imports غير لازمة.
+32. رفع commits إلى GitHub `main` بنجاح (آخرها `f9febc4`).
+33. توثيق هذه الحالة في `NEXT_CHAT_SUMMARY.md`.
 
 ---
 
-## 📁 خريطة الملفات الحالية
+## 🧭 خريطة التنقل الحالية (مختصر)
 
-### pages (`lib/pages/`)
-| ملف | الدور |
-|-----|-------|
-| `school_shell_page.dart` (~3577 سطر) | الهيكل الرئيسي، تسجيل الدخول، state، تنقل |
-| `school_shell_sections.dart` (~7003 سطر) | أقسام الواجهة (part of shell) |
-| `dashboard_page.dart` | لوحة القيادة |
-| `employees_page.dart` | موظفين — أمانة السر |
-| `employee_finance_review_page.dart` | مراجعة مالية — إدارة |
-| `accounting_income_expenses_page.dart` | إيرادات وصرفيات |
-| `parent_meetings_page.dart` | اجتماعات أولياء الأمور |
-| `local_data_center_page.dart` | مركز البيانات |
-| `student_sorting_page.dart` | فرز الطلاب |
-
-### services (`lib/services/`)
-| ملف | الدور |
-|-----|-------|
-| `app_storage_paths_service.dart` | مسارات موحّدة |
-| `school_database_service.dart` | SQLite + JSON keys |
-| `local_student_file_service.dart` | صور/QR/مرفقات الطلاب |
-| `notification_service.dart` | إشعارات داخلية |
-| `employee_service.dart` | موظفين |
-| `finance_service.dart` | إيرادات/صرفيات |
-| `meeting_service.dart` | اجتماعات |
-| `backup_service.dart` | نسخ احتياطي (شبه ZIP) |
-| `export_service.dart` | JSON/CSV (**غير مربوط**) |
-
-### models / dialogs / widgets
-| ملف | الدور |
-|-----|-------|
-| `school_models.dart` | طلاب، هوية، مستخدمين، محاسبة أساسية… |
-| `employee_model.dart` | موظف + سجل مالي |
-| `finance_models.dart` | تصنيفات وقيود |
-| `meeting_models.dart` | اجتماع + حضور |
-| `notification_model.dart` | إشعار |
-| `admin_password_dialog.dart` | حماية مدير (**غير مربوط**) |
-| `dark_mode_toggle.dart` | Provider + زر (**غير مربوط**) |
-| `school_shell_widgets.dart` | ويدجتات مشتركة |
-| `seed_data.dart` | بيانات أولية |
-
-### deps مهمة (`pubspec.yaml`)
-`sqflite_common_ffi`, `path_provider`, `provider`, `intl`, `image_picker`, `file_picker`, `qr`, `pdf`, `printing`, `crypto`, `shared_preferences`, `excel`
-
-> ملاحظة: حزمة `excel` موجودة في pubspec لكن مسار التصدير الحالي في `ExportService` يكتب **CSV** وليس XLSX فعلي. لا توجد حزمة `archive` لـ ZIP حقيقي.
-
----
-
-## 🧭 الشريط الجانبي الحالي (من الكود)
-
-**الإدارة**
-- 📊 لوحة القيادة
-- 🔍 مراجعة الموظفين
-- لوحة الإدارة
-- الهوية والاعتماد (فيها أيضاً إعدادات الأقساط والمواصلات)
-
-**أمانة السر**
-- قائمة الطلاب
-- 👥 الموظفين
-- استمارة طالب
-- الحضور والغياب
-- المكافآت والعقوبات
-- الشهادات
-- الوثائق والمرفقات
-- التقارير
-- بطاقة الطالب والطباعة
-- النسخ الاحتياطي والاستعادة (القديم)
+### الإدارة
+- 🏛️ الإدارة (موحّد: قيادة + إدارة)
 - 📁 مركز البيانات المحلي
-- 📅 اجتماعات أولياء الأمور
+- 🔍 مراجعة الموظفين
+- الهوية والاعتماد
+
+### أمانة السر
+- قائمة الطلاب / الموظفين / استمارة / حضور / مكافآت / شهادات / وثائق / تقارير / بطاقة / backup
+- 📅 اجتماعات ومراسلات أولياء الأمور (موحّد)
 - النقل المدرسي
-- مراسلات أولياء الأمور
 
-**الامتحانات**
+### الامتحانات
 - لوحة الامتحانات
-- 🔍 فرز الطلاب
+- 📊 النتائج والمعدلات
 
-**المحاسبة**
-- لوحة المحاسبة (أقساط / تبرعات / مساعدات + presets)
-- التبرعات
+### المحاسبة
+- لوحة المحاسبة (أقساط + دفعات + تبرعات + مساعدات)
 - 💰 الإيرادات والصرفيات
+- *(لا يوجد بند تبرعات مستقل)*
 
 ---
 
-## 🔧 قرارات معتمدة سابقاً (ما زالت سارية)
+## 📂 ملفات محورية
 
-- جذر التخزين: `Rose_School_edu`
-- الموظفون: أمانة السر = بيانات شخصية فقط → الإدارة = مالي + قبول/رفض
-- الإيرادات: أقساط + تبرعات + تصنيفات قابلة للإضافة
-- الصرفيات: تصنيفات افتراضية + قابلة للإضافة
-- الأسماء: الموجه ← مشرف القسم، أمين السر ← مدير/مدير عام، + المشرف العام
-- الخاتم والتوقيع: صور اختيارية
-- الفرز: صفحة مستقلة تحت الامتحانات
-
----
-
-## 📌 ما تغيّر بعد ملخص 2026-07-07
-
-commits بعد مرحلة A:
-
-1. `f621ad4` Phase 1 Dashboard + notifications  
-2. `5db848f` Phase 2 Employees  
-3. `7742df7` Phase 3 Income & Expenses  
-4. `bcd01d0` Phase 4 Parent meetings  
-5. `a8bb3fe` Phase 5 Local Data Center + Backup  
-6. `44c3143` Phase 6 Names + seal/signature  
-7. `4f02bc2` Phase 7 Student sorting  
-8. `de472ac` Phases 8–14 Export, security, Dark Mode, checklist  
-9. `6612633` Fix compile errors  
-10. `1c44388` نقل الموظفين إلى أمانة السر  
-11. `bbb0418` UI: كنية، بحث حي، نقل الفرز للامتحانات، المدير العام…  
-12. `dc5cf59` / `853254d` / `689e3e6` / `397c366` إصلاح تبويبات الاستمارة + تحسين الفرز  
-13. `5318953` UX: تخطيط نماذج، preset أقساط، ويدجتات مدمجة، إصلاحات سايدبار  
+| ملف | دور |
+|-----|-----|
+| `lib/pages/school_shell_page.dart` | الهيكل، التنقل، login، state |
+| `lib/pages/school_shell_sections.dart` | أقسام الواجهة (part) |
+| `lib/pages/student_sorting_page.dart` | النتائج والمعدلات |
+| `lib/pages/employees_page.dart` | موظفين أمانة السر |
+| `lib/pages/employee_finance_review_page.dart` | مراجعة مالية |
+| `lib/pages/accounting_income_expenses_page.dart` | إيرادات/صرفيات |
+| `lib/pages/dashboard_page.dart` | محتوى لوحة القيادة داخل admin hub |
+| `lib/models/employee_model.dart` | موظف + جنس |
+| `lib/models/school_models.dart` | هوية المدرسة + secretaryName |
+| `lib/services/school_database_service.dart` | DB + ترحيل عناوين الهوية |
+| `lib/services/app_storage_paths_service.dart` | مسارات Rose_School_edu |
 
 ---
 
-## 🔴 فجوات معروفة (أولوية إصلاح/إكمال)
+## 🔴 فجوات معروفة / أولوية قادمة
 
-### P0 — ربط ما هو مكتوب وغير موصول
-1. **ربط `AdminPasswordDialog.requirePassword`** قبل: إنشاء نسخة، استعادة، حذف نسخة، تصدير كامل  
-2. **أزرار Export في `local_data_center_page.dart`** تستدعي `ExportService`  
-3. **دمج Dark Mode** في `main.dart` (Provider + themeMode) وزر في الهيدر بجانب الجرس  
+### P0
+1. اختبار ويندوز يدوي شامل بعد `git reset --hard origin/main`.
+2. التأكد أن `admin_hub` و`parent_comms` و`النتائج والمعدلات` تظهر بدون overflow.
 
-### P1 — جودة Backup/Export
-4. ZIP حقيقي (إضافة `archive` أو أداة نظام) بدل JSON+base64  
-5. فتح مجلدات ويندوز فعلياً (`Process.start('explorer', [path])`) بدل نسخ المسار فقط  
-6. استخدام حزمة `excel` لتصدير XLSX حقيقي إن لزم  
+### P1
+3. ربط `AdminPasswordDialog` فعلياً بـ backup/restore/export.
+4. أزرار Export من مركز البيانات تستدعي `ExportService`.
+5. Dark Mode مدمج فعلياً في `main.dart` (الكود موجود جزئياً وغير مكتمل الربط).
+6. ZIP احتياطي حقيقي (حالياً JSON+base64 شبيه zip).
 
-### P2 — ميزات الخطة المتبقية
-7. أرشفة نهاية السنة + فلتر أرشيف  
-8. تقوية الأقساط الذكية (ربط أوضح بالإعدادات المحفوظة لكل طالب)  
-9. طباعة جماعية أوسع (ليس فقط الجلاء)  
-10. إزالة/دمج صفحة `backup` القديمة مع مركز البيانات لتفادي التكرار  
-
-### P3 — تنظيف / اختبار
-11. تشغيل `WINDOWS_TEST_CHECKLIST.md` محلياً وتوثيق النتائج  
-12. إصلاح أي أخطاء compile تظهر عند `flutter run -d windows`  
-13. `DarkModeToggleWidget` الحالي ينشئ Provider جديد في كل build — يحتاج Provider واحد على مستوى التطبيق  
+### P2
+7. أرشفة نهاية السنة.
+8. صقل UX إضافي/إزالة صفحات demo متبقية (backup القديم إن لزم).
+9. ملء `WINDOWS_TEST_CHECKLIST.md` بعد الاختبار.
 
 ---
 
-## 📝 نص مقترح للمحادثة الجديدة
-
-> افتح `NEXT_CHAT_SUMMARY.md` كمرجع أساسي (محدث 2026-07-09).  
-> المستودع: https://github.com/khaledction/rose_school_2026  
-> المجلد المحلي: `C:\Users\khaledction\Desktop\new-rose`  
-> الخطة: `ROSE_SCHOOL_2026_FULL_PLAN.md`  
-> **الوضع:** مراحل A + 1→7 منفّذة وظيفياً تقريباً؛ 8→12 كود موجود جزئياً/غير مربوط؛ 14 أرشفة غير منفّذة.  
-> **المطلوب التالي حسب الأولوية:** ربط حماية المدير + Export + Dark Mode، ثم تقوية Backup الحقيقي، ثم الأرشفة، ثم اختبار ويندوز.
-
----
-
-## 📌 ملاحظات فنية للمساعد
-
-1. Flutter غير متاح في Arena — static edits فقط؛ المستخدم يختبر على ويندوز.  
-2. ارفع كل مرحلة مهمة إلى GitHub بعد إنجازها.  
-3. الواجهة والتعليقات المهمة بالعربية.  
-4. `school_shell_page.dart` + `school_shell_sections.dart` (part) هما قلب التطبيق — عدّل بحذر.  
-5. أي مسار جديد عبر `AppStoragePathsService.instance`.  
-6. لا تشارك توكنات GitHub في المحادثة.  
-7. بعد التعديل المحلي: `git pull` ثم `flutter clean && flutter pub get && flutter run -d windows`.  
+## 🔧 ملاحظات فنية للمساعد القادم
+1. لا تستخدم `getApplicationDocumentsDirectory()` مباشرة — عبر `AppStoragePathsService`.
+2. `school_shell_page.dart` + `school_shell_sections.dart` (part) قلب التطبيق.
+3. عند PowerShell على ويندوز: لا تعمل Replace على ملفات عربية بدون UTF-8 (يسبب تلف نص).
+4. أفضل مزامنة للمستخدم: `git reset --hard origin/main`.
+5. لا ترفع generated plugin files / bak files.
+6. لا تشارك GitHub tokens في المحادثة.
 
 ---
 
-## 🎯 الأولوية القادمة المقترحة (جلسة واحدة)
+## 📝 نص مقترح لبداية المحادثة الجديدة
 
-### حزمة الربط (Wire-up package)
-1. حماية المدير على عمليات مركز البيانات  
-2. أزرار تصدير JSON/CSV من مركز البيانات  
-3. Dark Mode فعّال في التطبيق  
-4. فتح مجلدات ويندوز بـ explorer  
-5. تحديث checklist بعد الاختبار المحلي  
+> افتح `NEXT_CHAT_SUMMARY.md` (محدث 2026-07-10).
+> المستودع: https://github.com/khaledction/rose_school_2026 (main @ f9febc4)
+> المجلد: `C:\Users\khaledction\Desktop\new-rose`
+> تم: إصلاح build + دمج الإدارة + دمج أولياء الأمور + النتائج والمعدلات + أقساط قراءة فقط + دفعات + هوية (مدير عام/مشرف قسم/أمين سر) + تنظيف ورفع.
+> المطلوب التالي: اختبار ويندوز الشامل ثم P1 (AdminPassword + Export UI + Dark Mode + ZIP حقيقي).
 
-بعدها: ZIP حقيقي → أرشفة → صقل UX.
+---
+
+## 🎯 الأولوية التالية المقترحة
+1. `git reset --hard origin/main` + `flutter run -d windows`
+2. اختبار التنقل الجديد (admin_hub / parent_comms / results)
+3. Wire-up: حماية المدير + Export + Dark Mode
+4. Backup ZIP حقيقي
+5. Checklist ويندوز
