@@ -343,6 +343,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _studentsPageSection() {
+    final total = _filteredStudents.length;
+    final males = _filteredStudents.where((s) => s.gender == 'ذكر').length;
+    final females = _filteredStudents.where((s) => s.gender == 'أنثى').length;
     return Column(
       children: <Widget>[
         Row(
@@ -409,6 +412,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               onPressed: _startNewStudent,
               child: const Text('+ طالب جديد'),
             ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            _summaryTile('إجمالي الطلاب', '$total', AppPalette.goldDark),
+            const SizedBox(width: 10),
+            _summaryTile('الذكور', '$males', AppPalette.royalBlue),
+            const SizedBox(width: 10),
+            _summaryTile('الإناث', '$females', AppPalette.roseRed),
           ],
         ),
         const SizedBox(height: 12),
@@ -653,8 +666,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               }),
               span2: true,
             ),
-            _dateFieldCard('تاريخ الانتساب للمدرسة', _enrollmentDateController),
-            _editableField('السنة الدراسية', _schoolYearController),
+            SizedBox(
+              width: 760,
+              child: Row(
+                children: <Widget>[
+                  Expanded(child: _dateFieldCard('تاريخ الانتساب للمدرسة', _enrollmentDateController)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _editableField('السنة الدراسية', _schoolYearController)),
+                ],
+              ),
+            ),
             Row(
               children: <Widget>[
                 _choiceField(
@@ -884,100 +905,134 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const <Widget>[
+                  children: <Widget>[
                     Text('المعلومات الشخصية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
                     SizedBox(height: 2),
-                    Text('التسلسل، الهوية، الطالب', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text('التسلسل، الهوية، الطالب — تنقّل بـ Tab أو Enter', style: TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
               ],
             ),
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  children: <Widget>[
-                    _primaryFormRow('رقم التسلسل', child: _serialValueBox()),
-                    _primaryFormRow('الاسم *', child: _tabInput(_fullNameController, hint: 'اسم الطالب', node: _formFocusNodes[0], nextNode: _formFocusNodes[1])),
-                    _primaryFormRow('الأب', child: _tabInput(_fatherNameController, hint: 'اسم الأب', node: _formFocusNodes[1], nextNode: _formFocusNodes[2])),
-                    _primaryFormRow('الكنية', child: _tabInput(_nicknameController, hint: 'الكنية', node: _formFocusNodes[2], nextNode: _formFocusNodes[3])),
-                    _primaryFormRow('اسم الأم', child: _tabInput(_motherNameController, hint: 'اسم الأم', node: _formFocusNodes[3], nextNode: _formFocusNodes[4])),
-                    _primaryFormRow('الجد', child: _tabInput(_grandfatherNameController, hint: 'الجد', node: _formFocusNodes[4], nextNode: _formFocusNodes[5])),
-                    _primaryFormRow('الجنس', child: _genderChoices()),
-                  ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // Photo + serial under it
+                SizedBox(
+                  width: 210,
+                  child: Column(
+                    children: <Widget>[
+                      Container(
+                        width: 170,
+                        height: 190,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFD9E7F3)),
+                          gradient: const LinearGradient(colors: <Color>[Color(0xFFE8F4FF), Colors.white]),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: (_selectedStudent != null && _fileStorage.fileExistsSync(_selectedStudent!.studentPhotoPath))
+                              ? Image.file(File(_selectedStudent!.studentPhotoPath), fit: BoxFit.cover)
+                              : Center(child: Image.asset('image/logo.jpg', width: 64, height: 64, fit: BoxFit.contain)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: Text('رقم التسلسل', style: TextStyle(fontSize: 12, color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(height: 6),
+                      _serialValueBox(),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'الصورة الشخصية للطالب',
+                        style: TextStyle(color: AppPalette.muted, fontSize: 11),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Container(width: 1, color: const Color(0xFFE8EDF4)),
-              Expanded(
-                child: Column(
-                  children: <Widget>[
-                    _primaryFormRow(
-                      'مكان الولادة / تاريخ الولادة',
-                      child: Row(
+                const SizedBox(width: 16),
+                // Fields
+                Expanded(
+                  child: Column(
+                    children: <Widget>[
+                      Row(
                         children: <Widget>[
-                          Expanded(child: _tabInput(_birthPlaceController, hint: 'مكان الولادة', node: _formFocusNodes[5], nextNode: _formFocusNodes[6])),
+                          Expanded(child: _compactLabeledField('الاسم *', _tabInput(_fullNameController, hint: 'اسم الطالب', node: _formFocusNodes[0], nextNode: _formFocusNodes[1]))),
                           const SizedBox(width: 10),
-                          Expanded(child: _tabInput(_birthDateController, hint: 'تاريخ الولادة', node: _formFocusNodes[6], nextNode: _formFocusNodes[7])),
+                          Expanded(child: _compactLabeledField('الأب', _tabInput(_fatherNameController, hint: 'اسم الأب', node: _formFocusNodes[1], nextNode: _formFocusNodes[2]))),
                         ],
                       ),
-                    ),
-                    _primaryFormRow(
-                      'مكان القيد / رقم القيد',
-                      child: Row(
+                      const SizedBox(height: 10),
+                      Row(
                         children: <Widget>[
-                          Expanded(child: _tabInput(_registryPlaceController, hint: 'مكان القيد', node: _formFocusNodes[7], nextNode: _formFocusNodes[8])),
+                          Expanded(child: _compactLabeledField('الكنية', _tabInput(_nicknameController, hint: 'الكنية', node: _formFocusNodes[2], nextNode: _formFocusNodes[3]))),
                           const SizedBox(width: 10),
-                          Expanded(child: _tabInput(_registryNumberController, hint: 'رقم القيد', node: _formFocusNodes[8], nextNode: null)),
+                          Expanded(child: _compactLabeledField('اسم الأم', _tabInput(_motherNameController, hint: 'اسم الأم', node: _formFocusNodes[3], nextNode: _formFocusNodes[4]))),
                         ],
                       ),
-                    ),
-                    _primaryFormRow('الديانة', child: _religionDropdown()),
-                    _primaryFormRow('زمرة الدم', child: _bloodTypeChoices()),
-                  ],
-                ),
-              ),
-              Container(width: 1, color: const Color(0xFFE8EDF4)),
-              SizedBox(
-                width: 220,
-                child: Column(
-                  children: <Widget>[
-                    _primaryFormRow(
-                      'الصورة الشخصية',
-                      child: Column(
+                      const SizedBox(height: 10),
+                      Row(
                         children: <Widget>[
-                          Container(
-                            width: 150,
-                            height: 170,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: const Color(0xFFD9E7F3)),
-                              gradient: const LinearGradient(colors: <Color>[Color(0xFFE8F4FF), Colors.white]),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: (_selectedStudent != null && _fileStorage.fileExistsSync(_selectedStudent!.studentPhotoPath))
-                                  ? Image.file(File(_selectedStudent!.studentPhotoPath), fit: BoxFit.cover)
-                                  : Center(
-                                      child: Image.asset('image/logo.jpg', width: 60, height: 60, fit: BoxFit.contain),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const Text('تُعرض هنا الصورة المرفوعة من البطاقة أو المرفقات.', style: TextStyle(color: AppPalette.muted, fontSize: 11), textAlign: TextAlign.center),
+                          Expanded(child: _compactLabeledField('الجد', _tabInput(_grandfatherNameController, hint: 'الجد', node: _formFocusNodes[4], nextNode: _formFocusNodes[5]))),
+                          const SizedBox(width: 10),
+                          Expanded(child: _compactLabeledField('مكان الولادة', _tabInput(_birthPlaceController, hint: 'مكان الولادة', node: _formFocusNodes[5], nextNode: _formFocusNodes[6]))),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Row(
+                        children: <Widget>[
+                          Expanded(child: _compactLabeledField('تاريخ الولادة', _tabInput(_birthDateController, hint: 'YYYY-MM-DD', node: _formFocusNodes[6], nextNode: _formFocusNodes[7]))),
+                          const SizedBox(width: 10),
+                          Expanded(child: _compactLabeledField('مكان القيد', _tabInput(_registryPlaceController, hint: 'مكان القيد', node: _formFocusNodes[7], nextNode: _formFocusNodes[8]))),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: <Widget>[
+                          Expanded(child: _compactLabeledField('رقم القيد', _tabInput(_registryNumberController, hint: 'رقم القيد', node: _formFocusNodes[8], nextNode: null))),
+                          const SizedBox(width: 10),
+                          const Expanded(child: SizedBox.shrink()),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // gender / religion / blood side by side
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Expanded(child: _compactLabeledField('الجنس', _genderChoices())),
+                          const SizedBox(width: 10),
+                          Expanded(child: _compactLabeledField('الديانة', _religionDropdown())),
+                          const SizedBox(width: 10),
+                          Expanded(child: _compactLabeledField('زمرة الدم', _bloodTypeChoices())),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(height: 8),
         ],
       ),
+    );
+  }
+
+  Widget _compactLabeledField(String label, Widget child) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(label, style: const TextStyle(fontSize: 12, color: AppPalette.muted, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 6),
+        child,
+      ],
     );
   }
 
@@ -1245,7 +1300,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE8EDF4)),
+        border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFE8EDF4), width: active ? 1.6 : 1),
+        boxShadow: active
+            ? const <BoxShadow>[BoxShadow(color: Color.fromRGBO(167, 122, 46, 0.18), blurRadius: 12, offset: Offset(0, 4))]
+            : null,
       ),
       child: Column(
         children: <Widget>[

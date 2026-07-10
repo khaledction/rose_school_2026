@@ -256,7 +256,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   String _currentPage = 'admin_hub';
   final List<NotificationItem> _notifications = [];
-  final List<FocusNode> _formFocusNodes = List<FocusNode>.generate(12, (_) => FocusNode());
+  final List<FocusNode> _formFocusNodes = List<FocusNode>.generate(16, (_) => FocusNode());
   int? _selectedStudentId = 1;
   String _gender = 'ذكر';
   String _status = 'نشط';
@@ -2896,7 +2896,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         items: const <_NavItem>[
           _NavItem('admin_hub', '🏛️ الإدارة'),
           _NavItem('employee_review', '🔍 مراجعة الموظفين'),
-          _NavItem('admin_identity', 'الهوية والاعتماد'),
         ],
       ),
       _NavGroup(
@@ -3761,7 +3760,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                 Wrap(
                   spacing: 8,
                   children: <Widget>[
-                    _actionButton('الهوية', Colors.white, AppPalette.deepNavy, () => setState(() => _currentPage = 'admin_identity')),
+                    _actionButton('الهوية والاعتماد', Colors.white, AppPalette.deepNavy, () => setState(() => _currentPage = 'admin_identity')),
                     _actionButton('الموظفون', const Color(0xFFF7F3EA), AppPalette.goldDark, () => setState(() => _currentPage = 'employee_review')),
                     _actionButton('📁 مركز البيانات المحلي', const Color(0xFFEDF6FF), AppPalette.royalBlue, () => setState(() => _currentPage = 'data_center')),
                   ],
