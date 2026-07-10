@@ -3418,6 +3418,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'إضافة الإشعارات والاستدعاءات والملاحظات المرتبطة بكل طالب وولي أمره.',
         );
       case 'awards':
+      case 'awards':
+        return const _PageInfo(
+          '🏅 الشهادات والمكافآت والعقوبات',
+          'أمانة السر، الشهادات والمكافآت والعقوبات',
+          'قسم موحّد لإدارة الشهادات أو المكافآت والعقوبات عبر قائمة منسدلة مع الحفاظ على خصائص كل قسم.',
+        );
       case 'discipline':
       case 'certificates':
         return const _PageInfo(
