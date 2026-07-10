@@ -1352,14 +1352,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
   Widget _accordion(String id, String number, String title, Widget body) {
     final active = _openSections.contains(id);
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOutCubic,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFE8EDF4), width: active ? 1.6 : 1),
         boxShadow: active
             ? const <BoxShadow>[BoxShadow(color: Color.fromRGBO(167, 122, 46, 0.18), blurRadius: 12, offset: Offset(0, 4))]
-            : null,
+            : const <BoxShadow>[BoxShadow(color: Color.fromRGBO(20, 40, 90, 0.03), blurRadius: 6, offset: Offset(0, 2))],
       ),
       child: Column(
         children: <Widget>[
@@ -1375,7 +1377,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 }
               });
             },
-            child: Ink(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeInOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
@@ -1384,7 +1388,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               ),
               child: Row(
                 children: <Widget>[
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
@@ -1426,16 +1431,29 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       ],
                     ),
                   ),
-                  Icon(active ? Icons.expand_less : Icons.expand_more, color: active ? Colors.white : const Color(0xFF27385F)),
+                  AnimatedRotation(
+                    turns: active ? 0.5 : 0.0,
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeInOutCubic,
+                    child: Icon(Icons.expand_more, color: active ? Colors.white : const Color(0xFF27385F)),
+                  ),
                 ],
               ),
             ),
           ),
-          if (active)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: body,
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.topCenter,
+              child: active
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                      child: body,
+                    )
+                  : const SizedBox(width: double.infinity, height: 0),
             ),
+          ),
         ],
       ),
     );
@@ -2134,7 +2152,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             children: <Widget>[
               const Expanded(
                 child: Text(
-                  '🪪 بطاقة الطالب والطباعة',
+                  '🪪 بطاقة الطالب',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                 ),
               ),

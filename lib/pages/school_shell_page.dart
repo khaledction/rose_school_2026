@@ -3054,10 +3054,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('form', 'استمارة طالب'),
           _NavItem('attendance', 'الحضور والغياب'),
           _NavItem('awards', '🏅 الشهادات والمكافآت والعقوبات'),
-          _NavItem('documents', 'الوثائق والمرفقات'),
+          _NavItem('documents', '📎 بطاقة الطالب والوثائق'),
           _NavItem('reports', 'التقارير'),
-          _NavItem('student_card', 'بطاقة الطالب والطباعة'),
-          _NavItem('backup', 'النسخ الاحتياطي والاستعادة'),
           _NavItem('parent_comms', '📅 اجتماعات ومراسلات أولياء الأمور'),
           _NavItem('transport', 'النقل المدرسي'),
         ],
@@ -3374,10 +3372,11 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'هذا القسم محفوظ حاليًا داخل الواجهة الفعلية، وسيتم ربطه لاحقًا بالتصدير الكامل إلى Excel وPDF.',
         );
       case 'student_card':
+      case 'documents':
         return const _PageInfo(
-          'بطاقة الطالب',
-          'أمانة السر، بطاقة الطالب والطباعة',
-          'يمكنك الآن معاينة البطاقة المدرسية الفعلية وتجهيزها كـ PDF وصورة جاهزة للطباعة مع اللوغو وصورة الطالب وQR.',
+          '📎 بطاقة الطالب والوثائق',
+          'أمانة السر، بطاقة الطالب والوثائق',
+          'قسم موحّد لبطاقة الطالب ومعاينتها/تصديرها مع الوثائق والمرفقات، بتبويبات ملوّنة وسهلة الوصول.',
         );
       case 'parent_comms':
       case 'parent_meetings':
@@ -3389,9 +3388,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         );
       case 'backup':
         return const _PageInfo(
-          'النسخ الاحتياطي',
-          'أمانة السر، النسخ الاحتياطي والاستعادة',
-          'تم إنشاء النسخة الاحتياطية الثانية، وسيتم لاحقًا ربط هذا الباب وظيفيًا داخل التطبيق نفسه.',
+          '📁 مركز البيانات المحلي',
+          'الإدارة، مركز البيانات والنسخ الاحتياطي',
+          'النسخ الاحتياطي والاستعادة متاحة من مركز البيانات داخل الإدارة فقط.',
         );
       case 'student_sorting':
         return const _PageInfo(
@@ -3471,7 +3470,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'awards': '🏅 الشهادات والمكافآت والعقوبات',
       'discipline': 'المكافآت والعقوبات',
       'certificates': 'الشهادات',
-      'documents': 'الوثائق والمرفقات',
+      'documents': '📎 بطاقة الطالب والوثائق',
+      'student_card': 'بطاقة الطالب',
       'transport': 'النقل المدرسي',
       'student_sorting': '📊 النتائج والمعدلات',
       'parent_comms': '📅 اجتماعات ومراسلات أولياء الأمور',
@@ -3710,14 +3710,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'reports':
         return _reportsPage();
       case 'student_card':
-        return _studentCardPage();
+        return _documentsHubPage(initialMode: 'card');
       case 'attendance':
         return _attendancePage();
       case 'donations':
         // التبرعات أصبحت داخل لوحة المحاسبة فقط
         return _accountingPage();
       case 'documents':
-        return _documentsPage();
+        return _documentsHubPage();
       case 'student_sorting':
         return _studentSortingPageWrapped();
       case 'parent_comms':
@@ -3725,7 +3725,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'messages':
         return _parentCommsPageWrapped();
       case 'backup':
-        return _backupPage();
+        // النسخ الاحتياطي داخل الإدارة فقط عبر مركز البيانات
+        return _dataCenterPageWrapped();
       case 'data_center':
         return _dataCenterPageWrapped();
       case 'transport':
@@ -4057,6 +4058,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _backupPage() => _backupPageSection();
 
+  Widget _documentsHubPage({String initialMode = 'documents'}) {
+    return _DocumentsHubPage(
+      initialMode: initialMode,
+      buildCard: _studentCardPageSection,
+      buildDocuments: _documentsPageSection,
+    );
+  }
+
   Widget _transportPage() => _transportPageSection();
 
   Widget _messagesPage() => _messagesPageSection();
@@ -4187,6 +4196,127 @@ class _AwardsHubPageState extends State<_AwardsHubPage> {
         const SizedBox(height: 12),
         Expanded(
           child: _mode == 'discipline' ? widget.buildDiscipline() : widget.buildCertificates(),
+        ),
+      ],
+    );
+  }
+}
+
+
+class _DocumentsHubPage extends StatefulWidget {
+  const _DocumentsHubPage({
+    required this.initialMode,
+    required this.buildCard,
+    required this.buildDocuments,
+  });
+
+  final String initialMode;
+  final Widget Function() buildCard;
+  final Widget Function() buildDocuments;
+
+  @override
+  State<_DocumentsHubPage> createState() => _DocumentsHubPageState();
+}
+
+class _DocumentsHubPageState extends State<_DocumentsHubPage> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialIndex = widget.initialMode == 'card' ? 0 : 1;
+    _tabController = TabController(length: 2, vsync: this, initialIndex: initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.96),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppPalette.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                '📎 بطاقة الطالب والوثائق',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'وصول سلس لبطاقة الطالب والطباعة/التصدير، مع الوثائق والمرفقات في نفس المكان.',
+                style: TextStyle(color: AppPalette.muted, height: 1.55),
+              ),
+              const SizedBox(height: 12),
+              TabBar(
+                controller: _tabController,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: const BoxDecoration(color: Colors.transparent),
+                labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                tabs: <Widget>[
+                  Tab(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF7F3EA),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppPalette.goldDark.withOpacity(0.4)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(Icons.badge_outlined, size: 16, color: AppPalette.goldDark),
+                          SizedBox(width: 6),
+                          Text('بطاقة الطالب', style: TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w900, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Tab(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDF6FF),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppPalette.royalBlue.withOpacity(0.4)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Icon(Icons.attach_file_rounded, size: 16, color: AppPalette.royalBlue),
+                          SizedBox(width: 6),
+                          Text('الوثائق والمرفقات', style: TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w900, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: <Widget>[
+              widget.buildCard(),
+              widget.buildDocuments(),
+            ],
+          ),
         ),
       ],
     );
