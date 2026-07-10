@@ -98,8 +98,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text('بيانات المدرسة المعتمدة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
-                const SizedBox(height: 10),
-                const Text('يمكنك تعديل هذه البيانات ثم حفظها، وسيتم تخزينها فعليًا داخل SQLite. استخدم Tab أو Enter للانتقال للحقل التالي.', style: TextStyle(color: AppPalette.muted)),
+                const SizedBox(height: 6),
+                const Text('الاعتماد الرسمي للمدرسة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppPalette.goldDark)),
+                const SizedBox(height: 8),
+                const Text('هذه الصفحة مخصصة للاعتماد الرسمي وبيانات التواصل المعتمدة للمدرسة (وليست مجرد بيانات اتصال عامة). يمكنك التعديل ثم الحفظ في SQLite. استخدم Tab أو Enter للانتقال للحقل التالي.', style: TextStyle(color: AppPalette.muted, height: 1.6)),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 12,
@@ -346,6 +348,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     final total = _filteredStudents.length;
     final males = _filteredStudents.where((s) => s.gender == 'ذكر').length;
     final females = _filteredStudents.where((s) => s.gender == 'أنثى').length;
+    final activeStudents = _filteredStudents.where((s) => s.status == 'نشط').length;
     return Column(
       children: <Widget>[
         Row(
@@ -422,6 +425,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             _summaryTile('الذكور', '$males', AppPalette.royalBlue),
             const SizedBox(width: 10),
             _summaryTile('الإناث', '$females', AppPalette.roseRed),
+            const SizedBox(width: 10),
+            _summaryTile('نشطون', '$activeStudents', AppPalette.leafGreen),
           ],
         ),
         const SizedBox(height: 12),
@@ -541,6 +546,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
   Widget _studentCell(StudentRecord student) {
     final hasPhoto = _fileStorage.fileExistsSync(student.studentPhotoPath);
+    final isFemale = student.gender == 'أنثى';
     return Row(
       children: <Widget>[
         _studentAvatar(student),
@@ -549,7 +555,35 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Row(
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      student.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isFemale ? const Color(0xFFFDECEE) : const Color(0xFFEDF6FF),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: isFemale ? AppPalette.roseRed.withOpacity(0.35) : AppPalette.royalBlue.withOpacity(0.35)),
+                    ),
+                    child: Text(
+                      isFemale ? 'أنثى' : 'ذكر',
+                      style: TextStyle(
+                        color: isFemale ? AppPalette.roseRed : AppPalette.royalBlue,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 4),
               Text(
                 hasPhoto ? '${student.mobile}\nصورة الطالب' : '${student.mobile}\nصورة الطالب غير مضافة بعد',
@@ -948,6 +982,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       ),
                       const SizedBox(height: 6),
                       _serialValueBox(),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: _actionButton('📷 رفع صورة', AppPalette.goldDark, Colors.white, _pickStudentImage),
+                      ),
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: _actionButton('حذف الصورة', Colors.white, const Color(0xFF667586), _removeStudentImage),
+                      ),
                       const SizedBox(height: 8),
                       const Text(
                         'الصورة الشخصية للطالب',
@@ -988,7 +1032,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       const SizedBox(height: 10),
                       Row(
                         children: <Widget>[
-                          Expanded(child: _compactLabeledField('تاريخ الولادة', _tabInput(_birthDateController, hint: 'YYYY-MM-DD', node: _formFocusNodes[6], nextNode: _formFocusNodes[7]))),
+                          Expanded(child: _compactLabeledField('تاريخ الولادة', _datePickerField(_birthDateController, hint: 'تاريخ الولادة'))),
                           const SizedBox(width: 10),
                           Expanded(child: _compactLabeledField('مكان القيد', _tabInput(_registryPlaceController, hint: 'مكان القيد', node: _formFocusNodes[7], nextNode: _formFocusNodes[8]))),
                         ],
@@ -1146,27 +1190,27 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _datePickerField(TextEditingController controller, {required String hint}) {
-    return InkWell(
+    return TextField(
+      controller: controller,
+      readOnly: true,
       onTap: () => _pickDate(controller),
-      borderRadius: BorderRadius.circular(12),
-      child: IgnorePointer(
-        child: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            suffixIcon: const Icon(Icons.calendar_month_outlined),
-            filled: true,
-            fillColor: const Color(0xFFFBFDFF),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
-            ),
-          ),
+      decoration: InputDecoration(
+        hintText: hint,
+        suffixIcon: IconButton(
+          tooltip: 'اختيار التاريخ',
+          onPressed: () => _pickDate(controller),
+          icon: const Icon(Icons.calendar_month_outlined),
+        ),
+        filled: true,
+        fillColor: const Color(0xFFFBFDFF),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
         ),
       ),
     );

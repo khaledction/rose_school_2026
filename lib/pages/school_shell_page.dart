@@ -1137,9 +1137,17 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Future<void> _pickStudentImage() async {
+    // Ensure we have a student id (draft if needed) so photo can be attached quickly from personal info.
+    if (_selectedStudent == null) {
+      if (_fullNameController.text.trim().isEmpty) {
+        _showSnack('أدخل اسم الطالب أولًا ثم ارفع الصورة، أو احفظ المسودة.');
+        return;
+      }
+      await _autoSaveStudentDraft(silent: true);
+    }
     final student = _selectedStudent;
     if (student == null) {
-      _showSnack('احفظ سجل الطالب أولًا قبل رفع الصورة.');
+      _showSnack('تعذر تجهيز سجل الطالب لرفع الصورة.');
       return;
     }
     final picked = await _imagePicker.pickImage(source: ImageSource.gallery, imageQuality: 92);
@@ -1152,7 +1160,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       bucket: 'photo',
       originalName: picked.name,
       sourcePath: picked.path,
-      preferredBaseName: '${student.fullName}_photo',
+      preferredBaseName: '${student.fullName.isEmpty ? 'student' : student.fullName}_photo',
     );
 
     final index = _students.indexWhere((item) => item.id == student.id);
@@ -2584,12 +2592,134 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     return 'RS-2026-$next';
   }
 
+  Future<void> _autoSaveStudentDraft({bool silent = true}) async {
+    final fullName = _fullNameController.text.trim();
+    if (fullName.isEmpty) {
+      return;
+    }
+    // Soft draft: save without forcing navigation away and without hard-failing serial generation.
+    final serial = _serialController.text.trim().isEmpty ? _nextSerial() : _serialController.text.trim();
+    final duplicateSerial = _students.any((s) => s.serial.trim() == serial && s.id != _selectedStudentId);
+    if (duplicateSerial) {
+      if (!silent) {
+        _showSnack('تعذر حفظ المسودة: رقم التسلسل مكرر.');
+      }
+      return;
+    }
+    final existingRecord = _selectedStudentId == null ? null : _studentById(_selectedStudentId!);
+    final draftId = _selectedStudentId ?? DateTime.now().millisecondsSinceEpoch;
+    final draft = StudentRecord(
+      id: draftId,
+      serial: serial,
+      fullName: fullName,
+      fatherName: _fatherNameController.text.trim(),
+      motherName: _motherNameController.text.trim(),
+      grandfatherName: _grandfatherNameController.text.trim(),
+      guardianName: _guardianNameController.text.trim(),
+      guardianRelation: _guardianRelationController.text.trim(),
+      guardianPhone: _guardianPhoneController.text.trim(),
+      guardianMobile: _guardianMobileController.text.trim(),
+      guardianWhatsapp: _guardianWhatsappController.text.trim(),
+      guardianEmail: _guardianEmailController.text.trim(),
+      guardianWork: _guardianWorkController.text.trim(),
+      guardianAddress: _guardianAddressController.text.trim(),
+      emergencyContactName: _emergencyContactNameController.text.trim(),
+      emergencyContactPhone: _emergencyContactPhoneController.text.trim(),
+      grade: _gradeController.text.trim().isEmpty ? _enrollmentGrade : _gradeController.text.trim(),
+      section: _sectionController.text.trim().isEmpty ? '?' : _sectionController.text.trim(),
+      gender: _gender,
+      status: _status,
+      birthPlace: _birthPlaceController.text.trim(),
+      birthDate: _birthDateController.text.trim(),
+      registryPlace: _registryPlaceController.text.trim(),
+      registryNumber: _registryNumberController.text.trim(),
+      religion: _religionController.text.trim(),
+      bloodType: _bloodType,
+      enrollmentDate: _enrollmentDateController.text.trim(),
+      enrollmentType: _enrollmentType,
+      enrollmentGrade: _enrollmentGrade,
+      schoolYear: _schoolYearController.text.trim().isEmpty ? _currentAcademicYear() : _schoolYearController.text.trim(),
+      previousSchool: _enrollmentType == 'طالب منقول' ? _previousSchoolController.text.trim() : '',
+      failedGrades: _failedGradesSelected.isEmpty ? '' : _failedGradesSelected.join(','),
+      firstLanguage: _firstLanguage,
+      firstLanguageOther: _firstLanguageOtherController.text.trim(),
+      secondLanguage: _secondLanguage,
+      secondLanguageOther: _secondLanguageOtherController.text.trim(),
+      spokenLanguage: _spokenLanguage,
+      spokenLanguageOther: _spokenLanguageOtherController.text.trim(),
+      otherLanguage: [_firstLanguageOtherController.text.trim(), _secondLanguageOtherController.text.trim(), _spokenLanguageOtherController.text.trim()].where((e) => e.isNotEmpty).join(' | '),
+      residence: _residenceController.text.trim(),
+      landline: _landlineController.text.trim(),
+      mobile: _mobileController.text.trim(),
+      email: _emailController.text.trim(),
+      studentPhotoPath: existingRecord?.studentPhotoPath ?? '',
+      qrFilePath: existingRecord?.qrFilePath ?? '',
+      studentCardPdfPath: existingRecord?.studentCardPdfPath ?? '',
+      studentCardPngPath: existingRecord?.studentCardPngPath ?? '',
+      transportGathering: _transportGatheringController.text.trim(),
+      transportSubscription: _transportSubscription,
+      healthStatus: _healthStatus,
+      disabilityVisual: _disabilityVisual,
+      disabilityHearing: _disabilityHearing,
+      disabilityMotor: _disabilityMotor,
+      disabilityLearning: _disabilityLearning,
+      normalLife: _normalLife,
+      orphanFather: _orphanFather,
+      orphanMother: _orphanMother,
+      orphanParents: _orphanParents,
+      onlyChild: _onlyChild,
+      livesSeparate: _livesSeparate,
+      hobbyMusic: _hobbyMusic,
+      hobbyDrawing: _hobbyDrawing,
+      hobbyComputer: _hobbyComputer,
+      hobbySports: _hobbySports,
+      otherHobbies: _otherHobbiesController.text.trim(),
+      initiativeSchool: _initiativeSchool,
+      initiativeFinancial: _initiativeFinancial,
+      initiativeInKind: _initiativeInKind,
+      initiativeProjects: _initiativeProjects,
+      healthNotes: _healthNotesController.text.trim(),
+      notes: _notesController.text.trim(),
+      transferNotes: _transferNotesController.text.trim(),
+      transportFees: _collectPayments(_transportDueControllers, _transportPaidControllers, _transportDateControllers, _transportCurrencies),
+      regularFees: _collectPayments(_regularDueControllers, _regularPaidControllers, _regularDateControllers, _regularCurrencies),
+    );
+    final index = _students.indexWhere((student) => student.id == draft.id);
+    setState(() {
+      if (index >= 0) {
+        _students[index] = draft;
+      } else {
+        _students.insert(0, draft);
+      }
+      _selectedStudentId = draft.id;
+      if (_serialController.text.trim().isEmpty) {
+        _serialController.text = serial;
+      }
+    });
+    await _persistAll();
+    if (!silent && mounted) {
+      _showSnack('تم حفظ مسودة بيانات الطالب تلقائيًا.');
+    }
+  }
+
   Future<void> _saveStudent() async {
+    final fullName = _fullNameController.text.trim();
+    if (fullName.isEmpty) {
+      _showSnack('لا يمكن الحفظ: اسم الطالب مطلوب.');
+      return;
+    }
+    final serial = _serialController.text.trim().isEmpty ? _nextSerial() : _serialController.text.trim();
+    final duplicateSerial = _students.any((s) => s.serial.trim() == serial && s.id != _selectedStudentId);
+    if (duplicateSerial) {
+      _showSnack('لا يمكن الحفظ: رقم التسلسل "$serial" مستخدم لطالب آخر.');
+      return;
+    }
+
     final existingRecord = _selectedStudentId == null ? null : _studentById(_selectedStudentId!);
     final newRecord = StudentRecord(
       id: _selectedStudentId ?? DateTime.now().millisecondsSinceEpoch,
-      serial: _serialController.text.trim().isEmpty ? _nextSerial() : _serialController.text.trim(),
-      fullName: _fullNameController.text.trim(),
+      serial: serial,
+      fullName: fullName,
       fatherName: _fatherNameController.text.trim(),
       motherName: _motherNameController.text.trim(),
       grandfatherName: _grandfatherNameController.text.trim(),
@@ -3064,7 +3194,21 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
                       hoverColor: const Color.fromRGBO(201, 160, 78, 0.18),
-                      onTap: () => setState(() => _currentPage = item.id),
+                      onTap: () async {
+                        final previous = _currentPage;
+                        final next = item.id;
+                        if (previous == 'form' && next != 'form') {
+                          await _autoSaveStudentDraft(silent: true);
+                        }
+                        if (previous == 'admin_identity' && next != 'admin_identity') {
+                          // keep identity values in controllers; soft-save official data if filled
+                          if (_secretaryNameController.text.trim().isNotEmpty) {
+                            await _saveSchoolIdentity();
+                          }
+                        }
+                        if (!mounted) return;
+                        setState(() => _currentPage = next);
+                      },
                       child: Ink(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                         decoration: BoxDecoration(
