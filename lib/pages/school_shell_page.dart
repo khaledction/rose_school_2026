@@ -298,6 +298,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _invoiceCurrency = 'ليرة سورية';
   String _receiptCurrency = 'ليرة سورية';
   final List<String> _studentsSortOrder = <String>['الاسم'];
+  String _studentsStatsGrade = 'الكل';
+  String _studentsStatsSection = 'الكل';
   bool _showOnlyUnreviewedExamSubjects = false;
   List<String> _customExamSubjects = <String>[];
   final TextEditingController _newExamSubjectController = TextEditingController();

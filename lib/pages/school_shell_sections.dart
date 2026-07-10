@@ -468,17 +468,65 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
 
   Widget _studentsGradeOverviewPanel(List<StudentRecord> students) {
-    // Fixed structure: grades 1..12, each with sections 1..10 + general summary.
-    final totalAll = students.length;
-    final malesAll = students.where((s) => s.gender == 'ذكر').length;
-    final femalesAll = students.where((s) => s.gender == 'أنثى').length;
-    final activeAll = students.where((s) => s.status == 'نشط').length;
+    // Clean readable stats using dropdowns instead of crowded cards.
+    final grades = <String>['الكل', for (var i = 1; i <= 12; i++) '$i'];
+    final sections = <String>['الكل', for (var i = 1; i <= 10; i++) '$i'];
+
+    bool matchGrade(StudentRecord s, String grade) {
+      if (grade == 'الكل') return true;
+      final g = _studentGradeDisplay(s);
+      return g == grade || g.startsWith('$grade ') || g.contains('الصف $grade');
+    }
+
+    bool matchSection(StudentRecord s, String section) {
+      if (section == 'الكل') return true;
+      final sec = _studentSectionDisplay(s);
+      return sec == section || sec == 'شعبة $section';
+    }
+
+    final selected = students.where((s) => matchGrade(s, _studentsStatsGrade) && matchSection(s, _studentsStatsSection)).toList();
+    final total = selected.length;
+    final males = selected.where((s) => s.gender == 'ذكر').length;
+    final females = selected.where((s) => s.gender == 'أنثى').length;
+    final active = selected.where((s) => s.status == 'نشط').length;
+
+    // Section breakdown for selected grade (always 1..10 when a grade is chosen)
+    final sectionRows = <Widget>[];
+    if (_studentsStatsGrade != 'الكل') {
+      for (var i = 1; i <= 10; i++) {
+        final sec = '$i';
+        final list = students.where((s) => matchGrade(s, _studentsStatsGrade) && matchSection(s, sec)).toList();
+        final m = list.where((s) => s.gender == 'ذكر').length;
+        final f = list.where((s) => s.gender == 'أنثى').length;
+        sectionRows.add(
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: list.isEmpty ? const Color(0xFFF7FAFC) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: 70,
+                  child: Text('شعبة $sec', style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                ),
+                Expanded(child: Text('الإجمالي: ${list.length}', style: const TextStyle(fontWeight: FontWeight.w800))),
+                SizedBox(width: 90, child: Text('ذكور: $m', style: const TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w800))),
+                SizedBox(width: 90, child: Text('إناث: $f', style: const TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800))),
+              ],
+            ),
+          ),
+        );
+      }
+    }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.97),
+        color: Colors.white.withOpacity(0.98),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppPalette.line),
       ),
@@ -486,168 +534,92 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
-            'إحصائية عامة للصفوف والشعب (1–12 / 10 شعب)',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
-          ),
-          const SizedBox(height: 10),
-          // General summary screen
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: const LinearGradient(colors: <Color>[Color(0xFF123A78), Color(0xFF1E7A79)]),
-            ),
-            child: Row(
-              children: <Widget>[
-                _generalStatBox('الإجمالي', '$totalAll', Colors.white),
-                const SizedBox(width: 10),
-                _generalStatBox('الذكور', '$malesAll', Colors.white),
-                const SizedBox(width: 10),
-                _generalStatBox('الإناث', '$femalesAll', Colors.white),
-                const SizedBox(width: 10),
-                _generalStatBox('نشطون', '$activeAll', Colors.white),
-              ],
-            ),
+            'إحصاءات الطلاب',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 210,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: 12,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final grade = '${index + 1}';
-                final gradeStudents = students.where((s) {
-                  final g = _studentGradeDisplay(s);
-                  return g == grade || g.startsWith('$grade ') || g.contains('الصف $grade');
-                }).toList();
-                final total = gradeStudents.length;
-                final males = gradeStudents.where((s) => s.gender == 'ذكر').length;
-                final females = gradeStudents.where((s) => s.gender == 'أنثى').length;
-
-                return Container(
-                  width: 280,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: <Color>[Color(0xFFF8FBFF), Color(0xFFF7F3EA)],
-                    ),
-                    border: Border.all(color: const Color(0xFFE1EBF3)),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: grades.contains(_studentsStatsGrade) ? _studentsStatsGrade : 'الكل',
+                  decoration: InputDecoration(
+                    labelText: 'الصف',
+                    filled: true,
+                    fillColor: const Color(0xFFFBFDFF),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppPalette.royalBlue,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text('الصف $grade', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
-                          ),
-                          const Spacer(),
-                          Text('$total', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: <Widget>[
-                          _miniCountPill('ذكور', males, AppPalette.royalBlue, const Color(0xFFEDF6FF)),
-                          const SizedBox(width: 8),
-                          _miniCountPill('إناث', females, AppPalette.roseRed, const Color(0xFFFDECEE)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: 10,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 5,
-                            mainAxisSpacing: 6,
-                            crossAxisSpacing: 6,
-                            childAspectRatio: 1.35,
-                          ),
-                          itemBuilder: (context, sectionIndex) {
-                            final sec = '${sectionIndex + 1}';
-                            final list = gradeStudents.where((s) {
-                              final sSec = _studentSectionDisplay(s);
-                              return sSec == sec || sSec == 'شعبة $sec';
-                            }).toList();
-                            final m = list.where((s) => s.gender == 'ذكر').length;
-                            final f = list.where((s) => s.gender == 'أنثى').length;
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: list.isEmpty ? const Color(0xFFF4F8FC) : Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: list.isEmpty ? const Color(0xFFE8EDF4) : AppPalette.line),
-                              ),
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  Text('ش$sec', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                                  const SizedBox(height: 2),
-                                  Text('${list.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: list.isEmpty ? AppPalette.muted : AppPalette.goldDark)),
-                                  Text('♂$m ♀$f', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppPalette.muted)),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                  items: grades
+                      .map((g) => DropdownMenuItem<String>(value: g, child: Text(g == 'الكل' ? 'كل الصفوف' : 'الصف $g')))
+                      .toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _studentsStatsGrade = v ?? 'الكل';
+                      _studentsStatsSection = 'الكل';
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: sections.contains(_studentsStatsSection) ? _studentsStatsSection : 'الكل',
+                  decoration: InputDecoration(
+                    labelText: 'الشعبة',
+                    filled: true,
+                    fillColor: const Color(0xFFFBFDFF),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                );
-              },
-            ),
+                  items: sections
+                      .map((s) => DropdownMenuItem<String>(value: s, child: Text(s == 'الكل' ? 'كل الشعب' : 'شعبة $s')))
+                      .toList(),
+                  onChanged: (v) => setState(() => _studentsStatsSection = v ?? 'الكل'),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(height: 12),
+          // Big clear stats
+          Row(
+            children: <Widget>[
+              _cleanStatCard('الإجمالي', '$total', AppPalette.deepNavySoft, const Color(0xFFEDF2F7)),
+              const SizedBox(width: 10),
+              _cleanStatCard('الذكور', '$males', AppPalette.royalBlue, const Color(0xFFEDF6FF)),
+              const SizedBox(width: 10),
+              _cleanStatCard('الإناث', '$females', AppPalette.roseRed, const Color(0xFFFDECEE)),
+              const SizedBox(width: 10),
+              _cleanStatCard('نشطون', '$active', AppPalette.leafGreen, const Color(0xFFE7F7EE)),
+            ],
+          ),
+          if (_studentsStatsGrade != 'الكل') ...<Widget>[
+            const SizedBox(height: 14),
+            Text(
+              'تفاصيل شعب الصف $_studentsStatsGrade',
+              style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+            ),
+            const SizedBox(height: 8),
+            ...sectionRows.map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w)),
+          ],
         ],
       ),
     );
   }
 
-  Widget _generalStatBox(String label, String value, Color color) {
+  Widget _cleanStatCard(String label, String value, Color fg, Color bg) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.14),
-          borderRadius: BorderRadius.circular(14),
+          color: bg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: fg.withOpacity(0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(label, style: TextStyle(color: color.withOpacity(0.9), fontWeight: FontWeight.w700, fontSize: 11)),
-            const SizedBox(height: 4),
-            Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 18)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _miniCountPill(String label, int value, Color fg, Color bg) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: fg.withOpacity(0.25)),
-        ),
-        child: Row(
-          children: <Widget>[
-            Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 11)),
-            const Spacer(),
-            Text('$value', style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 14)),
+            Text(label, style: TextStyle(color: fg.withOpacity(0.9), fontWeight: FontWeight.w800, fontSize: 12)),
+            const SizedBox(height: 8),
+            Text(value, style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 24)),
           ],
         ),
       ),
