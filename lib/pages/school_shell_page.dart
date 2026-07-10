@@ -3407,7 +3407,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   Widget _buildMainArea(BuildContext context) {
     final info = _pageInfo();
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -3416,32 +3416,19 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         ),
       ),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           color: const Color.fromRGBO(255, 255, 255, 0.12),
           border: Border.all(color: const Color.fromRGBO(255, 255, 255, 0.44)),
         ),
         child: Column(
           children: <Widget>[
             _buildHeader(info),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _buildStats(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Expanded(child: _buildPageBody()),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color.fromRGBO(255, 255, 255, 0.68),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppPalette.line),
-              ),
-              child: const Text(
-                'هذه هي المرحلة الفعلية الأولى داخل Flutter: قائمة الطلاب واستمارة الطالب تعملان داخل القالب الحقيقي نفسه، مع الشعار الرسمي وألوان الهوية المعتمدة.',
-                style: TextStyle(color: AppPalette.muted, height: 1.8),
-              ),
-            ),
           ],
         ),
       ),
