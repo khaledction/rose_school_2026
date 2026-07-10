@@ -2276,11 +2276,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _studentCardCanvas(StudentRecord student) {
-    return AspectRatio(
+    return SizedBox(
+      width: 428, // ID-1 standard 85.6×54 mm visual scale for screen preview
+      child: AspectRatio(
       aspectRatio: 85.6 / 54.0,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFFDCE7F2), width: 1.2),
           color: Colors.white,
           boxShadow: const <BoxShadow>[
@@ -2407,6 +2409,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             },
           ),
         ),
+      ),
       ),
     );
   }

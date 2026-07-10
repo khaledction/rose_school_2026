@@ -308,6 +308,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   int? _authenticatedUserId;
   int? _selectedAdminUserId;
   String _loginError = '';
+  String? _loginSelectedDoor; // administration|secretariat|exams|accounting
+  bool _loginShowCredentials = false;
   final Set<String> _adminPermissionsDraft = <String>{};
   final Set<String> _openSections = <String>{'enrollment', 'contact'};
   final Set<TextEditingController> _noteControllersClearedOnFirstTap = <TextEditingController>{};
@@ -374,12 +376,25 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   String _firstAllowedPage(AdminUserEntry user) {
-    return 'admin_hub';
-    /*if (_userHasDoorPermission(user, 'administration')) return 'admin_dashboard';
+    // Prefer the door chosen on login when the user has permission.
+    final preferred = _loginSelectedDoor;
+    if (preferred != null && _userHasDoorPermission(user, preferred)) {
+      switch (preferred) {
+        case 'administration':
+          return 'admin_hub';
+        case 'secretariat':
+          return 'students';
+        case 'exams':
+          return 'exams';
+        case 'accounting':
+          return 'accounting';
+      }
+    }
+    if (_userHasDoorPermission(user, 'administration')) return 'admin_hub';
     if (_userHasDoorPermission(user, 'secretariat')) return 'students';
     if (_userHasDoorPermission(user, 'exams')) return 'exams';
     if (_userHasDoorPermission(user, 'accounting')) return 'accounting';
-    return 'students';*/
+    return 'students';
   }
 
   void _loadAdminDraft([AdminUserEntry? user]) {
@@ -664,21 +679,31 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     final password = _loginPasswordController.text;
     final match = _adminUsers.where((user) => user.username == username && _passwordMatches(password, user.password)).toList();
     if (match.isEmpty) {
-      setState(() => _loginError = 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+      setState(() {
+        _loginError = 'يبدو أنك لا تملك صلاحية الدخول أو قد نسيت كلمة المرور أو اسم المستخدم - راجع الإدارة';
+      });
       return;
     }
     final user = match.first;
+    // If a door was selected, enforce permission for that door.
+    if (_loginSelectedDoor != null && !_userHasDoorPermission(user, _loginSelectedDoor!)) {
+      setState(() {
+        _loginError = 'يبدو أنك لا تملك صلاحية الدخول أو قد نسيت كلمة المرور أو اسم المستخدم - راجع الإدارة';
+      });
+      return;
+    }
     setState(() {
       _authenticatedUserId = user.id;
       _isAuthenticated = true;
       _loginError = '';
+      _loginShowCredentials = false;
       _currentPage = _firstAllowedPage(user);
     });
     NotificationService.instance.addSimple(
       type: 'success',
       title: 'تسجيل دخول',
       body: 'تم تسجيل دخول المستخدم ${user.username} بنجاح.',
-      targetPage: 'dashboard',
+      targetPage: 'admin_hub',
     );
     _showSnack('تم تسجيل الدخول بنجاح.');
   }
@@ -2902,6 +2927,47 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _buildLoginScreen(BuildContext context) {
+    final doors = <Map<String, String>>[
+      {
+        'id': 'secretariat',
+        'title': 'أمانة السر',
+        'subtitle': 'الطلاب • الوثائق • الحضور • أولياء الأمور',
+        'welcome': 'أهلاً بك في أمانة السر - انتبه أنك تملك صلاحيات الدخول',
+      },
+      {
+        'id': 'accounting',
+        'title': 'المحاسبة',
+        'subtitle': 'الأقساط • الدفعات • الإيرادات والصرفيات',
+        'welcome': 'أهلاً بك في المحاسبة - انتبه أنك تملك صلاحيات الدخول',
+      },
+      {
+        'id': 'exams',
+        'title': 'الامتحانات',
+        'subtitle': 'الدرجات والجلاء • النتائج والمعدلات',
+        'welcome': 'أهلاً بك في الامتحانات - انتبه أنك تملك صلاحيات الدخول',
+      },
+      {
+        'id': 'administration',
+        'title': 'الإدارة',
+        'subtitle': 'الهوية • الموظفين • مركز البيانات',
+        'welcome': 'أهلاً بك في الإدارة - انتبه أنك تملك صلاحيات الدخول',
+      },
+    ];
+
+    String doorTitle(String? id) {
+      for (final d in doors) {
+        if (d['id'] == id) return d['title']!;
+      }
+      return 'النظام';
+    }
+
+    String doorWelcome(String? id) {
+      for (final d in doors) {
+        if (d['id'] == id) return d['welcome']!;
+      }
+      return 'أهلاً بك - انتبه أنك تملك صلاحيات الدخول';
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -2946,22 +3012,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                         const SizedBox(height: 18),
                         const Text('مدرسة روز التعليمية', style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 10),
-                        const Text('لوحة دخول المستخدمين إلى النظام الإداري المتكامل بهوية لونية معتمدة من الشعار الرسمي.', style: TextStyle(color: Colors.white70, height: 1.9)),
-                        const SizedBox(height: 22),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: const <Widget>[
-                            _LoginTag('أمانة السر'),
-                            _LoginTag('المحاسبة'),
-                            _LoginTag('الامتحانات'),
-                            _LoginTag('الإدارة'),
-                          ],
+                        const Text(
+                          'اختر الباب الذي تريد الدخول إليه، ثم أدخل اسم المستخدم وكلمة المرور المعينين من الإدارة حصراً.',
+                          style: TextStyle(color: Colors.white70, height: 1.9),
                         ),
                         const Spacer(),
-                        const Text('بيانات الدخول الحالية للاختبار:', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                        const Text('هوية النظام', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 8),
-                        const Text('اسم المستخدم: admin\nكلمة المرور: admin', style: TextStyle(color: Colors.white70, height: 1.8)),
+                        const Text('Rose School 2026 • Windows Local', style: TextStyle(color: Colors.white70, height: 1.8)),
                       ],
                     ),
                   ),
@@ -2969,57 +3027,144 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                 Expanded(
                   flex: 2,
                   child: Padding(
-                    padding: const EdgeInsets.all(36),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Text('تسجيل الدخول', style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                        const SizedBox(height: 10),
-                        const Text('أدخل بيانات المستخدم المُنشأ من قبل الإدارة للوصول إلى الأبواب المسموح بها فقط.', style: TextStyle(color: AppPalette.muted, height: 1.9)),
-                        const SizedBox(height: 24),
-                        TextField(
-                          controller: _loginUsernameController,
-                          decoration: InputDecoration(
-                            labelText: 'اسم المستخدم',
-                            filled: true,
-                            fillColor: const Color(0xFFFBFDFF),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _loginPasswordController,
-                          obscureText: true,
-                          onSubmitted: (_) => _login(),
-                          decoration: InputDecoration(
-                            labelText: 'كلمة المرور',
-                            filled: true,
-                            fillColor: const Color(0xFFFBFDFF),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
-                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
-                          ),
-                        ),
-                        if (_loginError.isNotEmpty) ...<Widget>[
-                          const SizedBox(height: 12),
-                          Text(_loginError, style: const TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w700)),
-                        ],
-                        const SizedBox(height: 20),
-                        Row(
-                          children: <Widget>[
-                            _actionButton('دخول', AppPalette.goldDark, Colors.white, _login),
-                            const SizedBox(width: 10),
-                            _actionButton('إعادة تعيين', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
-                              setState(() {
-                                _loginUsernameController.text = 'admin';
-                                _loginPasswordController.text = 'admin';
-                                _loginError = '';
-                              });
-                            }),
-                          ],
-                        ),
-                      ],
+                    padding: const EdgeInsets.all(32),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      child: !_loginShowCredentials
+                          ? Column(
+                              key: const ValueKey('doors'),
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                const Text('اختر باب الدخول', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                                const SizedBox(height: 8),
+                                const Text('بالضغط على الباب تظهر رسالة الترحيب ثم شاشة إدخال بيانات الدخول.', style: TextStyle(color: AppPalette.muted, height: 1.8)),
+                                const SizedBox(height: 22),
+                                Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  children: doors.map((door) {
+                                    final selected = _loginSelectedDoor == door['id'];
+                                    return SizedBox(
+                                      width: 260,
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(18),
+                                          onTap: () {
+                                            setState(() {
+                                              _loginSelectedDoor = door['id'];
+                                              _loginShowCredentials = true;
+                                              _loginError = '';
+                                            });
+                                          },
+                                          child: Ink(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(18),
+                                              gradient: selected
+                                                  ? const LinearGradient(colors: <Color>[AppPalette.goldDark, AppPalette.gold])
+                                                  : null,
+                                              color: selected ? null : const Color(0xFFFBFDFF),
+                                              border: Border.all(color: selected ? AppPalette.goldDark : AppPalette.line),
+                                              boxShadow: const [BoxShadow(color: Color.fromRGBO(20, 40, 90, 0.06), blurRadius: 10, offset: Offset(0, 4))],
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: <Widget>[
+                                                Text(
+                                                  door['title']!,
+                                                  style: TextStyle(
+                                                    color: selected ? Colors.white : AppPalette.deepNavySoft,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 18,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  door['subtitle']!,
+                                                  style: TextStyle(
+                                                    color: selected ? Colors.white.withOpacity(0.9) : AppPalette.muted,
+                                                    height: 1.5,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              key: const ValueKey('credentials'),
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  doorWelcome(_loginSelectedDoor),
+                                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft, height: 1.35),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'باب: ${doorTitle(_loginSelectedDoor)} • أدخل اسم المستخدم وكلمة المرور المعينين من الإدارة حصراً.',
+                                  style: const TextStyle(color: AppPalette.muted, height: 1.8),
+                                ),
+                                const SizedBox(height: 22),
+                                TextField(
+                                  controller: _loginUsernameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'اسم المستخدم',
+                                    filled: true,
+                                    fillColor: const Color(0xFFFBFDFF),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                TextField(
+                                  controller: _loginPasswordController,
+                                  obscureText: true,
+                                  onSubmitted: (_) => _login(),
+                                  decoration: InputDecoration(
+                                    labelText: 'كلمة المرور',
+                                    filled: true,
+                                    fillColor: const Color(0xFFFBFDFF),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+                                  ),
+                                ),
+                                if (_loginError.isNotEmpty) ...<Widget>[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFDECEE),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: AppPalette.roseRed.withOpacity(0.35)),
+                                    ),
+                                    child: Text(_loginError, style: const TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800, height: 1.5)),
+                                  ),
+                                ],
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: <Widget>[
+                                    _actionButton('دخول', AppPalette.goldDark, Colors.white, _login),
+                                    const SizedBox(width: 10),
+                                    _actionButton('رجوع لاختيار الباب', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
+                                      setState(() {
+                                        _loginShowCredentials = false;
+                                        _loginError = '';
+                                      });
+                                    }),
+                                  ],
+                                ),
+                              ],
+                            ),
                     ),
                   ),
                 ),
@@ -3589,8 +3734,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _buildStats() {
-    // Hide top people cards on results page (keeps internal ranking stats only).
-    if (_currentPage == 'student_sorting') {
+    // Hide top people cards on pages that already have focused internal content.
+    if (_currentPage == 'student_sorting' || _currentPage == 'documents' || _currentPage == 'student_card') {
       return const SizedBox.shrink();
     }
 
