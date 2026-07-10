@@ -747,12 +747,12 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               ),
           ])),
           const SizedBox(height: 12),
-          _accordion('contact', '4', 'الاتصال والسكن', _wrapFields(<Widget>[
+          _accordion('contact', '4', 'الاتصال والسكن', _stackedFields(<Widget>[
             _subSectionBanner('بيانات الاتصال الأساسية'),
-            _editableField('مكان السكن', _residenceController),
-            _editableField('الهاتف الثابت', _landlineController),
-            _editableField('موبايل الطالب', _mobileController),
-            _editableField('ايميل', _emailController),
+            _fullWidthField('مكان السكن', _residenceController),
+            _fullWidthField('الهاتف الثابت', _landlineController),
+            _fullWidthField('موبايل الطالب', _mobileController),
+            _fullWidthField('ايميل', _emailController),
           ])),
           const SizedBox(height: 12),
           _accordion('transport_section', '5', 'النقل والمواصلات', _wrapFields(<Widget>[
@@ -805,9 +805,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             ),
           ])),
           const SizedBox(height: 12),
-          _accordion('health', '7', 'الوضع الصحي', _wrapFields(<Widget>[
+          _accordion('health', '7', 'الوضع الصحي', _stackedFields(<Widget>[
             _subSectionBanner('الحالة الصحية العامة'),
-            _dropdownField('الحالة الصحية', _healthStatus, const <String>['سليم', 'مرض عضوي', 'حالة نفسية', 'إعاقة'], (v) => setState(() {
+            _fullWidthDropdown('الحالة الصحية', _healthStatus, const <String>['سليم', 'مرض عضوي', 'حالة نفسية', 'إعاقة'], (v) => setState(() {
               _healthStatus = v;
               if (v != 'إعاقة') {
                 _disabilityVisual = false;
@@ -837,7 +837,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 },
                 span2: true,
               ),
-            _editableField('ملاحظات صحية', _healthNotesController, span2: true, maxLines: 4),
+            _fullWidthField('ملاحظات صحية', _healthNotesController, maxLines: 4),
           ])),
           const SizedBox(height: 12),
           _accordion('hobbies', '8', 'الهوايات والمبادرات', _wrapFields(<Widget>[
@@ -1218,57 +1218,70 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
   Widget _bloodTypeChoices() {
     const bloods = <String>['?','O+','O-','A+','A-','B+','B-','AB+','AB-'];
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBFDFF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD9E7F3)),
-      ),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: bloods.map((type) {
-          final active = _bloodType == type;
-          return InkWell(
-            onTap: () => setState(() => _bloodType = type),
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                color: active ? AppPalette.goldDark : const Color(0xFFEDF5FB),
-                border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFD8E7F4)),
-              ),
-              child: Text(type, style: TextStyle(color: active ? Colors.white : const Color(0xFF29446F), fontWeight: FontWeight.w800, fontSize: 10)),
-            ),
-          );
-        }).toList(),
+    return SizedBox(
+      height: 48,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFDFF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFD9E7F3)),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: bloods.map((type) {
+              final active = _bloodType == type;
+              return Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: InkWell(
+                  onTap: () => setState(() => _bloodType = type),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    height: 32,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      color: active ? AppPalette.goldDark : const Color(0xFFEDF5FB),
+                      border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFD8E7F4)),
+                    ),
+                    child: Text(type, style: TextStyle(color: active ? Colors.white : const Color(0xFF29446F), fontWeight: FontWeight.w800, fontSize: 11)),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }
 
   Widget _genderChoices() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBFDFF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD9E7F3)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => setState(() => _gender = 'ذكر'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _gender == 'ذكر' ? AppPalette.royalBlue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
+    return SizedBox(
+      height: 48,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFDFF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFD9E7F3)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => setState(() => _gender = 'ذكر'),
+                child: Container(
+                  height: double.infinity,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _gender == 'ذكر' ? AppPalette.royalBlue : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Text('ذكر', style: TextStyle(
                     color: _gender == 'ذكر' ? Colors.white : AppPalette.deepNavySoft,
                     fontWeight: FontWeight.w800,
@@ -1277,19 +1290,18 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => setState(() => _gender = 'أنثى'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: _gender == 'أنثى' ? AppPalette.roseRed : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
+            const SizedBox(width: 4),
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => setState(() => _gender = 'أنثى'),
+                child: Container(
+                  height: double.infinity,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _gender == 'أنثى' ? AppPalette.roseRed : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Text('أنثى', style: TextStyle(
                     color: _gender == 'أنثى' ? Colors.white : AppPalette.deepNavySoft,
                     fontWeight: FontWeight.w800,
@@ -1298,38 +1310,38 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _religionDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBFDFF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFD9E7F3)),
-      ),
-      child: Row(
-        children: <Widget>[
-          const Text('الديانة: ', style: TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 12)),
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _religionController.text.isEmpty ? 'إسلامية' : _religionController.text,
-                isExpanded: true,
-                items: const <String>['إسلامية', 'مسيحية', 'أخرى']
-                    .map((e) => DropdownMenuItem<String>(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _religionController.text = v);
-                },
-              ),
-            ),
+    return SizedBox(
+      height: 48,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFDFF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFD9E7F3)),
+        ),
+        alignment: Alignment.center,
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _religionController.text.isEmpty ? 'إسلامية' : _religionController.text,
+            isExpanded: true,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w700, fontSize: 13),
+            items: const <String>['إسلامية', 'مسيحية', 'أخرى']
+                .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _religionController.text = v);
+            },
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1391,13 +1403,27 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        color: active ? Colors.white : const Color(0xFF27385F),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: active ? Colors.white : const Color(0xFF27385F),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          active ? 'قسم مفتوح' : 'اضغط للفتح',
+                          style: TextStyle(
+                            color: active ? Colors.white.withOpacity(0.9) : AppPalette.muted,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Icon(active ? Icons.expand_less : Icons.expand_more, color: active ? Colors.white : const Color(0xFF27385F)),
@@ -1419,6 +1445,81 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Wrap(spacing: 12, runSpacing: 12, children: children),
+    );
+  }
+
+  Widget _stackedFields(List<Widget> children) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          for (var i = 0; i < children.length; i++) ...<Widget>[
+            children[i],
+            if (i != children.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _fullWidthField(String label, TextEditingController controller, {int maxLines = 1}) {
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 84),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE1EBF3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(label, style: const TextStyle(color: Color(0xFF7E8D9D), fontSize: 12, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            _simpleInput(controller, hint: label, maxLines: maxLines),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fullWidthDropdown(String label, String value, List<String> options, ValueChanged<String> onChanged) {
+    return SizedBox(
+      width: double.infinity,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 84),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE1EBF3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(label, style: const TextStyle(color: Color(0xFF7E8D9D), fontSize: 12, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: value,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFFBFDFF),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD9E7F3))),
+              ),
+              items: options.map((option) => DropdownMenuItem<String>(value: option, child: Text(option))).toList(),
+              onChanged: (newValue) {
+                if (newValue != null) onChanged(newValue);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2670,6 +2771,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 children: <Widget>[
                   _actionButton('تسجيل الحالة', AppPalette.goldDark, Colors.white, _addDemoAttendance),
                   _actionButton('تحديث القائمة', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => setState(() {})),
+                  _actionButton('تصدير Excel للطالب', const Color(0xFFE7F7EE), AppPalette.leafGreen, () => _exportAttendance(scope: 'student', asPdf: false)),
+                  _actionButton('تصدير PDF للطالب', const Color(0xFFF7F3EA), AppPalette.goldDark, () => _exportAttendance(scope: 'student', asPdf: true)),
+                  _actionButton('تصدير Excel للصف/الشعبة', Colors.white, AppPalette.royalBlue, () => _exportAttendance(scope: 'class', asPdf: false)),
+                  _actionButton('تصدير PDF للصف/الشعبة', Colors.white, AppPalette.deepNavySoft, () => _exportAttendance(scope: 'class', asPdf: true)),
                 ],
               ),
             ],
@@ -5776,6 +5881,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 children: <Widget>[
                   _actionButton('إضافة شهادة', AppPalette.goldDark, Colors.white, _addDemoCertificate),
                   _actionButton('تحديث القائمة', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => setState(() {})),
+                  _actionButton('تصدير شهادة PDF', const Color(0xFFE7F7EE), AppPalette.leafGreen, _exportSelectedStudentCertificatePdf),
                 ],
               ),
             ],
@@ -5833,6 +5939,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               ),
                             ),
                             IconButton(
+                              tooltip: 'تصدير PDF',
+                              onPressed: () => _exportCertificatePdf(student, entry),
+                              icon: const Icon(Icons.picture_as_pdf_outlined, color: AppPalette.leafGreen),
+                            ),
+                            IconButton(
                               onPressed: () {
                                 setState(() => _certificates.remove(entry));
                                 _showSnack('تم حذف الشهادة بنجاح.');
@@ -5849,6 +5960,236 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       ),
     );
   }
+
+
+  Future<void> _exportAttendance({required String scope, required bool asPdf}) async {
+    final current = _selectedStudent ?? (_students.isEmpty ? null : _students.first);
+    if (current == null) {
+      _showSnack('لا يوجد طالب لتصدير الحضور.');
+      return;
+    }
+
+    List<StudentRecord> students;
+    String scopeLabel;
+    if (scope == 'student') {
+      students = <StudentRecord>[current];
+      scopeLabel = 'طالب_${current.fullName}';
+    } else {
+      final grade = _studentGradeDisplay(current);
+      final section = _studentSectionDisplay(current);
+      students = _students.where((s) => _studentGradeDisplay(s) == grade && _studentSectionDisplay(s) == section).toList();
+      scopeLabel = 'صف_${grade}_شعبة_${section}';
+    }
+
+    final rows = <Map<String, String>>[];
+    for (final student in students) {
+      final entries = _attendance.where((e) => e.studentId == student.id).toList();
+      if (entries.isEmpty) {
+        rows.add({
+          'student': student.fullName,
+          'serial': student.serial,
+          'grade': _studentGradeDisplay(student),
+          'section': _studentSectionDisplay(student),
+          'status': '-',
+          'date': '-',
+          'note': 'لا سجلات',
+        });
+      } else {
+        for (final entry in entries) {
+          rows.add({
+            'student': student.fullName,
+            'serial': student.serial,
+            'grade': _studentGradeDisplay(student),
+            'section': _studentSectionDisplay(student),
+            'status': entry.status,
+            'date': entry.date,
+            'note': entry.note,
+          });
+        }
+      }
+    }
+
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final reports = await AppStoragePathsService.instance.reportsDir;
+    if (asPdf) {
+      final doc = pw.Document();
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) => <pw.Widget>[
+            pw.Text('تقرير الحضور والغياب', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 6),
+            pw.Text('النطاق: $scopeLabel', style: const pw.TextStyle(fontSize: 11)),
+            pw.SizedBox(height: 12),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: 0.4),
+              children: <pw.TableRow>[
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
+                  children: <String>['الطالب', 'التسلسل', 'الصف', 'الشعبة', 'الحالة', 'التاريخ', 'ملاحظة']
+                      .map((h) => pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(h, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9))))
+                      .toList(),
+                ),
+                ...rows.map((r) => pw.TableRow(
+                      children: <String>[r['student']!, r['serial']!, r['grade']!, r['section']!, r['status']!, r['date']!, r['note']!]
+                          .map((c) => pw.Padding(padding: const pw.EdgeInsets.all(5), child: pw.Text(c, style: const pw.TextStyle(fontSize: 8))))
+                          .toList(),
+                    )),
+              ],
+            ),
+          ],
+        ),
+      );
+      final bytes = await doc.save();
+      final filePath = p.join(reports.path, 'attendance_${scope}_$stamp.pdf');
+      await File(filePath).writeAsBytes(bytes, flush: true);
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'attendance_$scope.pdf');
+      _showSnack('تم تصدير PDF الحضور: $filePath');
+    } else {
+      final buffer = StringBuffer();
+      buffer.writeln('الطالب,التسلسل,الصف,الشعبة,الحالة,التاريخ,ملاحظة');
+      for (final r in rows) {
+        buffer.writeln('"${r['student']}","${r['serial']}","${r['grade']}","${r['section']}","${r['status']}","${r['date']}","${r['note']}"');
+      }
+      final filePath = p.join(reports.path, 'attendance_${scope}_$stamp.csv');
+      await File(filePath).writeAsString(buffer.toString(), flush: true);
+      _showSnack('تم تصدير Excel/CSV الحضور: $filePath');
+    }
+  }
+
+  Future<void> _exportSelectedStudentCertificatePdf() async {
+    final student = _selectedStudent ?? (_students.isEmpty ? null : _students.first);
+    if (student == null) {
+      _showSnack('لا يوجد طالب.');
+      return;
+    }
+    final entries = _certificates.where((e) => e.studentId == student.id).toList();
+    if (entries.isEmpty) {
+      _showSnack('لا توجد شهادات لهذا الطالب.');
+      return;
+    }
+    await _exportCertificatePdf(student, entries.first);
+  }
+
+  Future<void> _exportCertificatePdf(StudentRecord student, CertificateEntry entry) async {
+    final schoolName = 'مدرسة روز التعليمية';
+    final supervisor = _supervisorNameController.text.trim().isEmpty ? 'مشرف القسم' : _supervisorNameController.text.trim();
+    final manager = _principalNameController.text.trim().isEmpty
+        ? (_secretaryNameController.text.trim().isEmpty ? 'مدير المدرسة' : _secretaryNameController.text.trim())
+        : _principalNameController.text.trim();
+
+    final doc = pw.Document();
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        build: (context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+            children: <pw.Widget>[
+              pw.Container(
+                padding: const pw.EdgeInsets.all(16),
+                decoration: pw.BoxDecoration(
+                  borderRadius: pw.BorderRadius.circular(16),
+                  border: pw.Border.all(color: PdfColors.blueGrey200),
+                ),
+                child: pw.Column(
+                  children: <pw.Widget>[
+                    pw.Text(schoolName, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('شهادة رسمية', style: const pw.TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 28),
+              pw.Center(child: pw.Text(entry.kind, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold))),
+              pw.SizedBox(height: 10),
+              pw.Center(child: pw.Text(entry.title, style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold))),
+              pw.SizedBox(height: 24),
+              pw.Text('تُمنح هذه الشهادة إلى الطالب/ة: ${student.fullName}', style: const pw.TextStyle(fontSize: 13)),
+              pw.SizedBox(height: 8),
+              pw.Text('الصف: ${_studentGradeDisplay(student)}    الشعبة: ${_studentSectionDisplay(student)}', style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 8),
+              pw.Text('التاريخ: ${entry.date}', style: const pw.TextStyle(fontSize: 12)),
+              pw.SizedBox(height: 16),
+              pw.Text(entry.note.isEmpty ? 'مع تمنياتنا بالتوفيق.' : entry.note, style: const pw.TextStyle(fontSize: 12)),
+              pw.Spacer(),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: <pw.Widget>[
+                  pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: <pw.Widget>[
+                    pw.Text('مشرف القسم', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                    pw.SizedBox(height: 6),
+                    pw.Text(supervisor, style: const pw.TextStyle(fontSize: 10)),
+                    pw.SizedBox(height: 16),
+                    pw.Container(width: 120, height: 1, color: PdfColors.grey600),
+                  ]),
+                  pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: <pw.Widget>[
+                    pw.Text('مدير المدرسة', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                    pw.SizedBox(height: 6),
+                    pw.Text(manager, style: const pw.TextStyle(fontSize: 10)),
+                    pw.SizedBox(height: 16),
+                    pw.Container(width: 120, height: 1, color: PdfColors.grey600),
+                  ]),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    final bytes = await doc.save();
+    final reports = await AppStoragePathsService.instance.reportsDir;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final filePath = p.join(reports.path, 'certificate_${student.id}_$stamp.pdf');
+    await File(filePath).writeAsBytes(bytes, flush: true);
+    await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'certificate_${student.fullName}.pdf');
+    _showSnack('تم تصدير الشهادة PDF: $filePath');
+  }
+
+  Future<void> _showAddExamSubjectDialog(StudentRecord student) async {
+    _newExamSubjectController.text = '';
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('➕ إضافة مادة جديدة'),
+          content: SizedBox(
+            width: 420,
+            child: TextField(
+              controller: _newExamSubjectController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'اسم المادة',
+                hintText: 'مثال: الروبوتات',
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('إلغاء')),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(_newExamSubjectController.text.trim()),
+              child: const Text('إضافة'),
+            ),
+          ],
+        );
+      },
+    );
+    final name = (result ?? '').trim();
+    if (name.isEmpty) return;
+    if (_examSubjectsForStudent(student).contains(name) || _customExamSubjects.contains(name)) {
+      _showSnack('المادة موجودة مسبقًا ضمن الخيارات.');
+      return;
+    }
+    setState(() {
+      _customExamSubjects = <String>[..._customExamSubjects, name];
+    });
+    await _persistAll();
+    _showSnack('تمت إضافة المادة "$name" وستظهر ضمن خيارات وخصائص باقي المواد.');
+  }
+
 
   Future<void> _showParentInvitationDialog() async {
     final initialStudent = _selectedStudent ?? _students.first;
@@ -6183,6 +6524,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   List<String> _examSubjectsForStudent(StudentRecord student) {
     final subjects = <String>[];
     for (final subject in _defaultSubjectsForStudent(student)) {
+      _appendExamSubject(subjects, subject);
+    }
+    for (final subject in _customExamSubjects) {
       _appendExamSubject(subjects, subject);
     }
     for (final schedule in _examSchedule) {
@@ -7288,6 +7632,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 runSpacing: 8,
                 children: <Widget>[
                   _actionButton('تحديث البيانات', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => setState(() {})),
+                  _actionButton('➕ إضافة مادة جديدة', const Color(0xFFF7F3EA), AppPalette.goldDark, () => _showAddExamSubjectDialog(student)),
                   if (subjects.isNotEmpty)
                     _actionButton('فتح أول مادة', AppPalette.goldDark, Colors.white, () => _showExamSubjectEditor(student, subjects.first)),
                   _actionButton('تم التدقيق على كل المواد', const Color(0xFFEEF0FF), const Color(0xFF5A62D6), () => _markAllExamSubjectsReviewed(student)),

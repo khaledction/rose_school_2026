@@ -10,6 +10,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -18,6 +19,7 @@ import '../data/seed_data.dart';
 import '../models/school_models.dart';
 import '../models/notification_model.dart';
 import '../services/local_student_file_service.dart';
+import '../services/app_storage_paths_service.dart';
 import '../services/school_database_service.dart';
 import '../services/backup_service.dart';
 import '../services/notification_service.dart';
@@ -297,6 +299,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _receiptCurrency = 'ليرة سورية';
   final List<String> _studentsSortOrder = <String>['الاسم'];
   bool _showOnlyUnreviewedExamSubjects = false;
+  List<String> _customExamSubjects = <String>[];
+  final TextEditingController _newExamSubjectController = TextEditingController();
   String _accountingView = 'installments';
   int? _accountingFilterStudentId;
   String _accountingSectionFilter = 'الكل';
@@ -2093,6 +2097,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     final certificatesJson = await _database.readJson('certificates');
     final examScheduleJson = await _database.readJson('exam_schedule');
     final examResultsJson = await _database.readJson('exam_results');
+    final customExamSubjectsJson = await _database.readJson('custom_exam_subjects');
     final invoicesJson = await _database.readJson('invoices');
     final accountingDonationsJson = await _database.readJson('accounting_donations');
     final accountingAidsJson = await _database.readJson('accounting_aids');
@@ -2141,6 +2146,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         _examSchedule
           ..clear()
           ..addAll(_database.examSchedulesFromJson(jsonDecode(examScheduleJson) as List<dynamic>));
+      }
+      if (customExamSubjectsJson != null) {
+        try {
+          final decoded = jsonDecode(customExamSubjectsJson);
+          if (decoded is List) {
+            _customExamSubjects = decoded.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).toList();
+          }
+        } catch (_) {}
       }
       if (examResultsJson != null) {
         _examResults
@@ -2211,6 +2224,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     await _database.saveJson('certificates', _database.certificatesToJson(_certificates));
     await _database.saveJson('exam_schedule', _database.examSchedulesToJson(_examSchedule));
     await _database.saveJson('exam_results', _database.examResultsToJson(_examResults));
+    await _database.saveJson('custom_exam_subjects', _customExamSubjects);
     await _database.saveJson('invoices', _database.invoicesToJson(_invoices));
     await _database.saveJson('accounting_donations', _database.accountingDonationsToJson(_accountingDonations));
     await _database.saveJson('accounting_aids', _database.accountingAidsToJson(_accountingAids));
@@ -2287,6 +2301,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       _certificateDateController,
       _certificateTitleController,
       _certificateNoteController,
+      _newExamSubjectController,
       _invoiceTitleController,
       _invoiceAmountController,
       _invoiceDateController,
