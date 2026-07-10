@@ -350,7 +350,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (const <String>{'employee_review'}.contains(pageId)) {
       return 'administration';
     }
-    if (const <String>{'students', 'form', 'attendance', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_comms', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
+    if (const <String>{'students', 'form', 'attendance', 'awards', 'discipline', 'certificates', 'documents', 'reports', 'student_card', 'backup', 'parent_comms', 'parent_meetings', 'transport', 'messages'}.contains(pageId)) {
       return 'secretariat';
     }
     if (const <String>{'admin_hub', 'admin_dashboard', 'admin_identity', 'data_center', 'employee_review', 'dashboard'}.contains(pageId)) {
@@ -3053,8 +3053,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           _NavItem('employees', '👥 الموظفين'),
           _NavItem('form', 'استمارة طالب'),
           _NavItem('attendance', 'الحضور والغياب'),
-          _NavItem('discipline', 'المكافآت والعقوبات'),
-          _NavItem('certificates', 'الشهادات'),
+          _NavItem('awards', '🏅 الشهادات والمكافآت والعقوبات'),
           _NavItem('documents', 'الوثائق والمرفقات'),
           _NavItem('reports', 'التقارير'),
           _NavItem('student_card', 'بطاقة الطالب والطباعة'),
@@ -3418,10 +3417,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'أمانة السر، مراسلات أولياء الأمور',
           'إضافة الإشعارات والاستدعاءات والملاحظات المرتبطة بكل طالب وولي أمره.',
         );
+      case 'awards':
       case 'discipline':
+      case 'certificates':
         return const _PageInfo(
-          'المكافآت والعقوبات',
-          'أمانة السر، المكافآت والعقوبات',
+          '🏅 الشهادات والمكافآت والعقوبات',
+          'أمانة السر، الشهادات والمكافآت والعقوبات',
           'تسجيل المكافآت والعقوبات لكل طالب مع التاريخ والملاحظة ونوع الإجراء.',
         );
       case 'certificates':
@@ -3461,6 +3462,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'admin_identity': 'الهوية والاعتماد',
       'attendance': 'الحضور والغياب',
       'donations': 'لوحة المحاسبة',
+      'awards': '🏅 الشهادات والمكافآت والعقوبات',
       'discipline': 'المكافآت والعقوبات',
       'certificates': 'الشهادات',
       'documents': 'الوثائق والمرفقات',
@@ -3722,10 +3724,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         return _dataCenterPageWrapped();
       case 'transport':
         return _transportPage();
+      case 'awards':
+        return _awardsPageWrapped();
       case 'discipline':
-        return _disciplinePage();
+        return _awardsPageWrapped(initialMode: 'discipline');
       case 'certificates':
-        return _certificatesPage();
+        return _awardsPageWrapped(initialMode: 'certificates');
       case 'income_expenses':
         return _incomeExpensesPageWrapped();
       case 'accounting':
@@ -4055,6 +4059,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _certificatesPage() => _certificatesPageSection();
 
+  Widget _awardsPageWrapped({String initialMode = 'certificates'}) {
+    return _AwardsHubPage(
+      initialMode: initialMode,
+      buildCertificates: _certificatesPageSection,
+      buildDiscipline: _disciplinePageSection,
+    );
+  }
+
   Widget _examsPage() => _examsPageSection();
 
   Widget _placeholderPage(String title) => _placeholderPageSection(title);
@@ -4098,3 +4110,79 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 }
 
+
+
+class _AwardsHubPage extends StatefulWidget {
+  const _AwardsHubPage({
+    required this.initialMode,
+    required this.buildCertificates,
+    required this.buildDiscipline,
+  });
+
+  final String initialMode;
+  final Widget Function() buildCertificates;
+  final Widget Function() buildDiscipline;
+
+  @override
+  State<_AwardsHubPage> createState() => _AwardsHubPageState();
+}
+
+class _AwardsHubPageState extends State<_AwardsHubPage> {
+  late String _mode;
+
+  @override
+  void initState() {
+    super.initState();
+    _mode = widget.initialMode == 'discipline' ? 'discipline' : 'certificates';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.96),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppPalette.line),
+          ),
+          child: Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text(
+                  '🏅 الشهادات والمكافآت والعقوبات',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                ),
+              ),
+              SizedBox(
+                width: 280,
+                child: DropdownButtonFormField<String>(
+                  value: _mode,
+                  decoration: InputDecoration(
+                    labelText: 'اختر القسم',
+                    filled: true,
+                    fillColor: const Color(0xFFFBFDFF),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: const <DropdownMenuItem<String>>[
+                    DropdownMenuItem(value: 'certificates', child: Text('إضافة / إدارة الشهادات')),
+                    DropdownMenuItem(value: 'discipline', child: Text('المكافآت والعقوبات')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _mode = v);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: _mode == 'discipline' ? widget.buildDiscipline() : widget.buildCertificates(),
+        ),
+      ],
+    );
+  }
+}

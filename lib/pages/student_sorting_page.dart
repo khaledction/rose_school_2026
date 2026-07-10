@@ -167,6 +167,106 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
     );
   }
 
+  Future<void> _showRankingExportDialog({required bool asPdf}) async {
+    String mode = _sortMode; // grade | grade_section
+    String grade = _selectedGrade;
+    String section = _selectedSection;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final grades = _availableGrades;
+            final sections = grade.isEmpty
+                ? <String>[]
+                : widget.students
+                    .where((s) => s.grade.trim() == grade)
+                    .map((s) => s.section.trim())
+                    .where((s) => s.isNotEmpty && s != '?')
+                    .toSet()
+                    .toList()
+              ..sort();
+            return AlertDialog(
+              title: Text(asPdf ? 'تصدير النتائج PDF' : 'تصدير النتائج Excel'),
+              content: SizedBox(
+                width: 420,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    DropdownButtonFormField<String>(
+                      value: mode,
+                      decoration: const InputDecoration(labelText: 'نطاق التصدير'),
+                      items: const [
+                        DropdownMenuItem(value: 'grade', child: Text('حسب الصفوف')),
+                        DropdownMenuItem(value: 'grade_section', child: Text('حسب الصف والشعبة')),
+                      ],
+                      onChanged: (v) => setDialogState(() => mode = v ?? 'grade'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: grade.isEmpty ? null : grade,
+                      decoration: const InputDecoration(labelText: 'الصف (اختياري = الكل)'),
+                      items: [
+                        const DropdownMenuItem<String>(value: '', child: Text('كل الصفوف')),
+                        ...grades.map((g) => DropdownMenuItem(value: g, child: Text('الصف $g'))),
+                      ],
+                      onChanged: (v) => setDialogState(() {
+                        grade = v ?? '';
+                        section = '';
+                      }),
+                    ),
+                    if (mode == 'grade_section') ...<Widget>[
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        value: section.isEmpty ? null : section,
+                        decoration: const InputDecoration(labelText: 'الشعبة (اختياري = الكل)'),
+                        items: [
+                          const DropdownMenuItem<String>(value: '', child: Text('كل الشعب')),
+                          ...sections.map((s) => DropdownMenuItem(value: s, child: Text('شعبة $s'))),
+                        ],
+                        onChanged: (v) => setDialogState(() => section = v ?? ''),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    // temporarily apply export filters
+                    final oldMode = _sortMode;
+                    final oldGrade = _selectedGrade;
+                    final oldSection = _selectedSection;
+                    setState(() {
+                      _sortMode = mode;
+                      _selectedGrade = grade;
+                      _selectedSection = section;
+                      _applySort();
+                    });
+                    if (asPdf) {
+                      await _exportPdf();
+                    } else {
+                      await _exportExcelCsv();
+                    }
+                    setState(() {
+                      _sortMode = oldMode;
+                      _selectedGrade = oldGrade;
+                      _selectedSection = oldSection;
+                      _applySort();
+                    });
+                  },
+                  child: const Text('تصدير'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _exportPdf() async {
     if (_ranked.isEmpty) {
       _showSnack('لا توجد بيانات للتصدير.');
@@ -183,24 +283,42 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
       doc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(28),
-          build: (context) => <pw.Widget>[
-            pw.Row(
+          margin: const pw.EdgeInsets.fromLTRB(24, 28, 24, 28),
+          header: (context) => pw.Container(
+            margin: const pw.EdgeInsets.only(bottom: 10),
+            padding: const pw.EdgeInsets.only(bottom: 8),
+            decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey200))),
+            child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: <pw.Widget>[
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: <pw.Widget>[
-                    pw.Text(widget.schoolName, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('النتائج والمعدلات', style: const pw.TextStyle(fontSize: 12)),
-                    pw.Text('$scope • $order', style: const pw.TextStyle(fontSize: 10)),
-                  ],
-                ),
-                pw.Text('Rose School 2026', style: const pw.TextStyle(fontSize: 10)),
+                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  pw.Text(widget.schoolName, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('النتائج والمعدلات • $scope • $order', style: const pw.TextStyle(fontSize: 9)),
+                ]),
+                pw.Text('Rose School 2026', style: const pw.TextStyle(fontSize: 9)),
               ],
             ),
-            pw.SizedBox(height: 16),
+          ),
+          footer: (context) => pw.Container(
+            margin: const pw.EdgeInsets.only(top: 8),
+            padding: const pw.EdgeInsets.only(top: 8),
+            decoration: const pw.BoxDecoration(border: pw.Border(top: pw.BorderSide(color: PdfColors.blueGrey200))),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: <pw.Widget>[
+                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  pw.Text('مشرف القسم', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(widget.sectionSupervisorName, style: const pw.TextStyle(fontSize: 8)),
+                ]),
+                pw.Text('صفحة ${context.pageNumber} / ${context.pagesCount}', style: const pw.TextStyle(fontSize: 8)),
+                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                  pw.Text('مدير المدرسة', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(widget.schoolManagerName, style: const pw.TextStyle(fontSize: 8)),
+                ]),
+              ],
+            ),
+          ),
+          build: (context) => <pw.Widget>[
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: 0.5),
               columnWidths: const {

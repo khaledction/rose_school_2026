@@ -1050,11 +1050,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Expanded(child: _compactLabeledField('الجنس', _genderChoices())),
-                          const SizedBox(width: 10),
-                          Expanded(child: _compactLabeledField('الديانة', _religionDropdown())),
-                          const SizedBox(width: 10),
-                          Expanded(child: _compactLabeledField('زمرة الدم', _bloodTypeChoices())),
+                          Expanded(flex: 3, child: _compactLabeledField('الجنس', _genderChoices())),
+                          const SizedBox(width: 8),
+                          Expanded(flex: 2, child: _compactLabeledField('الديانة', _religionDropdown())),
+                          const SizedBox(width: 8),
+                          Expanded(flex: 5, child: _compactLabeledField('زمرة الدم', _bloodTypeChoices())),
                         ],
                       ),
                     ],
@@ -1321,7 +1321,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       height: 48,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFFBFDFF),
           borderRadius: BorderRadius.circular(12),
@@ -2771,10 +2771,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 children: <Widget>[
                   _actionButton('تسجيل الحالة', AppPalette.goldDark, Colors.white, _addDemoAttendance),
                   _actionButton('تحديث القائمة', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => setState(() {})),
-                  _actionButton('تصدير Excel للطالب', const Color(0xFFE7F7EE), AppPalette.leafGreen, () => _exportAttendance(scope: 'student', asPdf: false)),
-                  _actionButton('تصدير PDF للطالب', const Color(0xFFF7F3EA), AppPalette.goldDark, () => _exportAttendance(scope: 'student', asPdf: true)),
-                  _actionButton('تصدير Excel للصف/الشعبة', Colors.white, AppPalette.royalBlue, () => _exportAttendance(scope: 'class', asPdf: false)),
-                  _actionButton('تصدير PDF للصف/الشعبة', Colors.white, AppPalette.deepNavySoft, () => _exportAttendance(scope: 'class', asPdf: true)),
+                  _actionButton('تصدير Excel', const Color(0xFFE7F7EE), AppPalette.leafGreen, () => _showAttendanceExportDialog(asPdf: false)),
+                  _actionButton('تصدير PDF', const Color(0xFFF7F3EA), AppPalette.goldDark, () => _showAttendanceExportDialog(asPdf: true)),
                 ],
               ),
             ],
@@ -5962,22 +5960,128 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
 
-  Future<void> _exportAttendance({required String scope, required bool asPdf}) async {
+  Future<void> _showAttendanceExportDialog({required bool asPdf}) async {
     final current = _selectedStudent ?? (_students.isEmpty ? null : _students.first);
     if (current == null) {
-      _showSnack('لا يوجد طالب لتصدير الحضور.');
+      _showSnack('لا يوجد طلاب لتصدير الحضور.');
       return;
     }
+    String mode = 'student'; // student | class
+    String selectedGrade = _studentGradeDisplay(current);
+    String selectedSection = _studentSectionDisplay(current);
+    int selectedStudentId = current.id;
+    final grades = _studentGradeOptions();
+    if (!grades.contains(selectedGrade) && grades.isNotEmpty) selectedGrade = grades.first;
 
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final sections = <String>{'الكل'};
+            for (final s in _students) {
+              if (_studentGradeDisplay(s) == selectedGrade) {
+                sections.add(_studentSectionDisplay(s));
+              }
+            }
+            final sectionList = sections.toList();
+            if (!sectionList.contains(selectedSection)) selectedSection = 'الكل';
+            final studentsForPick = _students.where((s) {
+              final g = _studentGradeDisplay(s) == selectedGrade;
+              final sec = selectedSection == 'الكل' || _studentSectionDisplay(s) == selectedSection;
+              return g && sec;
+            }).toList();
+            if (studentsForPick.isNotEmpty && !studentsForPick.any((s) => s.id == selectedStudentId)) {
+              selectedStudentId = studentsForPick.first.id;
+            }
+
+            return AlertDialog(
+              title: Text(asPdf ? 'تصدير الحضور PDF' : 'تصدير الحضور Excel'),
+              content: SizedBox(
+                width: 460,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    DropdownButtonFormField<String>(
+                      value: mode,
+                      decoration: const InputDecoration(labelText: 'نطاق التصدير'),
+                      items: const [
+                        DropdownMenuItem(value: 'student', child: Text('طالب محدد')),
+                        DropdownMenuItem(value: 'class', child: Text('صف وشعبة')),
+                      ],
+                      onChanged: (v) => setDialogState(() => mode = v ?? 'student'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: grades.contains(selectedGrade) ? selectedGrade : (grades.isEmpty ? null : grades.first),
+                      decoration: const InputDecoration(labelText: 'الصف'),
+                      items: grades.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                      onChanged: (v) => setDialogState(() {
+                        selectedGrade = v ?? selectedGrade;
+                        selectedSection = 'الكل';
+                      }),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedSection,
+                      decoration: const InputDecoration(labelText: 'الشعبة'),
+                      items: sectionList.map((s) => DropdownMenuItem(value: s, child: Text(s == 'الكل' ? 'كل الشعب' : s))).toList(),
+                      onChanged: (v) => setDialogState(() => selectedSection = v ?? 'الكل'),
+                    ),
+                    if (mode == 'student') ...<Widget>[
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<int>(
+                        value: selectedStudentId,
+                        decoration: const InputDecoration(labelText: 'الطالب'),
+                        items: studentsForPick.map((s) => DropdownMenuItem(value: s.id, child: Text(s.fullName))).toList(),
+                        onChanged: (v) => setDialogState(() => selectedStudentId = v ?? selectedStudentId),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogContext);
+                    await _exportAttendance(
+                      asPdf: asPdf,
+                      mode: mode,
+                      grade: selectedGrade,
+                      section: selectedSection,
+                      studentId: selectedStudentId,
+                    );
+                  },
+                  child: const Text('تصدير'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _exportAttendance({
+    required bool asPdf,
+    required String mode,
+    required String grade,
+    required String section,
+    required int studentId,
+  }) async {
     List<StudentRecord> students;
     String scopeLabel;
-    if (scope == 'student') {
-      students = <StudentRecord>[current];
-      scopeLabel = 'طالب_${current.fullName}';
+    if (mode == 'student') {
+      final student = _studentById(studentId) ?? _selectedStudent ?? _students.first;
+      students = <StudentRecord>[student];
+      scopeLabel = 'طالب_${student.fullName}';
     } else {
-      final grade = _studentGradeDisplay(current);
-      final section = _studentSectionDisplay(current);
-      students = _students.where((s) => _studentGradeDisplay(s) == grade && _studentSectionDisplay(s) == section).toList();
+      students = _students.where((s) {
+        final gOk = _studentGradeDisplay(s) == grade;
+        final sOk = section == 'الكل' || _studentSectionDisplay(s) == section;
+        return gOk && sOk;
+      }).toList();
       scopeLabel = 'صف_${grade}_شعبة_${section}';
     }
 
@@ -6017,11 +6121,20 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(24),
+          header: (context) => pw.Column(children: [
+            pw.Text('مدرسة روز التعليمية', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.Text('تقرير الحضور والغياب • $scopeLabel', style: const pw.TextStyle(fontSize: 10)),
+            pw.SizedBox(height: 8),
+          ]),
+          footer: (context) => pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('مشرف القسم: ${_supervisorNameController.text.isEmpty ? 'مشرف القسم' : _supervisorNameController.text}', style: const pw.TextStyle(fontSize: 9)),
+              pw.Text('صفحة ${context.pageNumber}/${context.pagesCount}', style: const pw.TextStyle(fontSize: 9)),
+              pw.Text('مدير المدرسة: ${_principalNameController.text.isEmpty ? 'مدير المدرسة' : _principalNameController.text}', style: const pw.TextStyle(fontSize: 9)),
+            ],
+          ),
           build: (context) => <pw.Widget>[
-            pw.Text('تقرير الحضور والغياب', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 6),
-            pw.Text('النطاق: $scopeLabel', style: const pw.TextStyle(fontSize: 11)),
-            pw.SizedBox(height: 12),
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: 0.4),
               children: <pw.TableRow>[
@@ -6042,9 +6155,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         ),
       );
       final bytes = await doc.save();
-      final filePath = p.join(reports.path, 'attendance_${scope}_$stamp.pdf');
+      final filePath = p.join(reports.path, 'attendance_${mode}_$stamp.pdf');
       await File(filePath).writeAsBytes(bytes, flush: true);
-      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'attendance_$scope.pdf');
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: 'attendance_$mode.pdf');
       _showSnack('تم تصدير PDF الحضور: $filePath');
     } else {
       final buffer = StringBuffer();
@@ -6052,11 +6165,12 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       for (final r in rows) {
         buffer.writeln('"${r['student']}","${r['serial']}","${r['grade']}","${r['section']}","${r['status']}","${r['date']}","${r['note']}"');
       }
-      final filePath = p.join(reports.path, 'attendance_${scope}_$stamp.csv');
+      final filePath = p.join(reports.path, 'attendance_${mode}_$stamp.csv');
       await File(filePath).writeAsString(buffer.toString(), flush: true);
       _showSnack('تم تصدير Excel/CSV الحضور: $filePath');
     }
   }
+
 
   Future<void> _exportSelectedStudentCertificatePdf() async {
     final student = _selectedStudent ?? (_students.isEmpty ? null : _students.first);
@@ -7609,6 +7723,34 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
+  Widget _examActionChip(String label, IconData icon, Color bg, Color fg, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        hoverColor: AppPalette.gold.withOpacity(0.14),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppPalette.line),
+            boxShadow: const [BoxShadow(color: Color.fromRGBO(18, 58, 120, 0.06), blurRadius: 8, offset: Offset(0, 3))],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(icon, size: 16, color: fg),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _examsPageSection() {
     final student = _selectedStudent ?? _students.first;
     final subjects = _examSubjectsForStudent(student);
@@ -7623,39 +7765,33 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             children: <Widget>[
               const Expanded(
                 child: Text(
-                  '📝 الامتحانات',
+                  '📚 الدرجات والجلاء المدرسي',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                 ),
               ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  _actionButton('تحديث البيانات', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => setState(() {})),
-                  _actionButton('➕ إضافة مادة جديدة', const Color(0xFFF7F3EA), AppPalette.goldDark, () => _showAddExamSubjectDialog(student)),
-                  if (subjects.isNotEmpty)
-                    _actionButton('فتح أول مادة', AppPalette.goldDark, Colors.white, () => _showExamSubjectEditor(student, subjects.first)),
-                  _actionButton('تم التدقيق على كل المواد', const Color(0xFFEEF0FF), const Color(0xFF5A62D6), () => _markAllExamSubjectsReviewed(student)),
-                  _actionButton(
-                    _showOnlyUnreviewedExamSubjects ? 'إظهار كل المواد' : 'المواد غير المدققة فقط',
-                    _showOnlyUnreviewedExamSubjects ? const Color(0xFFEEF0FF) : Colors.white,
-                    _showOnlyUnreviewedExamSubjects ? const Color(0xFF5A62D6) : AppPalette.deepNavySoft,
-                    () => setState(() => _showOnlyUnreviewedExamSubjects = !_showOnlyUnreviewedExamSubjects),
-                  ),
-                  _actionButton(
-                    _isExamReportExporting ? 'جارٍ تجهيز المعاينة...' : 'معاينة الجلاء',
-                    const Color(0xFFF7F3EA),
-                    AppPalette.goldDark,
-                    _isExamReportExporting ? () {} : _previewExamReport,
-                  ),
-                  _actionButton(
-                    _isExamReportExporting ? 'جارٍ تجهيز الطباعة...' : 'طباعة الجلاء',
-                    const Color(0xFFE7F7EE),
-                    AppPalette.leafGreen,
-                    _isExamReportExporting ? () {} : _printExamReport,
-                  ),
-                  _actionButton('طباعة الجلاءات', Colors.white, AppPalette.deepNavySoft, _showBulkExamReportsDialog),
-                ],
+              Flexible(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: <Widget>[
+                    _examActionChip('تحديث', Icons.refresh, AppPalette.sky, AppPalette.deepNavySoft, () => setState(() {})),
+                    _examActionChip('إضافة مادة', Icons.add, AppPalette.ivory, AppPalette.goldDark, () => _showAddExamSubjectDialog(student)),
+                    if (subjects.isNotEmpty)
+                      _examActionChip('أول مادة', Icons.menu_book, AppPalette.goldDark, Colors.white, () => _showExamSubjectEditor(student, subjects.first)),
+                    _examActionChip('تدقيق الكل', Icons.verified, const Color(0xFF123A78), Colors.white, () => _markAllExamSubjectsReviewed(student)),
+                    _examActionChip(
+                      _showOnlyUnreviewedExamSubjects ? 'كل المواد' : 'غير المدققة',
+                      Icons.filter_alt,
+                      _showOnlyUnreviewedExamSubjects ? AppPalette.roseRed : Colors.white,
+                      _showOnlyUnreviewedExamSubjects ? Colors.white : AppPalette.deepNavySoft,
+                      () => setState(() => _showOnlyUnreviewedExamSubjects = !_showOnlyUnreviewedExamSubjects),
+                    ),
+                    _examActionChip(_isExamReportExporting ? '...' : 'معاينة الجلاء', Icons.visibility, AppPalette.ivory, AppPalette.goldDark, _isExamReportExporting ? () {} : _previewExamReport),
+                    _examActionChip(_isExamReportExporting ? '...' : 'طباعة الجلاء', Icons.print, AppPalette.leafGreen, Colors.white, _isExamReportExporting ? () {} : _printExamReport),
+                    _examActionChip('طباعة جماعية', Icons.library_books, AppPalette.royalBlue, Colors.white, _showBulkExamReportsDialog),
+                  ],
+                ),
               ),
             ],
           ),
