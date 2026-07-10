@@ -3735,7 +3735,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _buildStats() {
     // Hide top people cards on pages that already have focused internal content.
-    if (_currentPage == 'student_sorting' || _currentPage == 'documents' || _currentPage == 'student_card') {
+    if (_currentPage == 'student_sorting' ||
+        _currentPage == 'documents' ||
+        _currentPage == 'student_card' ||
+        _currentPage == 'students') {
       return const SizedBox.shrink();
     }
 

@@ -345,10 +345,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _studentsPageSection() {
-    final total = _filteredStudents.length;
-    final males = _filteredStudents.where((s) => s.gender == 'ذكر').length;
-    final females = _filteredStudents.where((s) => s.gender == 'أنثى').length;
-    final activeStudents = _filteredStudents.where((s) => s.status == 'نشط').length;
     return Column(
       children: <Widget>[
         Row(
@@ -418,17 +414,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: <Widget>[
-            _summaryTile('إجمالي الطلاب', '$total', AppPalette.goldDark),
-            const SizedBox(width: 10),
-            _summaryTile('الذكور', '$males', AppPalette.royalBlue),
-            const SizedBox(width: 10),
-            _summaryTile('الإناث', '$females', AppPalette.roseRed),
-            const SizedBox(width: 10),
-            _summaryTile('نشطون', '$activeStudents', AppPalette.leafGreen),
-          ],
-        ),
+        _studentsGradeOverviewPanel(_filteredStudents),
         const SizedBox(height: 12),
         Expanded(
           child: Container(
@@ -477,6 +463,162 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           ),
         ),
       ],
+    );
+  }
+
+
+  Widget _studentsGradeOverviewPanel(List<StudentRecord> students) {
+    final grades = students
+        .map(_studentGradeDisplay)
+        .where((g) => g.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort((a, b) {
+        final ai = int.tryParse(a) ?? 999;
+        final bi = int.tryParse(b) ?? 999;
+        if (ai != bi) return ai.compareTo(bi);
+        return a.compareTo(b);
+      });
+
+    if (grades.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppPalette.line),
+        ),
+        child: const Text('لا توجد بيانات صفوف لعرضها.', style: TextStyle(color: AppPalette.muted)),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.97),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppPalette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'توزيع الطلاب حسب الصفوف والشعب',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 168,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: grades.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final grade = grades[index];
+                final gradeStudents = students.where((s) => _studentGradeDisplay(s) == grade).toList();
+                final total = gradeStudents.length;
+                final males = gradeStudents.where((s) => s.gender == 'ذكر').length;
+                final females = gradeStudents.where((s) => s.gender == 'أنثى').length;
+                final sections = <String, List<StudentRecord>>{};
+                for (final s in gradeStudents) {
+                  final sec = _studentSectionDisplay(s);
+                  sections.putIfAbsent(sec, () => <StudentRecord>[]).add(s);
+                }
+                final sectionKeys = sections.keys.toList()..sort();
+
+                return Container(
+                  width: 250,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: <Color>[Color(0xFFF8FBFF), Color(0xFFF7F3EA)],
+                    ),
+                    border: Border.all(color: const Color(0xFFE1EBF3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppPalette.royalBlue,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text('الصف $grade', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+                          ),
+                          const Spacer(),
+                          Text('$total', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: <Widget>[
+                          _miniCountPill('ذكور', males, AppPalette.royalBlue, const Color(0xFFEDF6FF)),
+                          const SizedBox(width: 8),
+                          _miniCountPill('إناث', females, AppPalette.roseRed, const Color(0xFFFDECEE)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: sectionKeys.map((sec) {
+                              final list = sections[sec]!;
+                              final m = list.where((s) => s.gender == 'ذكر').length;
+                              final f = list.where((s) => s.gender == 'أنثى').length;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppPalette.line),
+                                ),
+                                child: Text(
+                                  'شعبة $sec • ${list.length} (♂$m / ♀$f)',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniCountPill(String label, int value, Color fg, Color bg) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: fg.withOpacity(0.25)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w800, fontSize: 11)),
+            const Spacer(),
+            Text('$value', style: TextStyle(color: fg, fontWeight: FontWeight.w900, fontSize: 14)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2236,33 +2378,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   ],
                 ),
                 const SizedBox(height: 18),
-                if (student.studentCardPdfPath.isNotEmpty || student.studentCardPngPath.isNotEmpty)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7F3EA),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE8DDBF)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Text(
-                          'آخر ملفات إخراج محفوظة في SQLite',
-                          style: TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 8),
-                        if (student.studentCardPdfPath.isNotEmpty)
-                          SelectableText('PDF: ${student.studentCardPdfPath}', style: const TextStyle(fontSize: 12, color: AppPalette.text)),
-                        if (student.studentCardPngPath.isNotEmpty) ...<Widget>[
-                          const SizedBox(height: 6),
-                          SelectableText('PNG: ${student.studentCardPngPath}', style: const TextStyle(fontSize: 12, color: AppPalette.text)),
-                        ],
-                      ],
-                    ),
-                  ),
                 RepaintBoundary(
                   key: _studentCardBoundaryKey,
                   child: _studentCardCanvas(student),
@@ -2276,140 +2391,188 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _studentCardCanvas(StudentRecord student) {
-    return SizedBox(
-      width: 428, // ID-1 standard 85.6×54 mm visual scale for screen preview
-      child: AspectRatio(
-      aspectRatio: 85.6 / 54.0,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFDCE7F2), width: 1.2),
-          color: Colors.white,
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Color.fromRGBO(20, 40, 90, 0.08),
-              blurRadius: 18,
-              offset: Offset(0, 8),
+    // Standard ID-1 visual (85.6 × 54 mm) with clearer readable layout.
+    return Center(
+      child: SizedBox(
+        width: 460,
+        child: AspectRatio(
+          aspectRatio: 85.6 / 54.0,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFD0DCEC), width: 1.2),
+              color: Colors.white,
+              boxShadow: const <BoxShadow>[
+                BoxShadow(color: Color.fromRGBO(20, 40, 90, 0.10), blurRadius: 18, offset: Offset(0, 8)),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final cardWidth = constraints.maxWidth;
-              final cardHeight = constraints.maxHeight;
-              final photoSize = cardWidth * 0.31;
-              final whiteBandTop = cardHeight * 0.405;
-              final whiteBandBottom = cardHeight * 0.115;
-              return Stack(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Column(
                 children: <Widget>[
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: cardHeight * 0.46,
-                    child: _studentCardPatternBand(top: true),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: cardHeight * 0.12,
-                    child: _studentCardPatternBand(top: false),
-                  ),
-                  Positioned(
-                    top: whiteBandTop,
-                    left: 0,
-                    right: 0,
-                    bottom: whiteBandBottom,
-                    child: Container(color: Colors.white),
-                  ),
-                  Positioned(
-                    top: cardHeight * 0.058,
-                    right: cardWidth * 0.055,
-                    left: cardWidth * 0.47,
+                  // Header band
+                  Container(
+                    height: 74,
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: <Color>[Color(0xFF123A78), Color(0xFF1E7A79), Color(0xFF2F9A8E)],
+                      ),
+                    ),
                     child: Row(
                       children: <Widget>[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(999),
-                          child: Image.asset('assets/logo.jpg', width: 50, height: 50, fit: BoxFit.cover),
+                          child: Image.asset('image/logo.jpg', width: 46, height: 46, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Image.asset('assets/logo.jpg', width: 46, height: 46, fit: BoxFit.cover),
+                          ),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
+                        const Expanded(
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const <Widget>[
-                              Text(
-                                'مدرسة روز التعليمية',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16.5,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
+                            children: <Widget>[
+                              Text('مدرسة روز التعليمية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                              SizedBox(height: 2),
+                              Text('البطاقة المدرسية', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
                             ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            student.serial.isEmpty ? '—' : student.serial,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Positioned(
-                    top: cardHeight * 0.15,
-                    right: cardWidth * 0.06,
-                    left: cardWidth * 0.445,
-                    child: FittedBox(
-                      alignment: Alignment.centerLeft,
-                      fit: BoxFit.scaleDown,
-                      child: const Text(
-                        'البطاقة المدرسية',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: .2,
-                          height: 1,
-                        ),
+                  // Body
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                      child: Row(
+                        children: <Widget>[
+                          // Photo
+                          Container(
+                            width: 108,
+                            height: 108,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFD9E7F3), width: 3),
+                              color: const Color(0xFFF4F8FC),
+                            ),
+                            child: ClipOval(
+                              child: _fileStorage.fileExistsSync(student.studentPhotoPath)
+                                  ? Image.file(File(student.studentPhotoPath), fit: BoxFit.cover)
+                                  : Center(child: Image.asset('image/logo.jpg', width: 42, height: 42, fit: BoxFit.contain)),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                Text(
+                                  student.fullName.isEmpty ? '—' : student.fullName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                                ),
+                                const SizedBox(height: 8),
+                                _cardInfoLine('الصف', _studentGradeDisplay(student)),
+                                _cardInfoLine('الشعبة', _studentSectionDisplay(student)),
+                                _cardInfoLine('السنة الدراسية', student.schoolYear.isEmpty ? _currentAcademicYear() : student.schoolYear),
+                                _cardInfoLine('الجنس', student.gender.isEmpty ? '—' : student.gender),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          // QR
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Container(
+                                width: 78,
+                                height: 78,
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppPalette.line),
+                                ),
+                                child: _fileStorage.fileExistsSync(student.qrFilePath)
+                                    ? (student.qrFilePath.toLowerCase().endsWith('.svg')
+                                        ? SvgPicture.file(File(student.qrFilePath), fit: BoxFit.contain)
+                                        : Image.file(File(student.qrFilePath), fit: BoxFit.contain))
+                                    : const Center(child: Icon(Icons.qr_code_2, color: AppPalette.muted)),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text('QR', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppPalette.muted)),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  Positioned(
-                    left: cardWidth * 0.058,
-                    top: cardHeight * 0.135,
-                    child: _studentCardPhoto(student, photoSize),
-                  ),
-                  Positioned(
-                    top: whiteBandTop + 18,
-                    right: cardWidth * 0.06,
-                    left: cardWidth * 0.45,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // Footer
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: const Color(0xFFF7F3EA),
+                    child: Row(
                       children: <Widget>[
-                        _studentCardInfoRow('الاسم', _studentTripleName(student)),
-                        _studentCardInfoRow('الصف', _studentGradeDisplay(student)),
-                        _studentCardInfoRow('الشعبة', _studentSectionDisplay(student)),
-                        _studentCardInfoRow('السنة الدراسية', student.schoolYear.isEmpty ? _currentAcademicYear() : student.schoolYear),
-                        _studentCardInfoRow('الهواية', _studentHobbySummary(student)),
-                        _studentCardInfoRow('الرقم العام', student.serial),
+                        const Icon(Icons.verified_outlined, size: 14, color: AppPalette.goldDark),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'الرقم العام: ${student.serial.isEmpty ? '—' : student.serial}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
+                          ),
+                        ),
+                        Text(
+                          student.status.isEmpty ? '—' : student.status,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppPalette.goldDark),
+                        ),
                       ],
                     ),
                   ),
-                  Positioned(
-                    left: cardWidth * 0.065,
-                    bottom: whiteBandBottom + 18,
-                    child: _studentCardBarcode(student, cardWidth * 0.35),
-                  ),
-                  Positioned(
-                    left: cardWidth * 0.43,
-                    bottom: whiteBandBottom + 8,
-                    child: _studentCardQrBadge(student, cardWidth * 0.118),
-                  ),
                 ],
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _cardInfoLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 88,
+            child: Text(label, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 12)),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '—' : value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+          ),
+        ],
       ),
     );
   }
