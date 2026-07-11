@@ -3060,6 +3060,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               value: student.id,
+              isExpanded: true,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: const Color(0xFFFBFDFF),
@@ -3072,11 +3073,24 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
                 ),
               ),
-              items: _students.map((s) => DropdownMenuItem<int>(value: s.id, child: Text(s.fullName))).toList(),
+              items: _students
+                  .map(
+                    (s) => DropdownMenuItem<int>(
+                      value: s.id,
+                      child: Text(
+                        '${s.fullName}  •  ${_studentGradeDisplay(s)}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: (value) {
                 if (value == null) return;
                 final selected = _students.firstWhere((s) => s.id == value);
-                setState(() => _loadStudent(selected));
+                setState(() {
+                  _examCycleOverride = null; // auto model from the new student's grade
+                  _loadStudent(selected);
+                });
               },
             ),
           ],
@@ -4021,17 +4035,23 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Future<void> _showInstallmentPresetDialog({String presetType = 'normal'}) async {
-    final student = _selectedStudent ?? _students.first;
-    final items = _studentInvoices(student.id);
+    if (_students.isEmpty) {
+      _showSnack('لا يوجد طلاب لإضافة قسط.');
+      return;
+    }
 
-    String title = '';
-    double presetAmount = 0;
+    StudentRecord student = _selectedStudent ?? _students.first;
+    int selectedStudentId = student.id;
+
+    String emoji = '💵';
+    String title = 'قسط عادي';
     String note = '';
+    double unitAmount = 0;
 
     final monthly = double.tryParse(_installmentMonthlyController.text.trim()) ?? 20000;
     final transportMonthly = double.tryParse(_transportMonthlyController.text.trim()) ?? 5000;
     final grantAmount = double.tryParse(_transportGrantController.text.trim()) ?? 25000;
-    final count = int.tryParse(_installmentCountController.text.trim()) ?? 10;
+    final maxCount = (int.tryParse(_installmentCountController.text.trim()) ?? 10).clamp(1, 36);
     final exemptionMonths = int.tryParse(_exemptionMonthsController.text.trim()) ?? 3;
     final currency = const <String>['ليرة سورية', 'دولار', 'يورو'].contains(_installmentCurrency)
         ? _installmentCurrency
@@ -4039,113 +4059,237 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
     switch (presetType) {
       case 'normal':
+        emoji = '💵';
         title = 'قسط عادي';
-        presetAmount = monthly * count;
+        unitAmount = monthly;
+        note = 'كل ضغطة تضيف قسطًا واحدًا فقط بالقيمة المحددة من الإدارة.';
         break;
       case 'transport':
-        title = 'قسط + مواصلات';
-        presetAmount = (monthly + transportMonthly) * count;
-        note = 'تشمل المواصلات';
+        emoji = '💵🚌';
+        title = 'قسط مع مواصلات';
+        unitAmount = monthly + transportMonthly;
+        note = 'كل ضغطة تضيف قسطًا واحدًا = (قسط شهري + مواصلات) من إعدادات الإدارة.';
         break;
       case 'grant':
-        title = 'قسط + منحة مواصلات';
-        presetAmount = (monthly + grantAmount) * count;
-        note = 'منحة مواصلات - إعفاء $exemptionMonths شهراً';
+        emoji = '💵🚌🎁';
+        title = 'قسط مع منحة مواصلات';
+        unitAmount = monthly + grantAmount;
+        note = 'كل ضغطة تضيف قسطًا واحدًا = (قسط شهري + منحة مواصلات). إعفاء $exemptionMonths شهراً من الإدارة.';
         break;
     }
 
-    final displayTitle = '$title${note.isNotEmpty ? ' ($note)' : ''}';
-    final studentReceipts = _studentReceipts(student.id);
-    final paidTotal = studentReceipts.fold<double>(0, (sum, e) => sum + e.amount);
+    final titlePrefix = '$emoji $title';
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Row(
-            children: const <Widget>[
-              Icon(Icons.lock_outline, color: AppPalette.goldDark),
-              SizedBox(width: 10),
-              Expanded(child: Text('عرض القسط (للقراءة فقط)')),
-            ],
-          ),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('الطالب: ${student.fullName}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
-                const SizedBox(height: 8),
-                Text('نوع القسط: $displayTitle', style: const TextStyle(color: AppPalette.muted, height: 1.6)),
-                const SizedBox(height: 6),
-                Text('المبلغ المعتمد: ${presetAmount.toStringAsFixed(0)} $currency', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                const SizedBox(height: 6),
-                Text('إجمالي الدفعات المسجّلة للطالب: ${paidTotal.toStringAsFixed(0)} $currency', style: const TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 12),
-                const Text('ملاحظة: لا يمكن تعديل القسط من المحاسبة. لإضافة مبلغ مدفوع استخدم زر «دفعة».', style: TextStyle(color: AppPalette.muted, height: 1.6, fontSize: 12)),
-                if (items.isNotEmpty) ...<Widget>[
-                  const SizedBox(height: 14),
-                  const Text('أقساط مسجّلة سابقاً', style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 160,
-                    child: ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final entry = items[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            student = _students.firstWhere((s) => s.id == selectedStudentId, orElse: () => _students.first);
+            final items = _studentInvoices(student.id);
+            final existingCount = items.where((e) => e.title.startsWith(titlePrefix)).length;
+            final remaining = (maxCount - existingCount).clamp(0, maxCount);
+            final nextIndex = existingCount + 1;
+            final canAdd = remaining > 0 && unitAmount > 0;
+            final paidTotal = _studentReceipts(student.id).fold<double>(0, (sum, e) => sum + e.amount);
+
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: Row(
+                  children: <Widget>[
+                    Text(emoji, style: const TextStyle(fontSize: 20)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                      ),
+                    ),
+                  ],
+                ),
+                content: SizedBox(
+                  width: 580,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      DropdownButtonFormField<int>(
+                        value: selectedStudentId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'الطالب',
+                          filled: true,
+                          fillColor: Color(0xFFFBFDFF),
+                        ),
+                        items: _students
+                            .map(
+                              (s) => DropdownMenuItem<int>(
+                                value: s.id,
+                                child: Text('${s.fullName} • ${_studentGradeDisplay(s)}', overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() => selectedStudentId = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F3EA),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE8DDBF)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Text(
+                              'قيمة القسط الواحد (من الإدارة — غير قابلة للتعديل)',
+                              style: TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w900, fontSize: 12),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${unitAmount.toStringAsFixed(0)} $currency',
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'الحد الأقصى من الإدارة: $maxCount قسط',
+                              style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'المضاف: $existingCount  •  المتبقي: $remaining',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                color: remaining == 0 ? AppPalette.roseRed : const Color(0xFF0F5C5A),
+                              ),
+                            ),
+                            if (canAdd) ...<Widget>[
+                              const SizedBox(height: 4),
+                              Text(
+                                'سيتم الآن إضافة: قسط $nextIndex/$maxCount',
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.goldDark),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Text(note, style: const TextStyle(color: AppPalette.muted, height: 1.5, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'الدفعات المسجّلة لهذا الطالب: ${paidTotal.toStringAsFixed(0)} $currency',
+                        style: const TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800),
+                      ),
+                      if (!canAdd) ...<Widget>[
+                        const SizedBox(height: 10),
+                        Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF7F3EA),
+                            color: const Color(0xFFFFF1F1),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppPalette.line),
+                            border: Border.all(color: const Color(0xFFF0C7C7)),
                           ),
                           child: Text(
-                            '${entry.title} • ${entry.amount.toStringAsFixed(0)} ${entry.currency} • ${entry.date}',
-                            style: const TextStyle(fontSize: 12, height: 1.5),
+                            remaining == 0
+                                ? 'تم الوصول للحد الأقصى ($maxCount قسط) لهذا النوع.'
+                                : 'لا يمكن إضافة قسط حاليًا.',
+                            style: const TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800, fontSize: 12),
                           ),
-                        );
-                      },
+                        ),
+                      ],
+                      if (items.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: 12),
+                        const Text('الأقساط الحالية للطالب', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 130,
+                          child: ListView.builder(
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final entry = items[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFBFDFF),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppPalette.line),
+                                ),
+                                child: Text(
+                                  '${entry.title} • ${entry.amount.toStringAsFixed(0)} ${entry.currency} • ${entry.date}',
+                                  style: const TextStyle(fontSize: 12, height: 1.5, fontWeight: FontWeight.w700),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      if (Navigator.of(dialogContext).canPop()) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+                    child: const Text('إلغاء'),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppPalette.goldDark,
+                      foregroundColor: Colors.white,
                     ),
+                    onPressed: !canAdd
+                        ? null
+                        : () async {
+                            // ONE installment only per click.
+                            final today = DateTime.now();
+                            final due = DateTime(today.year, today.month + existingCount, today.day);
+                            final dueLabel =
+                                '${due.year.toString().padLeft(4, '0')}-${due.month.toString().padLeft(2, '0')}-${due.day.toString().padLeft(2, '0')}';
+                            setState(() {
+                              _selectedStudentId = selectedStudentId;
+                              _invoices.insert(
+                                0,
+                                AccountingInvoiceEntry(
+                                  studentId: selectedStudentId,
+                                  title: '$titlePrefix — قسط $nextIndex/$maxCount',
+                                  amount: unitAmount,
+                                  currency: currency,
+                                  date: dueLabel,
+                                ),
+                              );
+                              _accountingView = 'installments';
+                              _accountingFilterStudentId = selectedStudentId;
+                            });
+                            await _persistAll();
+                            // Keep dialog open so user can add next one; refresh remaining count.
+                            setDialogState(() {});
+                            if (mounted) {
+                              final left = maxCount - nextIndex;
+                              _showSnack(
+                                left > 0
+                                    ? 'تمت إضافة قسط $nextIndex/$maxCount. المتبقي: $left'
+                                    : 'تمت إضافة آخر قسط ($nextIndex/$maxCount).',
+                              );
+                            }
+                          },
+                    icon: const Icon(Icons.add_card_rounded, size: 18),
+                    label: Text(canAdd ? 'إضافة قسط $nextIndex/$maxCount' : 'لا تبقى أقساط'),
                   ),
                 ],
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                // Ensure the calculated installment exists once for the student ledger.
-                final alreadyExists = items.any((e) => e.title == displayTitle && e.amount == presetAmount);
-                if (!alreadyExists && presetAmount > 0) {
-                  setState(() {
-                    _invoices.insert(
-                      0,
-                      AccountingInvoiceEntry(
-                        studentId: student.id,
-                        title: displayTitle,
-                        amount: presetAmount,
-                        currency: currency,
-                        date: DateTime.now().toIso8601String().split('T').first,
-                      ),
-                    );
-                  });
-                  _persistAll();
-                }
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('إغلاق'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _showStudentPaymentDialog(student: student);
-              },
-              child: const Text('إضافة دفعة لهذا الطالب'),
-            ),
-          ],
+              ),
+            );
+          },
         );
       },
     );
@@ -5180,15 +5324,15 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 spacing: 8,
                 runSpacing: 8,
                 children: <Widget>[
-                  _actionButton('📘 قسط عادي', const Color(0xFFF7F3EA), AppPalette.goldDark, () {
+                  _actionButton('💵 قسط عادي', const Color(0xFFF7F3EA), AppPalette.goldDark, () {
                     setState(() => _accountingView = 'installments');
                     _showInstallmentPresetDialog(presetType: 'normal');
                   }),
-                  _actionButton('🚌 قسط + مواصلات', const Color(0xFFEDF6FF), AppPalette.royalBlue, () {
+                  _actionButton('💵🚌 قسط مع مواصلات', const Color(0xFFEDF6FF), AppPalette.royalBlue, () {
                     setState(() => _accountingView = 'installments');
                     _showInstallmentPresetDialog(presetType: 'transport');
                   }),
-                  _actionButton('🎓 قسط + منحة مواصلات', const Color(0xFFE7F7EE), AppPalette.leafGreen, () {
+                  _actionButton('💵🚌🎁 قسط مع منحة مواصلات', const Color(0xFFE7F7EE), AppPalette.leafGreen, () {
                     setState(() => _accountingView = 'installments');
                     _showInstallmentPresetDialog(presetType: 'grant');
                   }),
@@ -6456,12 +6600,165 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Future<void> _showManageExamSubjectsDialog(StudentRecord student) async {
+    // Avoid DropdownButton onChanged -> Navigator.pop (causes framework
+    // assertion: '_dependents.isEmpty': is not true when overlay is still open).
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final subjects = _examSubjectsForStudent(student);
+
+            Future<void> runRenameOrDelete(String action) async {
+              if (subjects.isEmpty) {
+                if (mounted) {
+                  _showSnack('لا توجد مواد حالياً.');
+                }
+                return;
+              }
+
+              String selected = subjects.first;
+              final nameController = TextEditingController(text: selected);
+              try {
+                final ok = await showDialog<bool>(
+                  context: dialogContext,
+                  builder: (ctx) {
+                    return StatefulBuilder(
+                      builder: (context, setLocal) {
+                        return AlertDialog(
+                          title: Text(action == 'rename' ? 'تعديل اسم مادة' : 'حذف مادة'),
+                          content: SizedBox(
+                            width: 420,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                DropdownButtonFormField<String>(
+                                  value: selected,
+                                  decoration: const InputDecoration(labelText: 'المادة'),
+                                  items: subjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                                  onChanged: (v) {
+                                    if (v == null) return;
+                                    setLocal(() {
+                                      selected = v;
+                                      nameController.text = v;
+                                    });
+                                  },
+                                ),
+                                if (action == 'rename') ...<Widget>[
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: nameController,
+                                    decoration: const InputDecoration(labelText: 'الاسم الجديد'),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          actions: <Widget>[
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('إلغاء')),
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: Text(action == 'rename' ? 'حفظ' : 'حذف'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                );
+                if (ok != true) {
+                  return;
+                }
+
+                if (action == 'rename') {
+                  final newName = nameController.text.trim();
+                  if (newName.isEmpty) {
+                    if (mounted) {
+                      _showSnack('الاسم الجديد مطلوب.');
+                    }
+                    return;
+                  }
+                  if (newName != selected && subjects.contains(newName)) {
+                    if (mounted) {
+                      _showSnack('الاسم الجديد موجود مسبقاً.');
+                    }
+                    return;
+                  }
+                  setState(() {
+                    final idx = _customExamSubjects.indexOf(selected);
+                    if (idx >= 0) {
+                      _customExamSubjects[idx] = newName;
+                    } else if (!_customExamSubjects.contains(newName)) {
+                      _customExamSubjects = <String>[..._customExamSubjects, newName];
+                    }
+                    for (var i = 0; i < _examResults.length; i++) {
+                      final r = _examResults[i];
+                      if (r.studentId == student.id && r.subject == selected) {
+                        _examResults[i] = ExamResultEntry(
+                          studentId: r.studentId,
+                          subject: newName,
+                          firstTermWork: r.firstTermWork,
+                          firstTermExam: r.firstTermExam,
+                          secondTermWork: r.secondTermWork,
+                          secondTermExam: r.secondTermExam,
+                          isManuallyReviewed: r.isManuallyReviewed,
+                        );
+                      }
+                    }
+                    for (var i = 0; i < _examSchedule.length; i++) {
+                      final s = _examSchedule[i];
+                      if (s.title == selected) {
+                        _examSchedule[i] = ExamScheduleEntry(
+                          title: newName,
+                          grade: s.grade,
+                          examDate: s.examDate,
+                          period: s.period,
+                          hall: s.hall,
+                        );
+                      }
+                    }
+                  });
+                  await _persistAll();
+                  if (!mounted) {
+                    return;
+                  }
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                  _showSnack('تم تعديل اسم المادة إلى "$newName".');
+                } else {
+                  setState(() {
+                    _customExamSubjects = _customExamSubjects.where((s) => s != selected).toList();
+                    _examResults.removeWhere((r) => r.studentId == student.id && r.subject == selected);
+                    _examSchedule.removeWhere((s) => s.title == selected);
+                  });
+                  await _persistAll();
+                  if (!mounted) {
+                    return;
+                  }
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                  _showSnack('تم حذف المادة "$selected" ونتائجها المرتبطة.');
+                }
+              } finally {
+                nameController.dispose();
+              }
+            }
+
+            Future<void> runAddSubject() async {
+              // Close parent first, then open add dialog on the next frame so
+              // any open dropdown/route overlay finishes disposing cleanly.
+              if (Navigator.of(dialogContext).canPop()) {
+                Navigator.of(dialogContext).pop();
+              }
+              await Future<void>.delayed(Duration.zero);
+              if (!mounted) {
+                return;
+              }
+              await _showAddExamSubjectDialog(student);
+            }
+
             return AlertDialog(
               title: const Text('إدارة المواد'),
               content: SizedBox(
@@ -6469,190 +6766,89 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'اختر إجراء',
-                        filled: true,
-                        fillColor: Color(0xFFFBFDFF),
-                      ),
-                      value: 'add',
-                      items: const [
-                        DropdownMenuItem(value: 'add', child: Text('إضافة مادة')),
-                        DropdownMenuItem(value: 'rename', child: Text('تعديل اسم مادة')),
-                        DropdownMenuItem(value: 'delete', child: Text('حذف مادة')),
-                      ],
-                      onChanged: (action) async {
-                        if (action == null) return;
-                        if (action == 'add') {
-                          Navigator.pop(dialogContext);
-                          await _showAddExamSubjectDialog(student);
-                          return;
-                        }
-                        if (subjects.isEmpty) {
-                          _showSnack('لا توجد مواد حالياً.');
-                          return;
-                        }
-                        String selected = subjects.first;
-                        final nameController = TextEditingController(text: selected);
-                        final ok = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) {
-                            return StatefulBuilder(
-                              builder: (context, setLocal) {
-                                return AlertDialog(
-                                  title: Text(action == 'rename' ? 'تعديل اسم مادة' : 'حذف مادة'),
-                                  content: SizedBox(
-                                    width: 420,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: <Widget>[
-                                        DropdownButtonFormField<String>(
-                                          value: selected,
-                                          decoration: const InputDecoration(labelText: 'المادة'),
-                                          items: subjects.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                                          onChanged: (v) {
-                                            if (v == null) return;
-                                            setLocal(() {
-                                              selected = v;
-                                              nameController.text = v;
-                                            });
-                                          },
-                                        ),
-                                        if (action == 'rename') ...<Widget>[
-                                          const SizedBox(height: 12),
-                                          TextField(
-                                            controller: nameController,
-                                            decoration: const InputDecoration(labelText: 'الاسم الجديد'),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  actions: <Widget>[
-                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      child: Text(action == 'rename' ? 'حفظ' : 'حذف'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        );
-                        if (ok != true) return;
-                        if (action == 'rename') {
-                          final newName = nameController.text.trim();
-                          if (newName.isEmpty) {
-                            _showSnack('الاسم الجديد مطلوب.');
-                            return;
-                          }
-                          if (newName != selected && subjects.contains(newName)) {
-                            _showSnack('الاسم الجديد موجود مسبقاً.');
-                            return;
-                          }
-                          setState(() {
-                            // update custom list
-                            final idx = _customExamSubjects.indexOf(selected);
-                            if (idx >= 0) {
-                              _customExamSubjects[idx] = newName;
-                            } else {
-                              // if default subject renamed, store as custom replacement by adding new and keeping results remapped
-                              if (!_customExamSubjects.contains(newName)) {
-                                _customExamSubjects = <String>[..._customExamSubjects, newName];
-                              }
-                            }
-                            // remap results for this student
-                            for (var i = 0; i < _examResults.length; i++) {
-                              final r = _examResults[i];
-                              if (r.studentId == student.id && r.subject == selected) {
-                                _examResults[i] = ExamResultEntry(
-                                  studentId: r.studentId,
-                                  subject: newName,
-                                  firstTermWork: r.firstTermWork,
-                                  firstTermExam: r.firstTermExam,
-                                  secondTermWork: r.secondTermWork,
-                                  secondTermExam: r.secondTermExam,
-                                  isManuallyReviewed: r.isManuallyReviewed,
-                                );
-                              }
-                            }
-                            // remap schedule titles if matching
-                            for (var i = 0; i < _examSchedule.length; i++) {
-                              final s = _examSchedule[i];
-                              if (s.title == selected) {
-                                _examSchedule[i] = ExamScheduleEntry(
-                                  title: newName,
-                                  grade: s.grade,
-                                  examDate: s.examDate,
-                                  period: s.period,
-                                  hall: s.hall,
-                                );
-                              }
-                            }
-                          });
-                          await _persistAll();
-                          if (mounted) {
-                            Navigator.pop(dialogContext);
-                            _showSnack('تم تعديل اسم المادة إلى "$newName".');
-                          }
-                        } else {
-                          // delete
-                          setState(() {
-                            _customExamSubjects = _customExamSubjects.where((s) => s != selected).toList();
-                            _examResults.removeWhere((r) => r.studentId == student.id && r.subject == selected);
-                            _examSchedule.removeWhere((s) => s.title == selected);
-                          });
-                          await _persistAll();
-                          if (mounted) {
-                            Navigator.pop(dialogContext);
-                            _showSnack('تم حذف المادة "$selected" ونتائجها المرتبطة.');
-                          }
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 14),
                     Align(
                       alignment: Alignment.centerRight,
-                      child: Text('المواد الحالية: ${subjects.length}', style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700)),
+                      child: Text(
+                        'المواد الحالية: ${subjects.length}',
+                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: <Widget>[
+                        _actionButton('إضافة مادة', AppPalette.goldDark, Colors.white, () {
+                          // Schedule after the current pointer/gesture frame.
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            runAddSubject();
+                          });
+                        }),
+                        _actionButton('تعديل اسم', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            runRenameOrDelete('rename');
+                          });
+                        }),
+                        _actionButton('حذف مادة', const Color(0xFFFFF1F1), AppPalette.roseRed, () {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            runRenameOrDelete('delete');
+                          });
+                        }),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     SizedBox(
                       height: 220,
-                      child: ListView.builder(
-                        itemCount: subjects.length,
-                        itemBuilder: (context, index) {
-                          final subject = subjects[index];
-                          final isCustom = _customExamSubjects.contains(subject);
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFBFDFF),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppPalette.line),
+                      child: subjects.isEmpty
+                          ? const Center(
+                              child: Text('لا توجد مواد حالياً.', style: TextStyle(color: AppPalette.muted)),
+                            )
+                          : ListView.builder(
+                              itemCount: subjects.length,
+                              itemBuilder: (context, index) {
+                                final subject = subjects[index];
+                                final isCustom = _customExamSubjects.contains(subject);
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFBFDFF),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppPalette.line),
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: Text(
+                                          subject,
+                                          style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
+                                        ),
+                                      ),
+                                      Text(
+                                        isCustom ? 'مخصصة' : 'أساسية',
+                                        style: TextStyle(
+                                          color: isCustom ? AppPalette.goldDark : AppPalette.muted,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
-                            child: Row(
-                              children: <Widget>[
-                                Expanded(child: Text(subject, style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft))),
-                                Text(isCustom ? 'مخصصة' : 'أساسية', style: TextStyle(color: isCustom ? AppPalette.goldDark : AppPalette.muted, fontSize: 11, fontWeight: FontWeight.w700)),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
                     ),
                   ],
                 ),
               ),
               actions: <Widget>[
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
                 TextButton(
-                  onPressed: () async {
-                    Navigator.pop(dialogContext);
-                    await _showAddExamSubjectDialog(student);
+                  onPressed: () {
+                    if (Navigator.of(dialogContext).canPop()) {
+                      Navigator.of(dialogContext).pop();
+                    }
                   },
-                  child: const Text('إضافة سريعة'),
+                  child: const Text('إغلاق'),
                 ),
               ],
             );
@@ -6953,73 +7149,209 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     _showSnack('تمت إضافة المقبوض بنجاح.');
   }
 
-  List<String> _defaultSubjectsForStudent(StudentRecord student) {
-    final gradeNumber = int.tryParse(student.enrollmentGrade.trim()) ?? 0;
-    final basePrimary = <String>[
-      'اللغة العربية',
-      'اللغة الإنجليزية',
-      'الرياضيات',
-      'العلوم',
-      'التربية الدينية',
-      'الدراسات الاجتماعية',
-      'المعلوماتية',
-      'الفنون',
-      'الموسيقا',
-      'الرياضة',
-    ];
-    final baseMiddle = <String>[
-      'اللغة العربية',
-      'اللغة الإنجليزية',
-      'اللغة الفرنسية',
-      'الرياضيات',
-      'العلوم',
-      'الفيزياء',
-      'الكيمياء',
-      'التربية الدينية',
-      'الاجتماعيات',
-      'المعلوماتية',
-      'الفنون',
-      'الرياضة',
-    ];
-    final scientificSecondary = <String>[
-      'اللغة العربية',
-      'اللغة الإنجليزية',
-      'اللغة الفرنسية',
-      'الرياضيات',
-      'الفيزياء',
-      'الكيمياء',
-      'علم الأحياء',
-      'التربية الدينية',
-      'الوطنية',
-      'المعلوماتية',
-      'الرياضة',
-    ];
-    final literarySecondary = <String>[
-      'اللغة العربية',
-      'اللغة الإنجليزية',
-      'اللغة الفرنسية',
-      'التاريخ',
-      'الجغرافيا',
-      'الفلسفة',
-      'التربية الدينية',
-      'الوطنية',
-      'المعلوماتية',
-      'الرياضة',
-    ];
+  // ===================== Exam cycles / stages =====================
+  // cycle1: grades 1-4
+  // cycle2: grades 5-6
+  // prep: grades 7-9
+  // secondary_literary / secondary_scientific: grades 10-12
 
-    if (gradeNumber > 0 && gradeNumber <= 6) {
-      return basePrimary;
+  static const String kExamCycle1 = 'cycle1';
+  static const String kExamCycle2 = 'cycle2';
+  static const String kExamCyclePrep = 'prep';
+  static const String kExamCycleSecondaryLiterary = 'secondary_literary';
+  static const String kExamCycleSecondaryScientific = 'secondary_scientific';
+
+  String _examCycleLabel(String cycleId) {
+    switch (cycleId) {
+      case kExamCycle1:
+        return 'الحلقة الأولى (1 - 2 - 3 - 4)';
+      case kExamCycle2:
+        return 'الحلقة الثانية (5 - 6)';
+      case kExamCyclePrep:
+        return 'المرحلة الإعدادية (7 - 8 - 9)';
+      case kExamCycleSecondaryLiterary:
+        return 'المرحلة الثانوية - الأدبي (10 - 11 - 12)';
+      case kExamCycleSecondaryScientific:
+        return 'المرحلة الثانوية - العلمي (10 - 11 - 12)';
+      default:
+        return cycleId;
     }
-    if (gradeNumber > 0 && gradeNumber <= 9) {
-      return baseMiddle;
+  }
+
+  List<MapEntry<String, String>> get _examCycleOptions => <MapEntry<String, String>>[
+        MapEntry(kExamCycle1, _examCycleLabel(kExamCycle1)),
+        MapEntry(kExamCycle2, _examCycleLabel(kExamCycle2)),
+        MapEntry(kExamCyclePrep, _examCycleLabel(kExamCyclePrep)),
+        MapEntry(kExamCycleSecondaryLiterary, _examCycleLabel(kExamCycleSecondaryLiterary)),
+        MapEntry(kExamCycleSecondaryScientific, _examCycleLabel(kExamCycleSecondaryScientific)),
+      ];
+
+  /// Normalize Arabic grade text into a number when possible.
+  int _studentGradeNumber(StudentRecord student) {
+    final raw = '${student.enrollmentGrade} ${student.grade} ${_studentGradeDisplay(student)}'.trim();
+    // Prefer standalone grade digits 1..12 first.
+    final allDigits = RegExp(r'(?<!\d)(1[0-2]|[1-9])(?!\d)').allMatches(raw).toList();
+    if (allDigits.isNotEmpty) {
+      // enrollmentGrade is usually short and reliable; try it alone first.
+      final enrollmentOnly = RegExp(r'^(1[0-2]|[1-9])$').firstMatch(student.enrollmentGrade.trim());
+      if (enrollmentOnly != null) {
+        return int.parse(enrollmentOnly.group(1)!);
+      }
+      return int.parse(allDigits.first.group(1)!);
     }
-    if (student.grade.contains('علمي')) {
-      return scientificSecondary;
+
+    const words = <String, int>{
+      'الحادي عشر': 11,
+      'الثاني عشر': 12,
+      'الاول': 1,
+      'الأول': 1,
+      'الثاني': 2,
+      'الثالث': 3,
+      'الرابع': 4,
+      'الخامس': 5,
+      'السادس': 6,
+      'السابع': 7,
+      'الثامن': 8,
+      'التاسع': 9,
+      'العاشر': 10,
+    };
+    // Longer keys first.
+    final ordered = words.entries.toList()
+      ..sort((a, b) => b.key.length.compareTo(a.key.length));
+    final normalized = raw
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا');
+    for (final entry in ordered) {
+      final key = entry.key.replaceAll('أ', 'ا').replaceAll('إ', 'ا').replaceAll('آ', 'ا');
+      if (normalized.contains(key)) {
+        return entry.value;
+      }
     }
-    if (student.grade.contains('أدبي')) {
-      return literarySecondary;
+    return 0;
+  }
+
+  bool _studentIsScientificTrack(StudentRecord student) {
+    final raw = '${student.grade} ${student.enrollmentGrade} ${_studentGradeDisplay(student)}'.toLowerCase();
+    return raw.contains('علمي') || raw.contains('scientific') || raw.contains('science');
+  }
+
+  bool _studentIsLiteraryTrack(StudentRecord student) {
+    final raw = '${student.grade} ${student.enrollmentGrade} ${_studentGradeDisplay(student)}'.toLowerCase();
+    return raw.contains('ادبي') || raw.contains('أدبي') || raw.contains('literary') || raw.contains('ادبية') || raw.contains('أدبية');
+  }
+
+  String _detectExamCycleForStudent(StudentRecord student) {
+    final n = _studentGradeNumber(student);
+    if (n >= 1 && n <= 4) return kExamCycle1;
+    if (n == 5 || n == 6) return kExamCycle2;
+    if (n >= 7 && n <= 9) return kExamCyclePrep;
+    if (n >= 10 && n <= 12) {
+      if (_studentIsLiteraryTrack(student)) return kExamCycleSecondaryLiterary;
+      return kExamCycleSecondaryScientific; // default scientific for 10-12
     }
-    return gradeNumber >= 10 ? scientificSecondary : baseMiddle;
+    // Fallbacks when grade number is unknown.
+    if (_studentIsLiteraryTrack(student)) return kExamCycleSecondaryLiterary;
+    if (_studentIsScientificTrack(student)) return kExamCycleSecondaryScientific;
+    final g = student.grade;
+    if (g.contains('سابع') || g.contains('ثامن') || g.contains('تاسع')) return kExamCyclePrep;
+    if (g.contains('خامس') || g.contains('سادس')) return kExamCycle2;
+    if (g.contains('اول') || g.contains('أول') || g.contains('ثاني') || g.contains('ثالث') || g.contains('رابع')) {
+      return kExamCycle1;
+    }
+    return kExamCyclePrep;
+  }
+
+  String _activeExamCycleForStudent(StudentRecord student) {
+    return _examCycleOverride ?? _detectExamCycleForStudent(student);
+  }
+
+  bool _isMiddleCycleGrade(StudentRecord student) => _activeExamCycleForStudent(student) == kExamCyclePrep;
+  bool _isUpperPrimaryGrade(StudentRecord student) => _activeExamCycleForStudent(student) == kExamCycle2;
+  bool _isLowerPrimaryGrade(StudentRecord student) => _activeExamCycleForStudent(student) == kExamCycle1;
+
+  List<String> _subjectsForExamCycle(String cycleId) {
+    switch (cycleId) {
+      case kExamCycle1:
+        // Grades 1-4 official form.
+        return <String>[
+          'أنشطة',
+          'اجتماعيات',
+          'التربية الدينية',
+          'التربية الرياضية',
+          'التربية الموسيقية',
+          'الرياضيات',
+          'العلوم والتربية الصحية',
+          'الفنون الجمالية',
+          'اللغة الإنكليزية',
+          'مهارات شفوية',
+          'مهارات كتابية',
+        ];
+      case kExamCycle2:
+        // Grades 5-6 official form.
+        return <String>[
+          'اجتماعيات',
+          'التربية الدينية',
+          'التربية الرياضية',
+          'التربية الموسيقية',
+          'الرياضيات',
+          'العلوم والتربية الصحية',
+          'الفنون الجمالية',
+          'اللغة الإنكليزية',
+          'سلوك',
+          'مهارات شفوية',
+          'مهارات كتابية',
+        ];
+      case kExamCyclePrep:
+        // Grades 7-9 official form.
+        return <String>[
+          'اجتماعيات',
+          'التربية الدينية',
+          'التربية الرياضية',
+          'التربية الموسيقية',
+          'الرياضيات',
+          'العلوم العامة',
+          'الفنون الجمالية',
+          'اللغة الأجنبية',
+          'اللغة الإنكليزية',
+          'اللغة العربية',
+          'تكنلوجيا المعلومات والاتصالات',
+          'سلوك',
+        ];
+      case kExamCycleSecondaryLiterary:
+        return <String>[
+          'اللغة العربية',
+          'اللغة الإنكليزية',
+          'اللغة الفرنسية',
+          'التاريخ',
+          'الجغرافيا',
+          'الفلسفة',
+          'التربية الدينية',
+          'الوطنية',
+          'المعلوماتية',
+          'التربية الرياضية',
+        ];
+      case kExamCycleSecondaryScientific:
+        return <String>[
+          'اللغة العربية',
+          'اللغة الإنكليزية',
+          'اللغة الفرنسية',
+          'الرياضيات',
+          'الفيزياء',
+          'الكيمياء',
+          'علم الأحياء',
+          'التربية الدينية',
+          'الوطنية',
+          'المعلوماتية',
+          'التربية الرياضية',
+        ];
+      default:
+        return _subjectsForExamCycle(kExamCyclePrep);
+    }
+  }
+
+  List<String> _defaultSubjectsForStudent(StudentRecord student) {
+    return _subjectsForExamCycle(_activeExamCycleForStudent(student));
   }
 
   void _appendExamSubject(List<String> subjects, String subject) {
@@ -7034,22 +7366,15 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     return _examResults.where((entry) => entry.studentId == studentId).toList();
   }
 
-  List<String> _examSubjectsForStudent(StudentRecord student) {
-    final subjects = <String>[];
-    for (final subject in _defaultSubjectsForStudent(student)) {
-      _appendExamSubject(subjects, subject);
+  /// Official subjects only for the active cycle of this student.
+  /// Custom subjects are optional extras and do not replace the official model.
+  List<String> _examSubjectsForStudent(StudentRecord student, {bool includeExtras = false}) {
+    final subjects = <String>[..._defaultSubjectsForStudent(student)];
+    if (!includeExtras) {
+      return subjects;
     }
     for (final subject in _customExamSubjects) {
       _appendExamSubject(subjects, subject);
-    }
-    for (final schedule in _examSchedule) {
-      final sameGrade = schedule.grade.trim() == student.grade.trim() || schedule.grade.contains(student.enrollmentGrade);
-      if (sameGrade) {
-        _appendExamSubject(subjects, schedule.title);
-      }
-    }
-    for (final result in _studentExamResults(student.id)) {
-      _appendExamSubject(subjects, result.subject);
     }
     return subjects;
   }
@@ -7075,6 +7400,217 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       return value.toStringAsFixed(0);
     }
     return value.toStringAsFixed(2);
+  }
+
+  String _normalizeSubjectKey(String subject) {
+    return subject
+        .trim()
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .toLowerCase();
+  }
+
+  /// Official marks for grades 1 / 2 / 3 / 4 (same scale for all four).
+  /// From the attached school report form: max total 1100, min total 451.
+  Map<String, double>? _lowerPrimaryOfficialMarks(String subject) {
+    final key = _normalizeSubjectKey(subject);
+    bool has(String part) => key.contains(_normalizeSubjectKey(part));
+
+    // All subjects on the 1-4 official form are max 100 / min 41.
+    if (has('انشط') || has('أنشط')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('مهارات شفوي') || (has('مهارات') && has('شفو'))) {
+      return const <String, double>{'min': 41, 'max': 100};
+    }
+    if (has('مهارات كتاب') || (has('مهارات') && has('كتاب'))) {
+      return const <String, double>{'min': 41, 'max': 100};
+    }
+    if (has('اجتماع') || has('دراسات')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('دين')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('رياضه') || has('رياضيه') || has('رياضية')) {
+      return const <String, double>{'min': 41, 'max': 100};
+    }
+    if (has('موسيق')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('رياضيات')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('علوم') || has('صح')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('فنون') || has('جمالي')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('انكليز') || has('انجليز')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('عربي') || has('العربيه')) return const <String, double>{'min': 41, 'max': 100};
+    if (has('سلوك')) return const <String, double>{'min': 41, 'max': 100};
+    return null;
+  }
+
+  /// Official marks for grades 5 / 6 (same scale for both).
+  /// From the attached school report form: max total 1100, min total 460.
+  Map<String, double>? _upperPrimaryOfficialMarks(String subject) {
+    final key = _normalizeSubjectKey(subject);
+    bool has(String part) => key.contains(_normalizeSubjectKey(part));
+
+    // Skills first so they are not swallowed by broader matches.
+    if (has('مهارات شفوي') || (has('مهارات') && has('شفو'))) {
+      return const <String, double>{'min': 50, 'max': 100};
+    }
+    if (has('مهارات كتاب') || (has('مهارات') && has('كتاب'))) {
+      return const <String, double>{'min': 50, 'max': 100};
+    }
+    if (has('سلوك')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('اجتماع') || has('دراسات')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('دين')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('رياضه') || has('رياضيه') || has('رياضية')) {
+      return const <String, double>{'min': 40, 'max': 100};
+    }
+    if (has('موسيق')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('رياضيات')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('علوم') || has('صح')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('فنون') || has('جمالي')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('انكليز') || has('انجليز')) return const <String, double>{'min': 40, 'max': 100};
+    if (has('عربي') || has('العربيه')) return const <String, double>{'min': 40, 'max': 100};
+    return null;
+  }
+
+  /// Official marks for grades 7 / 8 / 9 (same scale for all three).
+  /// From the attached school report form: max total 4200, min total 1780.
+  Map<String, double>? _middleCycleOfficialMarks(String subject) {
+    final key = _normalizeSubjectKey(subject);
+    bool has(String part) => key.contains(_normalizeSubjectKey(part));
+
+    // Subject -> [min, max]
+    if (has('سلوك')) return const <String, double>{'min': 120, 'max': 200};
+    if (has('عربي') || has('العربيه')) return const <String, double>{'min': 300, 'max': 600};
+    if (has('رياضيات')) return const <String, double>{'min': 240, 'max': 600};
+    if (has('اجتماع') || has('دراسات')) return const <String, double>{'min': 240, 'max': 600};
+    if (has('انكليز') || has('انجليز')) return const <String, double>{'min': 160, 'max': 400};
+    if (has('فرنس') || has('اجنب') || has('اجنبيه') || has('اجنبية')) {
+      return const <String, double>{'min': 160, 'max': 400};
+    }
+    if (has('علوم') || has('فيزياء') || has('كيمياء') || has('احياء')) {
+      return const <String, double>{'min': 160, 'max': 400};
+    }
+    if (has('دين')) return const <String, double>{'min': 80, 'max': 200};
+    if (has('رياضه') || has('رياضيه') || has('رياضية')) {
+      return const <String, double>{'min': 80, 'max': 200};
+    }
+    if (has('موسيق')) return const <String, double>{'min': 80, 'max': 200};
+    if (has('فنون') || has('جمالي')) return const <String, double>{'min': 80, 'max': 200};
+    if (has('معلوم') || has('تكنلوج') || has('تكنولوج') || has('اتصا')) {
+      return const <String, double>{'min': 80, 'max': 200};
+    }
+    return null;
+  }
+
+  Map<String, double>? _officialMarksForStudent(StudentRecord? student, String subject) {
+    if (student == null) {
+      // Prefer the most specific known table when student grade is unknown.
+      return _middleCycleOfficialMarks(subject) ??
+          _upperPrimaryOfficialMarks(subject) ??
+          _lowerPrimaryOfficialMarks(subject);
+    }
+    if (_isLowerPrimaryGrade(student)) {
+      return _lowerPrimaryOfficialMarks(subject);
+    }
+    if (_isUpperPrimaryGrade(student)) {
+      return _upperPrimaryOfficialMarks(subject);
+    }
+    if (_isMiddleCycleGrade(student)) {
+      return _middleCycleOfficialMarks(subject);
+    }
+    return null;
+  }
+
+  /// Official-style max mark per subject (الدرجة العظمى).
+  /// Grades 1-4, 5-6, and 7-9 each have their own official scale.
+  double _examSubjectMaxMark(String subject, [StudentRecord? student]) {
+    final official = _officialMarksForStudent(student, subject);
+    if (official != null) {
+      return official['max']!;
+    }
+
+    // Fallback for other grades until their official tables are provided.
+    final key = _normalizeSubjectKey(subject);
+    bool has(String part) => key.contains(_normalizeSubjectKey(part));
+    if (has('مهارات')) return 100;
+    if (has('سلوك')) return 100;
+    if (has('عربي') || has('العربيه')) return 600;
+    if (has('رياضيات')) return 600;
+    if (has('اجتماع') || has('دراسات')) return 600;
+    if (has('انكليز') || has('انجليز')) return 400;
+    if (has('فرنس') || has('اجنب') || has('اجنبيه')) return 400;
+    if (has('علوم') || has('فيزياء') || has('كيمياء') || has('احياء') || has('صح')) return 400;
+    if (has('دين') || has('رياضه') || has('رياضيه') || has('موسيق') || has('فنون') || has('جمالي') || has('معلوم') || has('تكنلوج') || has('تكنولوج') || has('اتصا') || has('تاريخ') || has('جغراف') || has('فلسف') || has('وطن')) {
+      return 200;
+    }
+    return 100;
+  }
+
+  /// Official-style pass mark (الدرجة الدنيا).
+  double _examSubjectMinMark(String subject, [StudentRecord? student]) {
+    final official = _officialMarksForStudent(student, subject);
+    if (official != null) {
+      return official['min']!;
+    }
+
+    final maxMark = _examSubjectMaxMark(subject, student);
+    final key = _normalizeSubjectKey(subject);
+    if (key.contains('مهارات')) return 50;
+    if (key.contains('سلوك')) return maxMark * 0.4;
+    if (key.contains('عربي') || key.contains('العربيه')) return maxMark * 0.5;
+    return maxMark * 0.4;
+  }
+
+  double _clampExamScore(double value, double maxMark) {
+    if (value.isNaN || value.isInfinite) return 0;
+    if (value < 0) return 0;
+    if (value > maxMark) return maxMark;
+    return value;
+  }
+
+  /// Term total matches official form: (أعمال + امتحان) / 2
+  double _examTermTotal(double work, double exam) => (work + exam) / 2;
+
+  double _examFinalAverage(double firstTotal, double secondTotal) => (firstTotal + secondTotal) / 2;
+
+  double _examSubjectFinal(StudentRecord student, String subject) {
+    final e = _examResultForStudentSubject(student, subject);
+    final t1 = _examTermTotal(e.firstTermWork, e.firstTermExam);
+    final t2 = _examTermTotal(e.secondTermWork, e.secondTermExam);
+    return _examFinalAverage(t1, t2);
+  }
+
+  Map<String, double> _examReportTotals(StudentRecord student, List<String> subjects) {
+    var sumMin = 0.0;
+    var sumMax = 0.0;
+    var sumFirst = 0.0;
+    var sumSecond = 0.0;
+    var sumFinal = 0.0;
+    for (final subject in subjects) {
+      final e = _examResultForStudentSubject(student, subject);
+      sumMin += _examSubjectMinMark(subject, student);
+      sumMax += _examSubjectMaxMark(subject, student);
+      sumFirst += _examTermTotal(e.firstTermWork, e.firstTermExam);
+      sumSecond += _examTermTotal(e.secondTermWork, e.secondTermExam);
+      sumFinal += _examFinalAverage(
+        _examTermTotal(e.firstTermWork, e.firstTermExam),
+        _examTermTotal(e.secondTermWork, e.secondTermExam),
+      );
+    }
+    final percent = sumMax <= 0 ? 0.0 : (sumFinal / sumMax) * 100;
+    return <String, double>{
+      'min': sumMin,
+      'max': sumMax,
+      'first': sumFirst,
+      'second': sumSecond,
+      'final': sumFinal,
+      'percent': percent,
+    };
+  }
+
+  String _examResultLabel(double finalTotal, double maxTotal) {
+    if (maxTotal <= 0) return '-';
+    final ratio = finalTotal / maxTotal;
+    if (ratio >= 0.4) return 'ناجح';
+    return 'راسب';
   }
 
   int _countCompletedExamSubjects(StudentRecord student) {
@@ -7133,14 +7669,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   double _averageFinalForStudent(StudentRecord student) {
-    final results = _studentExamResults(student.id)
-        .where((entry) => entry.firstTermTotal > 0 || entry.secondTermTotal > 0)
-        .toList();
-    if (results.isEmpty) {
+    final subjects = _examSubjectsForStudent(student);
+    final active = subjects.where((subject) {
+      final e = _examResultForStudentSubject(student, subject);
+      return e.firstTermWork > 0 || e.firstTermExam > 0 || e.secondTermWork > 0 || e.secondTermExam > 0;
+    }).toList();
+    if (active.isEmpty) {
       return 0;
     }
-    final sum = results.fold<double>(0, (total, entry) => total + entry.finalAverage);
-    return sum / results.length;
+    final sum = active.fold<double>(0, (total, subject) => total + _examSubjectFinal(student, subject));
+    return sum / active.length;
   }
 
   bool _isFirstTermEntered(ExamResultEntry entry) {
@@ -7214,13 +7752,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     bool? isManuallyReviewed,
   }) async {
     final current = _examResultForStudentSubject(student, subject);
+    final maxMark = _examSubjectMaxMark(subject, student);
     final entry = ExamResultEntry(
       studentId: student.id,
       subject: subject,
-      firstTermWork: firstTermWork,
-      firstTermExam: firstTermExam,
-      secondTermWork: secondTermWork,
-      secondTermExam: secondTermExam,
+      firstTermWork: _clampExamScore(firstTermWork, maxMark),
+      firstTermExam: _clampExamScore(firstTermExam, maxMark),
+      secondTermWork: _clampExamScore(secondTermWork, maxMark),
+      secondTermExam: _clampExamScore(secondTermExam, maxMark),
       isManuallyReviewed: isManuallyReviewed ?? current.isManuallyReviewed,
     );
     final index = _examResults.indexWhere((item) => item.studentId == student.id && item.subject == subject);
@@ -7255,6 +7794,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   Future<void> _showExamSubjectEditor(StudentRecord student, String subject) async {
     const reviewAccent = Color(0xFF5A62D6);
     final existing = _examResultForStudentSubject(student, subject);
+    final maxMark = _examSubjectMaxMark(subject, student);
+    final minMark = _examSubjectMinMark(subject, student);
     final firstWorkController = TextEditingController(text: _formatExamNumber(existing.firstTermWork));
     final firstExamController = TextEditingController(text: _formatExamNumber(existing.firstTermExam));
     final secondWorkController = TextEditingController(text: _formatExamNumber(existing.secondTermWork));
@@ -7265,17 +7806,31 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       return double.tryParse(controller.text.trim()) ?? 0;
     }
 
-    Widget termField(String label, TextEditingController controller, VoidCallback onChanged) {
+    void enforceMax(TextEditingController controller, void Function(void Function()) setDialogState) {
+      final raw = parseNumber(controller);
+      final clamped = _clampExamScore(raw, maxMark);
+      if (raw != clamped) {
+        controller.text = _formatExamNumber(clamped);
+        controller.selection = TextSelection.collapsed(offset: controller.text.length);
+        setDialogState(() {});
+        _showSnack('لا يمكن إدخال درجة أعلى من العلامة العظمى (${_formatExamNumber(maxMark)}) لمادة $subject.');
+      } else {
+        setDialogState(() {});
+      }
+    }
+
+    Widget termField(String label, TextEditingController controller, void Function(void Function()) setDialogState) {
       return Expanded(
         child: TextField(
           controller: controller,
-          keyboardType: TextInputType.text,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: <TextInputFormatter>[
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
           ],
-          onChanged: (_) => onChanged(),
+          onChanged: (_) => enforceMax(controller, setDialogState),
           decoration: InputDecoration(
             labelText: label,
+            helperText: 'الحد الأقصى: ${_formatExamNumber(maxMark)}',
             filled: true,
             fillColor: const Color(0xFFFBFDFF),
             border: OutlineInputBorder(
@@ -7296,11 +7851,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       required TextEditingController workController,
       required TextEditingController examController,
       required String totalLabel,
-      required VoidCallback onChanged,
+      required void Function(void Function()) setDialogState,
       required Future<void> Function(bool edited) onSubmit,
       required VoidCallback onCancel,
     }) {
-      final total = (double.tryParse(workController.text.trim()) ?? 0) + (double.tryParse(examController.text.trim()) ?? 0);
+      final work = parseNumber(workController);
+      final exam = parseNumber(examController);
+      final total = _examTermTotal(work, exam);
       return Container(
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(16),
@@ -7313,12 +7870,17 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+            const SizedBox(height: 8),
+            Text(
+              'العلامة العظمى للمادة: ${_formatExamNumber(maxMark)} • الدرجة الدنيا: ${_formatExamNumber(minMark)}',
+              style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 12),
             Row(
               children: <Widget>[
-                termField('درجة الأعمال', workController, onChanged),
+                termField('درجة الأعمال', workController, setDialogState),
                 const SizedBox(width: 12),
-                termField('درجة الامتحان', examController, onChanged),
+                termField('درجة الامتحان', examController, setDialogState),
               ],
             ),
             const SizedBox(height: 12),
@@ -7330,7 +7892,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE8DDBF)),
               ),
-              child: Text('$totalLabel: ${_formatExamNumber(total)}', style: const TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w900)),
+              child: Text(
+                '$totalLabel: ${_formatExamNumber(total)}  = (${_formatExamNumber(work)} + ${_formatExamNumber(exam)}) ÷ 2',
+                style: const TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w900),
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -7347,151 +7912,208 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       );
     }
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> persistAndClose(bool edited) async {
-              final updatedEntry = ExamResultEntry(
-                studentId: student.id,
-                subject: subject,
-                firstTermWork: parseNumber(firstWorkController),
-                firstTermExam: parseNumber(firstExamController),
-                secondTermWork: parseNumber(secondWorkController),
-                secondTermExam: parseNumber(secondExamController),
-                isManuallyReviewed: reviewedManually,
-              );
-              final beforeFirst = _allFirstTermEnteredForStudent(student);
-              final beforeSecond = _allSecondTermEnteredForStudent(student);
-              final afterFirst = _allFirstTermEnteredForStudent(student, override: updatedEntry);
-              final afterSecond = _allSecondTermEnteredForStudent(student, override: updatedEntry);
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              Future<void> persistAndClose(bool edited) async {
+                final firstWork = _clampExamScore(parseNumber(firstWorkController), maxMark);
+                final firstExam = _clampExamScore(parseNumber(firstExamController), maxMark);
+                final secondWork = _clampExamScore(parseNumber(secondWorkController), maxMark);
+                final secondExam = _clampExamScore(parseNumber(secondExamController), maxMark);
 
-              await _saveExamSubjectResult(
-                student: student,
-                subject: subject,
-                firstTermWork: updatedEntry.firstTermWork,
-                firstTermExam: updatedEntry.firstTermExam,
-                secondTermWork: updatedEntry.secondTermWork,
-                secondTermExam: updatedEntry.secondTermExam,
-                isManuallyReviewed: updatedEntry.isManuallyReviewed,
-              );
-              if (!mounted) return;
-              Navigator.of(dialogContext).pop();
+                final updatedEntry = ExamResultEntry(
+                  studentId: student.id,
+                  subject: subject,
+                  firstTermWork: firstWork,
+                  firstTermExam: firstExam,
+                  secondTermWork: secondWork,
+                  secondTermExam: secondExam,
+                  isManuallyReviewed: reviewedManually,
+                );
+                final beforeFirst = _allFirstTermEnteredForStudent(student);
+                final beforeSecond = _allSecondTermEnteredForStudent(student);
+                final afterFirst = _allFirstTermEnteredForStudent(student, override: updatedEntry);
+                final afterSecond = _allSecondTermEnteredForStudent(student, override: updatedEntry);
 
-              final messages = <String>[];
-              if (!beforeFirst && afterFirst) {
-                messages.add('تم إدخال جميع درجات مواد الفصل الأول للطالب.');
+                await _saveExamSubjectResult(
+                  student: student,
+                  subject: subject,
+                  firstTermWork: firstWork,
+                  firstTermExam: firstExam,
+                  secondTermWork: secondWork,
+                  secondTermExam: secondExam,
+                  isManuallyReviewed: reviewedManually,
+                );
+                if (!mounted) {
+                  return;
+                }
+
+                await Future<void>.delayed(Duration.zero);
+                if (!mounted) {
+                  return;
+                }
+                if (Navigator.of(dialogContext).canPop()) {
+                  Navigator.of(dialogContext).pop();
+                }
+
+                final messages = <String>[];
+                if (!beforeFirst && afterFirst) {
+                  messages.add('تم إدخال جميع درجات مواد الفصل الأول للطالب.');
+                }
+                if (!beforeSecond && afterSecond) {
+                  messages.add('تم إدخال جميع درجات مواد الفصل الثاني للطالب.');
+                }
+                if (messages.isNotEmpty) {
+                  await _showExamCompletionDialog(messages);
+                } else if (mounted) {
+                  _showSnack(edited ? 'تم تعديل درجات مادة $subject بنجاح.' : 'تم حفظ درجات مادة $subject بنجاح.');
+                }
               }
-              if (!beforeSecond && afterSecond) {
-                messages.add('تم إدخال جميع درجات مواد الفصل الثاني للطالب.');
-              }
-              if (messages.isNotEmpty) {
-                await _showExamCompletionDialog(messages);
-              } else {
-                _showSnack(edited ? 'تم تعديل درجات مادة $subject بنجاح.' : 'تم حفظ درجات مادة $subject بنجاح.');
-              }
-            }
 
-            final firstTotal = parseNumber(firstWorkController) + parseNumber(firstExamController);
-            final secondTotal = parseNumber(secondWorkController) + parseNumber(secondExamController);
-            final finalAverage = (firstTotal + secondTotal) / 2;
+              final firstTotal = _examTermTotal(parseNumber(firstWorkController), parseNumber(firstExamController));
+              final secondTotal = _examTermTotal(parseNumber(secondWorkController), parseNumber(secondExamController));
+              final finalAverage = _examFinalAverage(firstTotal, secondTotal);
+              final percent = maxMark <= 0 ? 0.0 : (finalAverage / maxMark) * 100;
 
-            return AlertDialog(
-              title: Text(subject),
-              content: SizedBox(
-                width: 860,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text('الطالب: ${student.fullName} • الصف: ${_studentGradeDisplay(student)} • الشعبة: ${_studentSectionDisplay(student)}', style: const TextStyle(color: AppPalette.muted, height: 1.8)),
-                      const SizedBox(height: 14),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF4F8FC),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppPalette.line),
+              return AlertDialog(
+                title: Text(subject),
+                content: SizedBox(
+                  width: 860,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'الطالب: ${student.fullName} • الصف: ${_studentGradeDisplay(student)} • الشعبة: ${_studentSectionDisplay(student)}',
+                          style: const TextStyle(color: AppPalette.muted, height: 1.8),
                         ),
-                        child: Row(
-                          children: <Widget>[
-                            Icon(
-                              reviewedManually ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                              color: reviewedManually ? reviewAccent : AppPalette.muted,
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'علامة تدقيق المادة اليدوية',
-                                style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF4F8FC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppPalette.line),
+                          ),
+                          child: Text(
+                            'العلامة العظمى: ${_formatExamNumber(maxMark)} • الدرجة الدنيا: ${_formatExamNumber(minMark)} • لا يُسمح بتجاوز العظمى في الأعمال أو الامتحان.',
+                            style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w800, height: 1.6),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF4F8FC),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppPalette.line),
+                          ),
+                          child: Row(
+                            children: <Widget>[
+                              Icon(
+                                reviewedManually ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                color: reviewedManually ? reviewAccent : AppPalette.muted,
                               ),
-                            ),
-                            Tooltip(
-                              message: reviewedManually ? 'تم تدقيق المادة' : 'وضع علامة تدقيق المادة',
-                              child: Switch.adaptive(
-                                value: reviewedManually,
-                                activeColor: reviewAccent,
-                                onChanged: (value) => setDialogState(() => reviewedManually = value),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'علامة تدقيق المادة اليدوية',
+                                  style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                                ),
                               ),
-                            ),
-                          ],
+                              Tooltip(
+                                message: reviewedManually ? 'تم تدقيق المادة' : 'وضع علامة تدقيق المادة',
+                                child: Switch.adaptive(
+                                  value: reviewedManually,
+                                  activeColor: reviewAccent,
+                                  onChanged: (value) => setDialogState(() => reviewedManually = value),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      buildTermPanel(
-                        title: 'درجات الفصل الأول',
-                        workController: firstWorkController,
-                        examController: firstExamController,
-                        totalLabel: 'محصلة الفصل الأول',
-                        onChanged: () => setDialogState(() {}),
-                        onSubmit: persistAndClose,
-                        onCancel: () => Navigator.of(dialogContext).pop(),
-                      ),
-                      buildTermPanel(
-                        title: 'درجات الفصل الثاني',
-                        workController: secondWorkController,
-                        examController: secondExamController,
-                        totalLabel: 'محصلة الفصل الثاني',
-                        onChanged: () => setDialogState(() {}),
-                        onSubmit: persistAndClose,
-                        onCancel: () => Navigator.of(dialogContext).pop(),
-                      ),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF4F8FC),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppPalette.line),
+                        const SizedBox(height: 14),
+                        buildTermPanel(
+                          title: 'درجات الفصل الأول',
+                          workController: firstWorkController,
+                          examController: firstExamController,
+                          totalLabel: 'محصلة الفصل الأول',
+                          setDialogState: setDialogState,
+                          onSubmit: persistAndClose,
+                          onCancel: () {
+                            if (Navigator.of(dialogContext).canPop()) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                          },
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            const Text('المحصلة النهائية للمادة', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                            const SizedBox(height: 8),
-                            Text(
-                              '(${_formatExamNumber(firstTotal)} + ${_formatExamNumber(secondTotal)}) ÷ 2 = ${_formatExamNumber(finalAverage)}',
-                              style: const TextStyle(color: AppPalette.muted, height: 1.8),
-                            ),
-                          ],
+                        buildTermPanel(
+                          title: 'درجات الفصل الثاني',
+                          workController: secondWorkController,
+                          examController: secondExamController,
+                          totalLabel: 'محصلة الفصل الثاني',
+                          setDialogState: setDialogState,
+                          onSubmit: persistAndClose,
+                          onCancel: () {
+                            if (Navigator.of(dialogContext).canPop()) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                          },
                         ),
-                      ),
-                    ],
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF4F8FC),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppPalette.line),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              const Text('المحصلة النهائية للمادة', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                              const SizedBox(height: 8),
+                              Text(
+                                '(${_formatExamNumber(firstTotal)} + ${_formatExamNumber(secondTotal)}) ÷ 2 = ${_formatExamNumber(finalAverage)}',
+                                style: const TextStyle(color: AppPalette.muted, height: 1.8),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'النسبة المئوية: ${_formatExamNumber(percent)}% من ${_formatExamNumber(maxMark)}',
+                                style: const TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w900),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    firstWorkController.dispose();
-    firstExamController.dispose();
-    secondWorkController.dispose();
-    secondExamController.dispose();
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      if (Navigator.of(dialogContext).canPop()) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+                    child: const Text('إغلاق'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      firstWorkController.dispose();
+      firstExamController.dispose();
+      secondWorkController.dispose();
+      secondExamController.dispose();
+    }
   }
 
   Widget _examSummaryTile(String label, String value, Color color, IconData icon) {
@@ -7645,10 +8267,26 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
+                color: const Color(0xFFEEF4F4),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'العلامة العظمى: ${_formatExamNumber(_examSubjectMaxMark(subject, student))} • الدنيا: ${_formatExamNumber(_examSubjectMinMark(subject, student))}',
+                style: const TextStyle(color: Color(0xFF1F6B69), fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
                 color: const Color(0xFFF7F3EA),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text('محصلة الفصل الأول: ${_formatExamNumber(entry.firstTermTotal)}', style: const TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w800)),
+              child: Text(
+                'محصلة الفصل الأول: ${_formatExamNumber(_examTermTotal(entry.firstTermWork, entry.firstTermExam))}',
+                style: const TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w800),
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -7658,7 +8296,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 color: const Color(0xFFE7F7EE),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text('محصلة الفصل الثاني: ${_formatExamNumber(entry.secondTermTotal)}', style: const TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800)),
+              child: Text(
+                'محصلة الفصل الثاني: ${_formatExamNumber(_examTermTotal(entry.secondTermWork, entry.secondTermExam))}',
+                style: const TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800),
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -7669,7 +8310,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppPalette.line),
               ),
-              child: Text('المحصلة النهائية: ${_formatExamNumber(entry.finalAverage)}', style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
+              child: Text(
+                'المحصلة النهائية: ${_formatExamNumber(_examSubjectFinal(student, subject))}  •  ${_formatExamNumber((_examSubjectFinal(student, subject) / _examSubjectMaxMark(subject, student)) * 100)}%',
+                style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900),
+              ),
             ),
             const SizedBox(height: 12),
             _actionButton('فتح درجات المادة', AppPalette.goldDark, Colors.white, () => _showExamSubjectEditor(student, subject)),
@@ -7680,250 +8324,409 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _examReportCard(StudentRecord student, List<String> subjects) {
-    final reportRows = subjects.map((subject) {
-      final entry = _examResultForStudentSubject(student, subject);
-      return TableRow(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFE8EDF4))),
+    // NOTE: Flutter Table always lays columns left -> right (does NOT reverse in RTL).
+    // Official Arabic form visual order on paper (right -> left):
+    //   المادة | الدنيا | العظمى | أعمال1 | امتحان1 | محصلة1 | أعمال2 | امتحان2 | محصلة2 | المحصلة
+    // So children[0] must be the LEFTMOST column (المحصلة), and children[last] the RIGHTMOST (المادة).
+    final totals = _examReportTotals(student, subjects);
+    final year = student.schoolYear.isEmpty ? _currentAcademicYear() : student.schoolYear;
+    const schoolName = 'مدرسة روز التعليمية';
+    final directorate = 'السويداء';
+    final complexName = student.registryPlace.trim().isEmpty ? 'المجمع' : student.registryPlace.trim();
+    final principal = _principalNameController.text.trim().isEmpty
+        ? (_secretaryNameController.text.trim().isEmpty ? 'مدير المدرسة' : _secretaryNameController.text.trim())
+        : _principalNameController.text.trim();
+    final supervisor = _supervisorNameController.text.trim().isEmpty ? 'مشرف القسم' : _supervisorNameController.text.trim();
+    final generalSupervisor = _generalSupervisorController.text.trim().isEmpty
+        ? 'المشرف العام'
+        : _generalSupervisorController.text.trim();
+    final resultLabel = _examResultLabel(totals['final']!, totals['max']!);
+
+    Widget metaPair(String label, String value) {
+      return Container(
+        margin: const EdgeInsets.only(left: 4, bottom: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F7F8),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFD3DEE4)),
         ),
-        children: <Widget>[
-          _examReportCell(subject, bold: true),
-          _examReportCell(_formatExamNumber(entry.firstTermWork), cellColor: const Color(0xFFFFFBF3)),
-          _examReportCell(_formatExamNumber(entry.firstTermExam), cellColor: const Color(0xFFFFFBF3)),
-          _examReportCell(_formatExamNumber(entry.firstTermTotal), cellColor: const Color(0xFFF7E6BF), textColor: AppPalette.goldDark, bold: true),
-          _examReportCell(_formatExamNumber(entry.secondTermWork), cellColor: const Color(0xFFF6FCF8)),
-          _examReportCell(_formatExamNumber(entry.secondTermExam), cellColor: const Color(0xFFF6FCF8)),
-          _examReportCell(_formatExamNumber(entry.secondTermTotal), cellColor: const Color(0xFFDFF3E5), textColor: AppPalette.leafGreen, bold: true),
-          _examReportCell(_formatExamNumber(entry.finalAverage), cellColor: const Color(0xFFE8F2FF), textColor: AppPalette.royalBlue, bold: true),
-        ],
-      );
-    }).toList();
-
-    final average = _averageFinalForStudent(student);
-
-    Widget infoBox(String label, String value) {
-      return SizedBox(
-        width: 180,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFDCE7F2)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(label, style: const TextStyle(color: AppPalette.muted, fontSize: 11, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Text(value.isEmpty ? '-' : value, style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
-            ],
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE4ECEE),
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(7),
+                  bottomRight: Radius.circular(7),
+                ),
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Color(0xFF2F4F4F)),
+              ),
+            ),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 64, maxWidth: 150),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                child: Text(
+                  value.trim().isEmpty ? '-' : value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF172727)),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
 
+    // left -> right widths matching children order above
+    const colWidths = <int, TableColumnWidth>{
+      0: FlexColumnWidth(1.1),  // المحصلة (يسار)
+      1: FlexColumnWidth(1.05), // محصلة 2
+      2: FlexColumnWidth(1.05), // امتحان 2
+      3: FlexColumnWidth(1.05), // أعمال 2
+      4: FlexColumnWidth(1.05), // محصلة 1
+      5: FlexColumnWidth(1.05), // امتحان 1
+      6: FlexColumnWidth(1.05), // أعمال 1
+      7: FlexColumnWidth(0.95), // العظمى
+      8: FlexColumnWidth(0.95), // الدنيا
+      9: FlexColumnWidth(1.85), // المادة (يمين)
+    };
+
+    // Fill the whole A4 sheet: no large empty whitespace.
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F9FC),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppPalette.line),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: <Color>[Color(0xFF234B86), Color(0xFF1E7A79)]),
-              borderRadius: BorderRadius.circular(22),
+      width: _SchoolShellPageState._examReportCardWidth,
+      height: _SchoolShellPageState._examReportCardWidth * 297 / 210,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            // Header: logo + school name on VISUAL LEFT of the page.
+            // In RTL Row, last child is on the left.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                const SizedBox(width: 96),
+                Expanded(
+                  child: Column(
+                    children: <Widget>[
+                      const Text(
+                        'الجلاء المدرسي',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF2F6F6D),
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        year,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF2F6F6D),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: 96,
+                  child: Column(
+                    children: <Widget>[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: Image.asset('image/logo.jpg', width: 44, height: 44, fit: BoxFit.cover),
+                      ),
+                      const SizedBox(height: 3),
+                      const Text(
+                        schoolName,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1F6B69),
+                          height: 1.15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+            const SizedBox(height: 6),
+            // Meta chips — RTL wrap starts from the right
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(6, 5, 6, 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD8E3E8)),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.start,
                 children: <Widget>[
-                  Container(
-                    width: 170,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7E6BF),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  metaPair('المديرية', directorate),
+                  metaPair('المجمع', complexName),
+                  metaPair('المدرسة', schoolName),
+                  metaPair('الصف', _studentGradeDisplay(student)),
+                  metaPair('الشعبة', _studentSectionDisplay(student)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(6, 5, 6, 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD8E3E8)),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.start,
+                children: <Widget>[
+                  metaPair('اسم الطالب', student.fullName),
+                  metaPair('اسم الأم', student.motherName),
+                  metaPair('المواليد', '${student.birthPlace} ${student.birthDate}'.trim()),
+                  metaPair('الرقم في السجل العام', student.serial),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Stretch subject rows to fill remaining A4 height (no large empty gap).
+                  final totalRows = 2 + subjects.length + 1; // 2 headers + subjects + totals
+                  final available = constraints.maxHeight;
+                  // Stretch grade rows to fill almost all remaining height.
+                  // Signatures sit right under the table; white space is only BELOW names.
+                  final headerH = 28.0;
+                  final totalsH = 30.0;
+                  final remainingForSubjects = (available - (headerH * 2) - totalsH).clamp(120.0, available);
+                  final subjectH = subjects.isEmpty
+                      ? 28.0
+                      : (remainingForSubjects / subjects.length).clamp(24.0, 56.0);
+
+                  Widget cell(
+                    String value, {
+                    bool isHeader = false,
+                    bool bold = false,
+                    Color? textColor,
+                    Color? cellColor,
+                    double height = 28,
+                  }) {
+                    return SizedBox(
+                      height: height,
+                      child: _examReportCell(
+                        value,
+                        isHeader: isHeader,
+                        bold: bold,
+                        textColor: textColor,
+                        cellColor: cellColor,
+                      ),
+                    );
+                  }
+
+                  TableRow buildSubjectRow(String subject, {required bool zebra}) {
+                    final e = _examResultForStudentSubject(student, subject);
+                    final maxMark = _examSubjectMaxMark(subject, student);
+                    final minMark = _examSubjectMinMark(subject, student);
+                    final first = _examTermTotal(e.firstTermWork, e.firstTermExam);
+                    final second = _examTermTotal(e.secondTermWork, e.secondTermExam);
+                    final finalAvg = _examFinalAverage(first, second);
+                    final bg = zebra ? const Color(0xFFF3F7F7) : Colors.white;
+                    return TableRow(
+                      decoration: BoxDecoration(color: bg),
                       children: <Widget>[
-                        const Text('المعدل العام', style: TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w800, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        Text(_formatExamNumber(average), style: const TextStyle(color: AppPalette.goldDark, fontWeight: FontWeight.w900, fontSize: 26)),
+                        cell(_formatExamNumber(finalAvg), bold: true, cellColor: const Color(0xFFEAF2FF), height: subjectH),
+                        cell(_formatExamNumber(second), bold: true, cellColor: const Color(0xFFEDF8F1), height: subjectH),
+                        cell(_formatExamNumber(e.secondTermExam), height: subjectH),
+                        cell(_formatExamNumber(e.secondTermWork), height: subjectH),
+                        cell(_formatExamNumber(first), bold: true, cellColor: const Color(0xFFFFF7EA), height: subjectH),
+                        cell(_formatExamNumber(e.firstTermExam), height: subjectH),
+                        cell(_formatExamNumber(e.firstTermWork), height: subjectH),
+                        cell(_formatExamNumber(maxMark), bold: true, textColor: const Color(0xFF0F5C5A), height: subjectH),
+                        cell(_formatExamNumber(minMark), textColor: const Color(0xFF5A6B6B), height: subjectH),
+                        cell(subject, bold: true, height: subjectH),
                       ],
+                    );
+                  }
+
+                  final fillRows = <TableRow>[
+                    for (var i = 0; i < subjects.length; i++) buildSubjectRow(subjects[i], zebra: i.isOdd),
+                  ];
+
+                  final fillTotals = TableRow(
+                    decoration: const BoxDecoration(color: Color(0xFFEEF4F4)),
+                    children: <Widget>[
+                      cell(_formatExamNumber(totals['final']!), bold: true, cellColor: const Color(0xFFE8F2FF), height: totalsH),
+                      cell(_formatExamNumber(totals['second']!), bold: true, cellColor: const Color(0xFFDFF3E5), height: totalsH),
+                      cell('', cellColor: const Color(0xFFDFF3E5), height: totalsH),
+                      cell('', cellColor: const Color(0xFFDFF3E5), height: totalsH),
+                      cell(_formatExamNumber(totals['first']!), bold: true, cellColor: const Color(0xFFF7E6BF), height: totalsH),
+                      cell('', cellColor: const Color(0xFFF7E6BF), height: totalsH),
+                      cell('', cellColor: const Color(0xFFF7E6BF), height: totalsH),
+                      cell(_formatExamNumber(totals['max']!), bold: true, cellColor: const Color(0xFFE7F3F2), height: totalsH),
+                      cell(_formatExamNumber(totals['min']!), bold: true, cellColor: const Color(0xFFE7F3F2), height: totalsH),
+                      cell('المجموع', isHeader: true, cellColor: const Color(0xFF1F6B69), height: totalsH),
+                    ],
+                  );
+
+                  return Container(
+                    width: double.infinity,
+                    height: available,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF1F6B69), width: 1.1),
+                    ),
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Table(
+                        border: TableBorder.all(color: const Color(0xFF1F6B69), width: 0.85),
+                        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                        columnWidths: colWidths,
+                        children: <TableRow>[
+                          TableRow(
+                            decoration: const BoxDecoration(color: Color(0xFF1F6B69)),
+                            children: <Widget>[
+                              cell('المحصلة', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('الفصل الثاني', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('الفصل الأول', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('الدرجة\nالعظمى', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('الدرجة\nالدنيا', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('المادة', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                            ],
+                          ),
+                          TableRow(
+                            decoration: const BoxDecoration(color: Color(0xFF2A7E7C)),
+                            children: <Widget>[
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('المحصلة', isHeader: true, cellColor: const Color(0xFF2A7E7C), height: headerH),
+                              cell('درجة\nالامتحان', isHeader: true, cellColor: const Color(0xFF2A7E7C), height: headerH),
+                              cell('درجة\nالأعمال', isHeader: true, cellColor: const Color(0xFF2A7E7C), height: headerH),
+                              cell('المحصلة', isHeader: true, cellColor: const Color(0xFF2A7E7C), height: headerH),
+                              cell('درجة\nالامتحان', isHeader: true, cellColor: const Color(0xFF2A7E7C), height: headerH),
+                              cell('درجة\nالأعمال', isHeader: true, cellColor: const Color(0xFF2A7E7C), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                              cell('', isHeader: true, cellColor: const Color(0xFF1F6B69), height: headerH),
+                            ],
+                          ),
+                          ...fillRows,
+                          fillTotals,
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F9FA),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFD7E1E8)),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      'النتيجة النهائية: $resultLabel',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        color: resultLabel == 'ناجح' ? const Color(0xFF1E7A43) : AppPalette.roseRed,
+                      ),
                     ),
                   ),
                   Expanded(
-                    child: Column(
-                      children: <Widget>[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: Image.asset('image/logo.jpg', width: 76, height: 76, fit: BoxFit.cover),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text('الجلاء المدرسي', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
-                        const SizedBox(height: 4),
-                        const Text('مدرسة روز التعليمية', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
-                      ],
+                    child: Text(
+                      'المجموع: ${_formatExamNumber(totals['final']!)} / ${_formatExamNumber(totals['max']!)}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF123A78), fontSize: 12.5),
                     ),
                   ),
-                  Container(
-                    width: 190,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: <Widget>[
-                        const Text('السنة الدراسية', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        Text(student.schoolYear.isEmpty ? _currentAcademicYear() : student.schoolYear, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
-                      ],
+                  Expanded(
+                    child: Text(
+                      'النسبة: ${_formatExamNumber(totals['percent']!)}%',
+                      textAlign: TextAlign.left,
+                      style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1F6B69), fontSize: 12.5),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF1F7),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFD6E3EE)),
-            ),
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: <Widget>[
-                infoBox('اسم الطالب', student.fullName),
-                infoBox('اسم الأب', student.fatherName),
-                infoBox('اسم الأم', student.motherName),
-                infoBox('الصف', _studentGradeDisplay(student)),
-                infoBox('الشعبة', _studentSectionDisplay(student)),
-                infoBox('الرقم العام', student.serial),
-                infoBox('تاريخ الولادة', student.birthDate),
-                infoBox('مكان الولادة', student.birthPlace),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppPalette.line),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Table(
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                columnWidths: const <int, TableColumnWidth>{
-                  0: FixedColumnWidth(190),
-                  1: FixedColumnWidth(108),
-                  2: FixedColumnWidth(108),
-                  3: FixedColumnWidth(132),
-                  4: FixedColumnWidth(108),
-                  5: FixedColumnWidth(108),
-                  6: FixedColumnWidth(132),
-                  7: FixedColumnWidth(132),
-                },
-                children: <TableRow>[
-                  TableRow(
-                    children: <Widget>[
-                      _examReportCell('المادة', isHeader: true, cellColor: const Color(0xFF244E88)),
-                      _examReportCell('درجة الأعمال', isHeader: true, cellColor: const Color(0xFFB97A33)),
-                      _examReportCell('درجة الامتحان', isHeader: true, cellColor: const Color(0xFFB97A33)),
-                      _examReportCell('محصلة الفصل الأول', isHeader: true, cellColor: const Color(0xFFA76727)),
-                      _examReportCell('درجة الأعمال', isHeader: true, cellColor: const Color(0xFF2F8F62)),
-                      _examReportCell('درجة الامتحان', isHeader: true, cellColor: const Color(0xFF2F8F62)),
-                      _examReportCell('محصلة الفصل الثاني', isHeader: true, cellColor: const Color(0xFF1E7A43)),
-                      _examReportCell('المحصلة النهائية', isHeader: true, cellColor: const Color(0xFF123A78)),
-                    ],
-                  ),
-                  ...reportRows,
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // RTL visual: right side = مشرف القسم / مدير المدرسة, left side = المشرف العام
-          Directionality(
-            textDirection: TextDirection.rtl,
-            child: Row(
+            const SizedBox(height: 6),
+            // Signatures immediately under grades; white space only under the names.
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
-                      const Text('مشرف القسم / مدير المدرسة', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 8),
-                      Text(
-                        'مشرف القسم: ${_supervisorNameController.text.isEmpty ? 'مشرف القسم' : _supervisorNameController.text}',
-                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
-                      ),
+                      const Text('مشرف القسم / مدير المدرسة', textAlign: TextAlign.center, style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900, fontSize: 11)),
                       const SizedBox(height: 4),
-                      Text(
-                        'مدير المدرسة: ${_principalNameController.text.isEmpty ? (_secretaryNameController.text.isEmpty ? 'مدير المدرسة' : _secretaryNameController.text) : _principalNameController.text}',
-                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 12),
-                      const Divider(thickness: 1.2, color: Color(0xFFB7C5D6)),
+                      Text('مشرف القسم: $supervisor', textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 10.5)),
+                      Text('مدير المدرسة: $principal', textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 10.5)),
+                      const SizedBox(height: 10),
+                      const Divider(thickness: 1.0, color: Color(0xFFB7C5D6)),
                     ],
                   ),
                 ),
-                const SizedBox(width: 28),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: const <Widget>[
-                      Text('الخاتم', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
-                      SizedBox(height: 12),
-                      SizedBox(
-                        height: 48,
-                        child: Center(child: Text(' ', style: TextStyle(fontSize: 1))),
-                      ),
-                      Divider(thickness: 1.2, color: Color(0xFFB7C5D6)),
+                      Text('الخاتم', textAlign: TextAlign.center, style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900, fontSize: 11)),
+                      SizedBox(height: 22),
+                      Divider(thickness: 1.0, color: Color(0xFFB7C5D6)),
                     ],
                   ),
                 ),
-                const SizedBox(width: 28),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
-                      const Text('المشرف العام', style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 8),
-                      Text(
-                        _generalSupervisorController.text.isEmpty ? 'المشرف العام' : _generalSupervisorController.text,
-                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 12),
-                      const Divider(thickness: 1.2, color: Color(0xFFB7C5D6)),
+                      const Text('المشرف العام', textAlign: TextAlign.center, style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900, fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Text(generalSupervisor, textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 10.5)),
+                      Text('اسم المدير: $principal', textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 10.5)),
+                      const SizedBox(height: 10),
+                      const Divider(thickness: 1.0, color: Color(0xFFB7C5D6)),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 34),
-        ],
+            // Clean white margin under signatures (bottom of A4).
+            const Spacer(),
+          ],
+        ),
       ),
     );
   }
@@ -7937,16 +8740,19 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }) {
     return Container(
       color: cellColor ?? Colors.transparent,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      // Fill A4 height: taller cells reduce empty whitespace under the table.
+      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
       alignment: Alignment.center,
       child: Text(
         text,
         textAlign: TextAlign.center,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: isHeader ? Colors.white : (textColor ?? AppPalette.text),
-          fontWeight: isHeader || bold ? FontWeight.w900 : FontWeight.w600,
-          fontSize: isHeader ? 12 : 12.5,
-          height: 1.5,
+          color: isHeader ? Colors.white : (textColor ?? const Color(0xFF152525)),
+          fontWeight: isHeader || bold ? FontWeight.w900 : FontWeight.w700,
+          fontSize: isHeader ? 10 : 11.5,
+          height: 1.15,
         ),
       ),
     );
@@ -8057,11 +8863,19 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         runSpacing: 8,
                         children: <Widget>[
                           _actionButton('معاينة جماعية', const Color(0xFFF7F3EA), AppPalette.goldDark, matches.isEmpty ? () {} : () async {
-                            Navigator.of(dialogContext).pop();
+                            if (Navigator.of(dialogContext).canPop()) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                            await Future<void>.delayed(Duration.zero);
+                            if (!mounted) return;
                             await _previewBulkExamReports(grade: selectedGrade, section: selectedSection);
                           }),
                           _actionButton('طباعة جماعية', const Color(0xFFE7F7EE), AppPalette.leafGreen, matches.isEmpty ? () {} : () async {
-                            Navigator.of(dialogContext).pop();
+                            if (Navigator.of(dialogContext).canPop()) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                            await Future<void>.delayed(Duration.zero);
+                            if (!mounted) return;
                             await _printBulkExamReports(grade: selectedGrade, section: selectedSection);
                           }),
                         ],
@@ -8094,13 +8908,23 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                                     spacing: 8,
                                     children: <Widget>[
                                       _actionButton('معاينة', const Color(0xFFF7F3EA), AppPalette.goldDark, () async {
-                                        Navigator.of(dialogContext).pop();
+                                        if (Navigator.of(dialogContext).canPop()) {
+                                          Navigator.of(dialogContext).pop();
+                                        }
+                                        await Future<void>.delayed(Duration.zero);
+                                        if (!mounted) return;
                                         setState(() => _loadStudent(student));
+                                        await WidgetsBinding.instance.endOfFrame;
                                         await _previewExamReport();
                                       }),
                                       _actionButton('طباعة', const Color(0xFFE7F7EE), AppPalette.leafGreen, () async {
-                                        Navigator.of(dialogContext).pop();
+                                        if (Navigator.of(dialogContext).canPop()) {
+                                          Navigator.of(dialogContext).pop();
+                                        }
+                                        await Future<void>.delayed(Duration.zero);
+                                        if (!mounted) return;
                                         setState(() => _loadStudent(student));
+                                        await WidgetsBinding.instance.endOfFrame;
                                         await _printExamReport();
                                       }),
                                     ],
@@ -8151,6 +8975,15 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _examsPageSection() {
+    if (_students.isEmpty) {
+      return const Center(
+        child: Text(
+          'لا يوجد طلاب لإظهار الجلاء المدرسي. أضف طالبًا أولاً من أمانة السر.',
+          style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.muted),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
     final student = _selectedStudent ?? _students.first;
     final subjects = _examSubjectsForStudent(student);
     final visibleSubjects = _visibleExamSubjectsForStudent(student);
@@ -8206,13 +9039,82 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text('اختيار الطالب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                const Text('اختيار الطالب ونموذج الجلاء', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
                 const SizedBox(height: 12),
-                _dropdownStudentPicker(student),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  children: <Widget>[
+                    _dropdownStudentPicker(student),
+                    SizedBox(
+                      width: 420,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE1EBF3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Text('نموذج الجلاء / الحلقة أو المرحلة', style: TextStyle(color: Color(0xFF7E8D9D), fontSize: 12, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _activeExamCycleForStudent(student),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: const Color(0xFFFBFDFF),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+                                ),
+                              ),
+                              items: _examCycleOptions
+                                  .map((e) => DropdownMenuItem<String>(value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis)))
+                                  .toList(),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() {
+                                  // If user chooses the auto-detected cycle, clear override.
+                                  final auto = _detectExamCycleForStudent(student);
+                                  _examCycleOverride = value == auto ? null : value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF7F6),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFC7E4E1)),
+                  ),
+                  child: Text(
+                    'صف الطالب: ${_studentGradeDisplay(student)}'
+                    '  •  الرقم: ${_studentGradeNumber(student) == 0 ? '-' : _studentGradeNumber(student)}'
+                    '  •  النموذج الحالي: ${_examCycleLabel(_activeExamCycleForStudent(student))}'
+                    '${_examCycleOverride == null ? ' (تلقائي حسب الصف)' : ' (يدوي)'}'
+                    '  •  عدد المواد: ${subjects.length}',
+                    style: const TextStyle(color: Color(0xFF1F6B69), fontWeight: FontWeight.w800, height: 1.6),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 _subSectionBanner(
                   'إدخال درجات المواد',
-                  subtitle: 'كل مادة تُفتح في نافذة مستقلة، وفيها درجات الفصل الأول ودرجات الفصل الثاني مع جمع الأعمال والامتحان تلقائيًا ثم احتساب المحصلة النهائية بقسمة مجموع الفصلين على اثنين. علامة تدقيق المادة أصبحت يدوية بالكامل، مع زر تدقيق جماعي وفلتر للمواد غير المدققة.',
+                  subtitle: 'المواد تتغير تلقائيًا حسب صف الطالب (حلقة 1 / حلقة 2 / إعدادي / ثانوي). يمكنك أيضًا اختيار النموذج يدويًا من القائمة. كل مادة تُفتح في نافذة مستقلة مع منع تجاوز العلامة العظمى.',
                 ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -8263,9 +9165,28 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     children: visibleSubjects.map((subject) => _examSubjectCard(student, subject)).toList(),
                   ),
                 const SizedBox(height: 18),
-                RepaintBoundary(
-                  key: _examReportBoundaryKey,
-                  child: _examReportCard(student, subjects),
+                // Printable A4 portrait sheet (logical width ~210mm).
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: _SchoolShellPageState._examReportCardWidth),
+                    child: AspectRatio(
+                      // A4 portrait ratio 210:297 ≈ 1:1.414
+                      aspectRatio: 210 / 297,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: _SchoolShellPageState._examReportCardWidth,
+                          // height derived from A4 ratio
+                          height: _SchoolShellPageState._examReportCardWidth * 297 / 210,
+                          child: RepaintBoundary(
+                            key: _examReportBoundaryKey,
+                            child: _examReportCard(student, subjects),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

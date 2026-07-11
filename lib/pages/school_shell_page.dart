@@ -133,6 +133,21 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final ImagePicker _imagePicker = ImagePicker();
   final GlobalKey _studentCardBoundaryKey = GlobalKey();
   final GlobalKey _examReportBoundaryKey = GlobalKey();
+
+  /// Official exam report print size: A4 portrait.
+  /// Small margins on left/right/top, larger bottom margin for signatures/stamp.
+  /// A4 portrait with small L/R/Top margins and larger bottom margin.
+  static final PdfPageFormat _examReportPageFormat = PdfPageFormat(
+    PdfPageFormat.a4.width,
+    PdfPageFormat.a4.height,
+    marginLeft: 10 * PdfPageFormat.mm,
+    marginRight: 10 * PdfPageFormat.mm,
+    marginTop: 10 * PdfPageFormat.mm,
+    marginBottom: 18 * PdfPageFormat.mm,
+  );
+
+  /// Logical on-screen A4 width used for the printable report card layout.
+  static const double _examReportCardWidth = 794; // ~210mm at 96dpi
   bool _isDatabaseReady = false;
   bool _isStudentCardExporting = false;
   bool _isExamReportExporting = false;
@@ -302,6 +317,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _studentsStatsSection = 'الكل';
   bool _showOnlyUnreviewedExamSubjects = false;
   List<String> _customExamSubjects = <String>[];
+  /// Manual exam-cycle override for the report card subjects/marks.
+  /// null = auto from selected student grade.
+  /// Values: cycle1 | cycle2 | prep | secondary_literary | secondary_scientific
+  String? _examCycleOverride;
   final TextEditingController _newExamSubjectController = TextEditingController();
   String _accountingView = 'installments';
   int? _accountingFilterStudentId;
@@ -1695,12 +1714,40 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Future<Uint8List> _captureBoundaryPng(GlobalKey boundaryKey, {double pixelRatio = 3}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 80));
+    // Give the tree a couple of frames so the RepaintBoundary is laid out and
+    // any pending route/overlay dispose has finished (avoids _dependents crashes).
+    await Future<void>.delayed(const Duration(milliseconds: 120));
     await WidgetsBinding.instance.endOfFrame;
-    final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null) {
-      throw StateError('تعذر الوصول إلى عنصر الطباعة المطلوب.');
+    if (!mounted) {
+      throw StateError('تعذر التقاط العنصر: الصفحة لم تعد متاحة.');
     }
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    await WidgetsBinding.instance.endOfFrame;
+
+    RenderRepaintBoundary? boundary;
+    for (var attempt = 0; attempt < 8; attempt++) {
+      if (!mounted) {
+        throw StateError('تعذر التقاط العنصر: الصفحة لم تعد متاحة.');
+      }
+      final context = boundaryKey.currentContext;
+      final renderObject = context?.findRenderObject();
+      if (renderObject is RenderRepaintBoundary && renderObject.hasSize) {
+        boundary = renderObject;
+        break;
+      }
+      await Future<void>.delayed(Duration(milliseconds: 40 + (attempt * 20)));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (boundary == null) {
+      throw StateError('تعذر الوصول إلى عنصر الطباعة المطلوب. تأكد أن قسم الجلاء ظاهر في الشاشة.');
+    }
+
+    // Wait while the boundary is still painting after student/grade changes.
+    for (var attempt = 0; attempt < 12 && boundary.debugNeedsPaint; attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+
     final image = await boundary.toImage(pixelRatio: pixelRatio);
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) {
@@ -1710,15 +1757,33 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Future<Uint8List> _buildExamReportPdf(Uint8List pngBytes) async {
-    final document = pw.Document();
+    final document = pw.Document(
+      title: 'Rose School 2026 Exam Report',
+      author: 'Rose School 2026',
+      subject: 'School exam report A4 portrait',
+    );
     final image = pw.MemoryImage(pngBytes);
+    // Portrait A4 only: small L/R/Top margins, larger bottom margin.
+    final pageFormat = _examReportPageFormat;
     document.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.fromLTRB(10, 10, 10, 26),
+        pageFormat: pageFormat,
+        margin: pw.EdgeInsets.zero, // margins already baked into pageFormat
         build: (context) {
-          return pw.Center(
-            child: pw.Image(image, fit: pw.BoxFit.contain),
+          return pw.Padding(
+            padding: pw.EdgeInsets.fromLTRB(
+              pageFormat.marginLeft,
+              pageFormat.marginTop,
+              pageFormat.marginRight,
+              pageFormat.marginBottom,
+            ),
+            child: pw.SizedBox.expand(
+              child: pw.FittedBox(
+                fit: pw.BoxFit.contain,
+                alignment: pw.Alignment.topCenter,
+                child: pw.Image(image),
+              ),
+            ),
           );
         },
       ),
@@ -1732,27 +1797,44 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       return;
     }
     try {
-      setState(() => _isExamReportExporting = true);
+      setState(() {
+        _isExamReportExporting = true;
+        if (_currentPage != 'exams') {
+          _currentPage = 'exams';
+        }
+      });
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 80));
       final pngBytes = await _captureBoundaryPng(_examReportBoundaryKey, pixelRatio: 2.6);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       await showDialog<void>(
         context: context,
         builder: (dialogContext) {
           return Dialog(
             insetPadding: const EdgeInsets.all(24),
             child: Container(
-              width: 1100,
-              height: 760,
+              // A4 portrait preview proportions (~210x297)
+              width: 820,
+              height: 980,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: <Widget>[
                   Row(
                     children: <Widget>[
                       Expanded(
-                        child: Text('معاينة الجلاء المدرسي - ${_selectedStudent!.fullName}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppPalette.deepNavySoft)),
+                        child: Text(
+                          'معاينة الجلاء المدرسي - ${_selectedStudent!.fullName}',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppPalette.deepNavySoft),
+                        ),
                       ),
                       IconButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        onPressed: () {
+                          if (Navigator.of(dialogContext).canPop()) {
+                            Navigator.of(dialogContext).pop();
+                          }
+                        },
                         icon: const Icon(Icons.close),
                       ),
                     ],
@@ -1779,7 +1861,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         },
       );
     } catch (error) {
-      _showSnack('تعذر فتح معاينة الجلاء: $error');
+      if (mounted) {
+        _showSnack('تعذر فتح معاينة الجلاء: $error');
+      }
     } finally {
       if (mounted) {
         setState(() => _isExamReportExporting = false);
@@ -1793,9 +1877,19 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       return;
     }
     try {
-      setState(() => _isExamReportExporting = true);
+      setState(() {
+        _isExamReportExporting = true;
+        if (_currentPage != 'exams') {
+          _currentPage = 'exams';
+        }
+      });
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 80));
       final pngBytes = await _captureBoundaryPng(_examReportBoundaryKey, pixelRatio: 2.8);
       final pdfBytes = await _buildExamReportPdf(pngBytes);
+      if (!mounted) {
+        return;
+      }
       await Printing.layoutPdf(
         name: 'exam_report_${_selectedStudent!.id}.pdf',
         onLayout: (format) async => pdfBytes,
@@ -1804,7 +1898,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         _showSnack('تم تجهيز الجلاء المدرسي للطباعة بنجاح.');
       }
     } catch (error) {
-      _showSnack('تعذر طباعة الجلاء المدرسي: $error');
+      if (mounted) {
+        _showSnack('تعذر طباعة الجلاء المدرسي: $error');
+      }
     } finally {
       if (mounted) {
         setState(() => _isExamReportExporting = false);
@@ -1816,44 +1912,43 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     final document = pw.Document(
       title: 'Rose School 2026 Bulk Exam Reports',
       author: 'Rose School 2026',
-      subject: 'Bulk school exam reports export',
+      subject: 'Bulk school exam reports A4 portrait',
     );
+    final pageFormat = _examReportPageFormat;
     final totalPages = pngPages.length;
     for (var index = 0; index < pngPages.length; index++) {
       final image = pw.MemoryImage(pngPages[index]);
       final pageNumber = index + 1;
       document.addPage(
         pw.Page(
-          pageFormat: PdfPageFormat.a4.landscape,
-          margin: const pw.EdgeInsets.fromLTRB(12, 10, 12, 24),
+          pageFormat: pageFormat,
+          // Portrait A4 only. Margins: small L/R/Top, larger bottom.
+          margin: pw.EdgeInsets.zero,
           build: (context) {
-            return pw.Container(
-              decoration: pw.BoxDecoration(
-                color: PdfColors.white,
-                border: pw.Border.all(color: const PdfColor(0.85, 0.89, 0.94), width: 1.1),
+            return pw.Padding(
+              padding: pw.EdgeInsets.fromLTRB(
+                pageFormat.marginLeft,
+                pageFormat.marginTop,
+                pageFormat.marginRight,
+                pageFormat.marginBottom,
               ),
-              padding: const pw.EdgeInsets.fromLTRB(10, 10, 10, 12),
               child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                 children: <pw.Widget>[
                   pw.Expanded(
-                    child: pw.Center(
-                      child: pw.Container(
-                        decoration: pw.BoxDecoration(
-                          border: pw.Border.all(color: const PdfColor(0.93, 0.95, 0.97), width: 0.8),
-                        ),
-                        padding: const pw.EdgeInsets.all(4),
-                        child: pw.Image(image, fit: pw.BoxFit.contain),
-                      ),
+                    child: pw.FittedBox(
+                      fit: pw.BoxFit.contain,
+                      alignment: pw.Alignment.topCenter,
+                      child: pw.Image(image),
                     ),
                   ),
-                  pw.SizedBox(height: 8),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: <pw.Widget>[
-                      pw.Container(width: 82, height: 3, color: const PdfColor(0.81, 0.65, 0.37)),
-                      pw.Text('$pageNumber / $totalPages', style: const pw.TextStyle(fontSize: 10)),
-                      pw.Container(width: 82, height: 3, color: const PdfColor(0.12, 0.48, 0.47)),
-                    ],
+                  pw.SizedBox(height: 6),
+                  pw.Align(
+                    alignment: pw.Alignment.center,
+                    child: pw.Text(
+                      '$pageNumber / $totalPages',
+                      style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+                    ),
                   ),
                 ],
               ),
@@ -1967,14 +2062,26 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }) async {
     final originalStudent = _selectedStudent;
     final images = <Uint8List>[];
+    // Ensure we are on the exams page so the report RepaintBoundary is mounted.
+    if (_currentPage != 'exams' && mounted) {
+      setState(() => _currentPage = 'exams');
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await WidgetsBinding.instance.endOfFrame;
+    }
     for (final student in students) {
-      if (!mounted) break;
+      if (!mounted) {
+        break;
+      }
       setState(() => _loadStudent(student));
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 60));
       final pngBytes = await _captureBoundaryPng(_examReportBoundaryKey, pixelRatio: pixelRatio);
       images.add(pngBytes);
     }
     if (mounted && originalStudent != null) {
       setState(() => _loadStudent(originalStudent));
+      await WidgetsBinding.instance.endOfFrame;
     }
     return images;
   }
@@ -4256,9 +4363,18 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+    if (!mounted) {
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) {
+      return;
+    }
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
   }
 }
 
