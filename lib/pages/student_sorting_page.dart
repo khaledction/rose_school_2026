@@ -161,6 +161,12 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
     return '—';
   }
 
+  /// Pass/fail label for ranking table.
+  String _passFailFor(_RankedStudent row) {
+    if (row.average <= 0) return '—';
+    return row.average >= 50 ? 'ناجح' : 'راسب';
+  }
+
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
@@ -322,17 +328,18 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
             pw.Table(
               border: pw.TableBorder.all(color: PdfColors.blueGrey200, width: 0.5),
               columnWidths: const {
-                0: pw.FixedColumnWidth(45),
-                1: pw.FlexColumnWidth(2.4),
-                2: pw.FixedColumnWidth(45),
-                3: pw.FixedColumnWidth(45),
-                4: pw.FixedColumnWidth(50),
-                5: pw.FlexColumnWidth(2.0),
+                0: pw.FixedColumnWidth(40),
+                1: pw.FlexColumnWidth(2.2),
+                2: pw.FixedColumnWidth(42),
+                3: pw.FixedColumnWidth(42),
+                4: pw.FixedColumnWidth(48),
+                5: pw.FixedColumnWidth(55),
+                6: pw.FlexColumnWidth(1.8),
               },
               children: <pw.TableRow>[
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
-                  children: <String>['الترتيب', 'اسم الطالب', 'الصف', 'الشعبة', 'المعدل', 'ملاحظة']
+                  children: <String>['الترتيب', 'اسم الطالب', 'الصف', 'الشعبة', 'المعدل', 'النجاح والرسوب', 'ملاحظة']
                       .map(
                         (h) => pw.Padding(
                           padding: const pw.EdgeInsets.all(5),
@@ -348,6 +355,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                     row.student.grade,
                     row.student.section,
                     row.average > 0 ? row.average.toStringAsFixed(1) : '--',
+                    _passFailFor(row),
                     _noteFor(row),
                   ];
                   return pw.TableRow(
@@ -415,7 +423,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
     setState(() => _exporting = true);
     try {
       final buffer = StringBuffer();
-      buffer.writeln('الترتيب,اسم الطالب,الصف,الشعبة,المعدل,ترتيب على مستوى المدرسة,ملاحظة');
+      buffer.writeln('الترتيب,اسم الطالب,الصف,الشعبة,المعدل,النجاح والرسوب,ترتيب على مستوى المدرسة,ملاحظة');
       for (final row in _ranked) {
         buffer.writeln(
           '${row.localRank},'
@@ -423,6 +431,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
           '"${row.student.grade}",'
           '"${row.student.section}",'
           '${row.average > 0 ? row.average.toStringAsFixed(1) : ''},'
+          '"${_passFailFor(row)}",'
           '${row.schoolRank ?? ''},'
           '"${_noteFor(row)}"',
         );
@@ -715,6 +724,7 @@ const SizedBox(height: 14),
                               DataColumn(label: Text('الصف', style: TextStyle(fontWeight: FontWeight.w900))),
                               DataColumn(label: Text('الشعبة', style: TextStyle(fontWeight: FontWeight.w900))),
                               DataColumn(label: Text('المعدل', style: TextStyle(fontWeight: FontWeight.w900))),
+                              DataColumn(label: Text('النجاح والرسوب', style: TextStyle(fontWeight: FontWeight.w900))),
                               DataColumn(label: Text('ملاحظة', style: TextStyle(fontWeight: FontWeight.w900))),
                             ],
                             rows: _ranked.isEmpty
@@ -723,6 +733,7 @@ const SizedBox(height: 14),
                                       cells: <DataCell>[
                                         DataCell(Text('--')),
                                         DataCell(Text('لا توجد نتائج ضمن الفرز الحالي')),
+                                        DataCell(Text('--')),
                                         DataCell(Text('--')),
                                         DataCell(Text('--')),
                                         DataCell(Text('--')),
@@ -754,6 +765,17 @@ const SizedBox(height: 14),
                                         DataCell(Text(row.student.grade)),
                                         DataCell(Text(row.student.section)),
                                         DataCell(Text(row.average > 0 ? row.average.toStringAsFixed(1) : '--')),
+                                        DataCell(
+                                          Text(
+                                            _passFailFor(row),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              color: _passFailFor(row) == 'ناجح'
+                                                  ? AppPalette.leafGreen
+                                                  : (_passFailFor(row) == 'راسب' ? AppPalette.roseRed : AppPalette.muted),
+                                            ),
+                                          ),
+                                        ),
                                         DataCell(
                                           SizedBox(
                                             width: 140,

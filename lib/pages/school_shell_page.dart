@@ -257,8 +257,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   final List<FocusNode> _adminUserFocusNodes = List<FocusNode>.generate(5, (_) => FocusNode());
   String _sealImagePath = '';
   String _signatureImagePath = '';
-  final TextEditingController _loginUsernameController = TextEditingController(text: 'admin');
-  final TextEditingController _loginPasswordController = TextEditingController(text: 'admin');
+  final TextEditingController _loginUsernameController = TextEditingController();
+  final TextEditingController _loginPasswordController = TextEditingController();
   final TextEditingController _adminUsernameController = TextEditingController();
   final TextEditingController _adminPasswordController = TextEditingController();
   final TextEditingController _adminConfirmPasswordController = TextEditingController();
@@ -283,6 +283,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _spokenLanguage = 'E';
   String _enrollmentType = 'طالب جديد';
   String _enrollmentGrade = '1';
+  /// Secondary track for grades 10-12: علمي | أدبي
+  String _secondaryTrack = 'علمي';
   final Set<String> _failedGradesSelected = <String>{};
   String _transportSubscription = 'نعم';
   final List<String> _transportCurrencies = List<String>.filled(10, 'ليرة سورية');
@@ -733,8 +735,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     setState(() {
       _authenticatedUserId = null;
       _isAuthenticated = false;
-      _loginUsernameController.text = 'admin';
-      _loginPasswordController.text = 'admin';
+      _loginUsernameController.clear();
+      _loginPasswordController.clear();
       _loginError = '';
     });
   }
@@ -2513,8 +2515,26 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     return list;
   }
 
+
+  String _composeStudentGradeLabel() {
+    final n = int.tryParse(_enrollmentGrade.trim()) ?? 0;
+    const names = <int, String>{
+      1: 'الأول', 2: 'الثاني', 3: 'الثالث', 4: 'الرابع', 5: 'الخامس', 6: 'السادس',
+      7: 'السابع', 8: 'الثامن', 9: 'التاسع', 10: 'العاشر', 11: 'الحادي عشر', 12: 'الثاني عشر',
+    };
+    final base = names[n] ?? (_gradeController.text.trim().isEmpty ? _enrollmentGrade : _gradeController.text.trim());
+    if (n >= 10 && n <= 12) {
+      return '$base $_secondaryTrack';
+    }
+    final typed = _gradeController.text.trim();
+    if (typed.isNotEmpty) return typed;
+    return base;
+  }
+
   void _loadStudent(StudentRecord student) {
     _selectedStudentId = student.id;
+    // Always auto-switch exam report model to the selected student's grade.
+    _examCycleOverride = null;
     _serialController.text = student.serial;
     _fullNameController.text = student.fullName;
     _fatherNameController.text = student.fatherName;
@@ -2562,6 +2582,15 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     _secondLanguage = student.secondLanguage;
     _spokenLanguage = student.spokenLanguage;
     _enrollmentGrade = student.enrollmentGrade;
+    final gradeText = '${student.grade} ${student.enrollmentGrade}';
+    if (gradeText.contains('أدبي') || gradeText.contains('ادبي')) {
+      _secondaryTrack = 'أدبي';
+    } else if (gradeText.contains('علمي')) {
+      _secondaryTrack = 'علمي';
+    } else {
+      final n = int.tryParse(student.enrollmentGrade.trim()) ?? 0;
+      _secondaryTrack = (n >= 10 && n <= 12) ? 'علمي' : _secondaryTrack;
+    }
     _failedGradesSelected
       ..clear()
       ..addAll(
@@ -2676,6 +2705,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     _spokenLanguage = 'E';
     _enrollmentType = 'طالب جديد';
     _enrollmentGrade = '1';
+    _secondaryTrack = 'علمي';
     _sectionController.text = '?';
     _schoolYearController.text = _currentAcademicYear();
     _failedGradesSelected.clear();
@@ -2774,7 +2804,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       guardianAddress: _guardianAddressController.text.trim(),
       emergencyContactName: _emergencyContactNameController.text.trim(),
       emergencyContactPhone: _emergencyContactPhoneController.text.trim(),
-      grade: _gradeController.text.trim().isEmpty ? _enrollmentGrade : _gradeController.text.trim(),
+      grade: _composeStudentGradeLabel(),
       section: _sectionController.text.trim().isEmpty ? '?' : _sectionController.text.trim(),
       gender: _gender,
       status: _status,
@@ -2882,7 +2912,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       guardianAddress: _guardianAddressController.text.trim(),
       emergencyContactName: _emergencyContactNameController.text.trim(),
       emergencyContactPhone: _emergencyContactPhoneController.text.trim(),
-      grade: _gradeController.text.trim().isEmpty ? _enrollmentGrade : _gradeController.text.trim(),
+      grade: _composeStudentGradeLabel(),
       section: _sectionController.text.trim().isEmpty ? '?' : _sectionController.text.trim(),
       gender: _gender,
       status: _status,
@@ -3829,6 +3859,26 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     );
   }
 
+  /// Student is considered "successful" when final average of entered subjects
+  /// is at least 40% of the sum of max marks for those entered subjects.
+  bool _studentIsSuccessful(StudentRecord student) {
+    final subjects = _examSubjectsForStudent(student);
+    if (subjects.isEmpty) return false;
+    var earned = 0.0;
+    var maxTotal = 0.0;
+    var hasAny = false;
+    for (final subject in subjects) {
+      final e = _examResultForStudentSubject(student, subject);
+      final entered = e.firstTermWork > 0 || e.firstTermExam > 0 || e.secondTermWork > 0 || e.secondTermExam > 0;
+      if (!entered) continue;
+      hasAny = true;
+      earned += _examSubjectFinal(student, subject);
+      maxTotal += _examSubjectMaxMark(subject, student);
+    }
+    if (!hasAny || maxTotal <= 0) return false;
+    return (earned / maxTotal) >= 0.4;
+  }
+
   Widget _buildStats() {
     // Hide top people cards on pages that already have focused internal content.
     if (_currentPage == 'student_sorting' ||
@@ -3839,9 +3889,12 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     }
 
     final totalStudents = _students.length;
-    final employees = EmployeeService.instance.all;
-    final totalTeachers = employees.where((e) => e.jobType == 'معلم').length;
-    final totalEmployees = employees.length;
+    final males = _students.where((s) => s.gender == 'ذكر').toList();
+    final females = _students.where((s) => s.gender == 'أنثى').toList();
+    final maleSuccess = males.where(_studentIsSuccessful).length;
+    final femaleSuccess = females.where(_studentIsSuccessful).length;
+    final maleRate = males.isEmpty ? 0.0 : (maleSuccess * 100.0 / males.length);
+    final femaleRate = females.isEmpty ? 0.0 : (femaleSuccess * 100.0 / females.length);
 
     // On employees screens: never show total students card.
     final bool employeesContext = _currentPage == 'employees' || _currentPage == 'employee_review';
@@ -3855,18 +3908,18 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           'icon': '■',
         },
       {
-        'value': '$totalTeachers',
-        'label': 'إجمالي عدد المعلمين',
+        'value': '${males.length}',
+        'label': 'عدد الذكور • نجاح ${maleRate.toStringAsFixed(0)}%',
         'c1': AppPalette.royalBlue,
         'c2': const Color(0xFF0E2F66),
-        'icon': '📚',
+        'icon': '♂',
       },
       {
-        'value': '$totalEmployees',
-        'label': 'إجمالي عدد الموظفين',
+        'value': '${females.length}',
+        'label': 'عدد الإناث • نجاح ${femaleRate.toStringAsFixed(0)}%',
         'c1': AppPalette.leafGreen,
         'c2': const Color(0xFF166534),
-        'icon': '👥',
+        'icon': '♀',
       },
     ];
     if (stats.isEmpty) {
@@ -3907,9 +3960,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                           const SizedBox(height: 8),
                           Text(
                             stat['label'] as String,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppPalette.muted, fontSize: 14),
+                            style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.25),
                           ),
                         ],
                       ),

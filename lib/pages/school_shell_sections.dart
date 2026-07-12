@@ -876,7 +876,17 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 _choiceField(
                   'الصف',
                   {for (var i = 1; i <= 12; i++) '$i': _enrollmentGrade == '$i'},
-                  (key) => setState(() => _enrollmentGrade = key),
+                  (key) => setState(() {
+                    _enrollmentGrade = key;
+                    final n = int.tryParse(key) ?? 0;
+                    if (n < 10 || n > 12) {
+                      // keep track value but it won't show
+                    } else if (_secondaryTrack != 'علمي' && _secondaryTrack != 'أدبي') {
+                      _secondaryTrack = 'علمي';
+                    }
+                    // keep grade controller aligned for display
+                    _gradeController.text = _composeStudentGradeLabel();
+                  }),
                 ),
                 const SizedBox(width: 20),
                 _choiceField(
@@ -886,6 +896,20 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 ),
               ],
             ),
+            // Grades 10-12: scientific / literary track radios
+            if ((int.tryParse(_enrollmentGrade.trim()) ?? 0) >= 10 && (int.tryParse(_enrollmentGrade.trim()) ?? 0) <= 12)
+              _choiceField(
+                'الفرع (للصفوف 10-12)',
+                <String, bool>{
+                  'علمي': _secondaryTrack == 'علمي',
+                  'أدبي': _secondaryTrack == 'أدبي',
+                },
+                (key) => setState(() {
+                  _secondaryTrack = key;
+                  _gradeController.text = _composeStudentGradeLabel();
+                }),
+                span2: true,
+              ),
             if (_enrollmentType == 'طالب منقول')
               _editableField('اسم المدرسة المنقول منها', _previousSchoolController, span2: true)
             else
@@ -8515,7 +8539,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   final available = constraints.maxHeight;
                   // Stretch grade rows to fill almost all remaining height.
                   // Signatures sit right under the table; white space is only BELOW names.
-                  final headerH = 28.0;
+                  final headerH = 34.0;
                   final totalsH = 30.0;
                   final remainingForSubjects = (available - (headerH * 2) - totalsH).clamp(120.0, available);
                   final subjectH = subjects.isEmpty
@@ -8687,10 +8711,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
-                      const Text('مشرف القسم / مدير المدرسة', textAlign: TextAlign.center, style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900, fontSize: 11)),
-                      const SizedBox(height: 4),
+                      const Text('التوقيعات الإدارية', textAlign: TextAlign.center, style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w900, fontSize: 11)),
+                      const SizedBox(height: 6),
+                      Text('مدير المدرسة: $principal', textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w800, fontSize: 11)),
+                      const SizedBox(height: 3),
                       Text('مشرف القسم: $supervisor', textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 10.5)),
-                      Text('مدير المدرسة: $principal', textAlign: TextAlign.center, style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 10.5)),
                       const SizedBox(height: 10),
                       const Divider(thickness: 1.0, color: Color(0xFFB7C5D6)),
                     ],
@@ -8974,6 +8999,38 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
+  int _countEnteredFirstTermSubjects(StudentRecord student) {
+    final subjects = _examSubjectsForStudent(student);
+    var n = 0;
+    for (final subject in subjects) {
+      if (_isFirstTermEntered(_examResultForStudentSubject(student, subject))) n++;
+    }
+    return n;
+  }
+
+  int _countEnteredSecondTermSubjects(StudentRecord student) {
+    final subjects = _examSubjectsForStudent(student);
+    var n = 0;
+    for (final subject in subjects) {
+      if (_isSecondTermEntered(_examResultForStudentSubject(student, subject))) n++;
+    }
+    return n;
+  }
+
+  double _examEntryProgressPercent(StudentRecord student) {
+    final subjects = _examSubjectsForStudent(student);
+    if (subjects.isEmpty) return 0;
+    // Progress over both terms: each subject has 2 terms.
+    final totalSlots = subjects.length * 2;
+    var done = 0;
+    for (final subject in subjects) {
+      final e = _examResultForStudentSubject(student, subject);
+      if (_isFirstTermEntered(e)) done++;
+      if (_isSecondTermEntered(e)) done++;
+    }
+    return (done * 100.0) / totalSlots;
+  }
+
   Widget _examsPageSection() {
     if (_students.isEmpty) {
       return const Center(
@@ -8985,27 +9042,40 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       );
     }
     final student = _selectedStudent ?? _students.first;
+    // Always prefer automatic model from the selected student's grade.
+    // (Manual dropdown may set a temporary override; changing student clears it in _loadStudent.)
     final subjects = _examSubjectsForStudent(student);
     final visibleSubjects = _visibleExamSubjectsForStudent(student);
     final reviewedCount = _countReviewedExamSubjects(student);
     final unreviewedCount = subjects.length - reviewedCount;
+    final firstEntered = _countEnteredFirstTermSubjects(student);
+    final secondEntered = _countEnteredSecondTermSubjects(student);
+    final progress = _examEntryProgressPercent(student);
 
     return SingleChildScrollView(
       child: Column(
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Expanded(
-                child: Text(
+          // Title + action chips in one horizontal wrap (side by side, not stacked)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.96),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppPalette.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                const Text(
                   '📚 الدرجات والجلاء المدرسي',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                 ),
-              ),
-              Flexible(
-                child: Wrap(
+                const SizedBox(height: 10),
+                Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: <Widget>[
                     _examActionChip('تحديث', Icons.refresh, AppPalette.sky, AppPalette.deepNavySoft, () => setState(() {})),
                     _examActionChip('إدارة المواد', Icons.edit_note_rounded, AppPalette.ivory, AppPalette.goldDark, () => _showManageExamSubjectsDialog(student)),
@@ -9024,8 +9094,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     _examActionChip('طباعة جماعية', Icons.library_books, AppPalette.royalBlue, Colors.white, _showBulkExamReportsDialog),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -9063,6 +9133,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                             const SizedBox(height: 8),
                             DropdownButtonFormField<String>(
                               value: _activeExamCycleForStudent(student),
+                              isExpanded: true,
                               decoration: InputDecoration(
                                 filled: true,
                                 fillColor: const Color(0xFFFBFDFF),
@@ -9081,7 +9152,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               onChanged: (value) {
                                 if (value == null) return;
                                 setState(() {
-                                  // If user chooses the auto-detected cycle, clear override.
                                   final auto = _detectExamCycleForStudent(student);
                                   _examCycleOverride = value == auto ? null : value;
                                 });
@@ -9104,33 +9174,76 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   ),
                   child: Text(
                     'صف الطالب: ${_studentGradeDisplay(student)}'
-                    '  •  الرقم: ${_studentGradeNumber(student) == 0 ? '-' : _studentGradeNumber(student)}'
-                    '  •  النموذج الحالي: ${_examCycleLabel(_activeExamCycleForStudent(student))}'
-                    '${_examCycleOverride == null ? ' (تلقائي حسب الصف)' : ' (يدوي)'}'
+                    '  •  النموذج: ${_examCycleLabel(_activeExamCycleForStudent(student))}'
+                    '${_examCycleOverride == null ? ' (تلقائي حسب صف الطالب)' : ' (تعديل يدوي مؤقت)'}'
                     '  •  عدد المواد: ${subjects.length}',
                     style: const TextStyle(color: Color(0xFF1F6B69), fontWeight: FontWeight.w800, height: 1.6),
                   ),
                 ),
                 const SizedBox(height: 16),
-                _subSectionBanner(
-                  'إدخال درجات المواد',
-                  subtitle: 'المواد تتغير تلقائيًا حسب صف الطالب (حلقة 1 / حلقة 2 / إعدادي / ثانوي). يمكنك أيضًا اختيار النموذج يدويًا من القائمة. كل مادة تُفتح في نافذة مستقلة مع منع تجاوز العلامة العظمى.',
-                ),
-                const SizedBox(height: 16),
+                // Summary tiles: totals + entered terms + progress
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: <Widget>[
                     _examSummaryTile('إجمالي المواد', subjects.length.toString(), AppPalette.deepNavySoft, Icons.menu_book_rounded),
-                    _examSummaryTile('المواد المدققة يدويًا', reviewedCount.toString(), const Color(0xFF5A62D6), Icons.verified_outlined),
-                    _examSummaryTile('المواد غير المدققة', unreviewedCount.toString(), AppPalette.roseRed, Icons.pending_actions_rounded),
+                    _examSummaryTile('المواد المدققة', reviewedCount.toString(), const Color(0xFF5A62D6), Icons.verified_outlined),
+                    _examSummaryTile('غير المدققة', unreviewedCount.toString(), AppPalette.roseRed, Icons.pending_actions_rounded),
+                    _examSummaryTile('الفصل الأول (مُدخَل)', '$firstEntered / ${subjects.length}', AppPalette.goldDark, Icons.looks_one_rounded),
+                    _examSummaryTile('الفصل الثاني (مُدخَل)', '$secondEntered / ${subjects.length}', AppPalette.leafGreen, Icons.looks_two_rounded),
+                    _examSummaryTile('نسبة الإنجاز', '${progress.toStringAsFixed(0)}%', const Color(0xFF0F766E), Icons.pie_chart_rounded),
                   ],
+                ),
+                const SizedBox(height: 12),
+                // Progress bar 0-100
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F8FC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppPalette.line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          const Expanded(
+                            child: Text('نسبة إنجاز إدخال الدرجات', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                          ),
+                          Text('${progress.toStringAsFixed(1)}%', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F766E))),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: (progress / 100).clamp(0.0, 1.0),
+                          minHeight: 10,
+                          backgroundColor: const Color(0xFFE5EEF5),
+                          color: const Color(0xFF0F766E),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'الفصل الأول: $firstEntered مادة  •  الفصل الثاني: $secondEntered مادة',
+                        style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _subSectionBanner(
+                  'إدخال درجات المواد',
+                  subtitle: 'عند اختيار الطالب يتبدل نموذج الجلاء تلقائيًا حسب صفه. كل مادة تُفتح في نافذة مستقلة مع منع تجاوز العلامة العظمى.',
                 ),
                 const SizedBox(height: 16),
                 if (_showOnlyUnreviewedExamSubjects)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF0FF),
                       borderRadius: BorderRadius.circular(14),
@@ -9141,7 +9254,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       style: TextStyle(color: Color(0xFF5A62D6), fontWeight: FontWeight.w900),
                     ),
                   ),
-                if (_showOnlyUnreviewedExamSubjects) const SizedBox(height: 16),
                 if (visibleSubjects.isEmpty)
                   Container(
                     width: double.infinity,
@@ -9165,19 +9277,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     children: visibleSubjects.map((subject) => _examSubjectCard(student, subject)).toList(),
                   ),
                 const SizedBox(height: 18),
-                // Printable A4 portrait sheet (logical width ~210mm).
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: _SchoolShellPageState._examReportCardWidth),
                     child: AspectRatio(
-                      // A4 portrait ratio 210:297 ≈ 1:1.414
                       aspectRatio: 210 / 297,
                       child: FittedBox(
                         fit: BoxFit.contain,
                         alignment: Alignment.topCenter,
                         child: SizedBox(
                           width: _SchoolShellPageState._examReportCardWidth,
-                          // height derived from A4 ratio
                           height: _SchoolShellPageState._examReportCardWidth * 297 / 210,
                           child: RepaintBoundary(
                             key: _examReportBoundaryKey,
