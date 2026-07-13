@@ -42,3 +42,23 @@ flutter run -d windows
 ## بناء تنفيذي
 
 انظر `README.md` → قسم **بناء ملف تنفيذي لويندوز**.
+
+## 📦 تجهيز Installer أنيق (2026-07-13)
+
+### أُضيف
+- `scripts/build_release_installer.ps1` — بناء Release + ZIP + Setup
+- `installer/RoseSchool.iss` — قالب Inno Setup
+- `installer/README_INSTALLER.md` — دليل التثبيت الأنيق
+
+### أوامر سريعة
+```powershell
+cd C:\Users\khaledction\Desktop\new-rose
+git fetch origin
+git reset --hard origin/main
+powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1
+```
+
+المخرجات في `dist\`:
+- `RoseSchoolSetup.exe`
+- `RoseSchool2026_Portable_....zip`
+
