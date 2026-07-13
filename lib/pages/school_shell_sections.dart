@@ -4683,12 +4683,15 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     final stillOverdue = _studentsWithOverdueInstallments().map((s) => s.id).toSet();
                     await NotificationService.instance.clearDueForStudentsNotIn(stillOverdue);
                     if (mounted) {
-                      setState(() {});
+                      setState(() {
+                        _accountingView = 'dues';
+                        _accountingFilterStudentId = selectedStudentId;
+                      });
                     }
                     if (Navigator.of(dialogContext).canPop()) {
                       Navigator.of(dialogContext).pop();
                     }
-                    _showSnack('تم الدفع. بطاقة الإدارة أصبحت خضراء (تم الدفع) واختفت شارة مستحق من قائمة الطلاب.');
+                    _showSnack('تم الدفع. بطاقة المستحقين أصبحت خضراء (تم الدفع) مع خيارات قراءة/أرشفة/حذف.');
                   },
                   child: const Text('حفظ الدفعة'),
                 ),
@@ -5578,6 +5581,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     if (_accountingView == 'donations' || _accountingView == 'aids') {
       _accountingView = 'installments';
     }
+    final dueItems = _buildInstallmentDueBoardItems();
+    final dueOnlyCount = dueItems.where((e) => e['paid'] != true).length;
+    final paidOnlyCount = dueItems.where((e) => e['paid'] == true).length;
+
     switch (_accountingView) {
       case 'payments':
         focusedTitle = 'شاشة الدفعات';
@@ -5587,6 +5594,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         focusedChildren = receiptEntries.isEmpty
             ? const <Widget>[Text('لا توجد دفعات ضمن الفرز الحالي. استخدم زر «دفعة» لإضافة دفعة.', style: TextStyle(color: AppPalette.muted))]
             : _buildAccountingPaymentTiles(receiptEntries);
+        break;
+      case 'dues':
+        focusedTitle = 'شاشة المستحقين';
+        focusedSubtitle = 'مستحق: $dueOnlyCount • تم الدفع: $paidOnlyCount • اضغط البطاقة لإدارة الأسماء';
+        focusedAccent = const Color(0xFFB45309);
+        focusedIcon = Icons.warning_amber_rounded;
+        focusedChildren = <Widget>[_adminOverdueInstallmentsPanel()];
         break;
       default:
         focusedTitle = 'شاشة الأقساط (قراءة فقط)';
@@ -5917,7 +5931,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         icon: Icons.account_balance_wallet_outlined,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _accountingTypeCard(
                         id: 'payments',
@@ -5930,12 +5944,25 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         icon: Icons.payments_outlined,
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _accountingTypeCard(
+                        id: 'dues',
+                        title: 'المستحقون',
+                        subtitle: 'شاشة مستقلة: أصفر مستحق / أخضر تم الدفع + خيارات.',
+                        count: dueOnlyCount,
+                        value: 'مدفوع $paidOnlyCount',
+                        accent: const Color(0xFFB45309),
+                        soft: const Color(0xFFFFF3BF),
+                        icon: Icons.warning_amber_rounded,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 180),
-                  child: (_accountingView == 'installments' || _accountingView == 'payments')
+                  child: (_accountingView == 'installments' || _accountingView == 'payments' || _accountingView == 'dues')
                       ? _accountingFocusedPanel(
                           key: ValueKey<String>(_accountingView),
                           title: focusedTitle,

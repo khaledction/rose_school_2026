@@ -4557,10 +4557,39 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     final overdue = _studentsWithOverdueInstallments();
     final overdueIds = overdue.map((s) => s.id).toSet();
     final items = <Map<String, dynamic>>[];
-    final seenStudents = <int>{};
+    final paidStudentIds = <int>{};
 
-    // 1) Yellow due cards for currently overdue students.
+    // 1) Green paid cards FIRST (payment notice always wins over yellow).
+    for (final n in NotificationService.instance.active) {
+      final isPaid = n.category == 'installment_paid' ||
+          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
+      if (!isPaid) continue;
+      final sid = int.tryParse(n.meta['studentId'] ?? n.targetId ?? '') ?? 0;
+      if (sid <= 0 || paidStudentIds.contains(sid)) continue;
+      StudentRecord? student;
+      for (final s in _students) {
+        if (s.id == sid) {
+          student = s;
+          break;
+        }
+      }
+      final name = n.meta['studentName'] ?? student?.fullName ?? n.title.replaceFirst('تم الدفع — ', '');
+      items.add(<String, dynamic>{
+        'key': n.id,
+        'notificationId': n.id,
+        'studentId': sid,
+        'name': name,
+        'grade': student == null ? '-' : _studentGradeDisplay(student),
+        'section': student == null ? '-' : _studentSectionDisplay(student),
+        'paid': true,
+        'isRead': n.isRead,
+      });
+      paidStudentIds.add(sid);
+    }
+
+    // 2) Yellow due cards only for students without a paid notice.
     for (final student in overdue) {
+      if (paidStudentIds.contains(student.id)) continue;
       String? notifId;
       for (final n in NotificationService.instance.active) {
         final sid = n.meta['studentId'] ?? n.targetId ?? '';
@@ -4581,37 +4610,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         'paid': false,
         'isRead': false,
       });
-      seenStudents.add(student.id);
     }
 
-    // 2) Green paid cards from notices (stay until archive/delete).
-    for (final n in NotificationService.instance.active) {
-      final isPaid = n.category == 'installment_paid' ||
-          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
-      if (!isPaid) continue;
-      final sid = int.tryParse(n.meta['studentId'] ?? n.targetId ?? '') ?? 0;
-      if (sid <= 0) continue;
-      if (overdueIds.contains(sid) || seenStudents.contains(sid)) continue;
-      StudentRecord? student;
-      for (final s in _students) {
-        if (s.id == sid) {
-          student = s;
-          break;
-        }
-      }
-      final name = n.meta['studentName'] ?? student?.fullName ?? n.title.replaceFirst('تم الدفع — ', '');
-      items.add(<String, dynamic>{
-        'key': n.id,
-        'notificationId': n.id,
-        'studentId': sid,
-        'name': name,
-        'grade': student == null ? '-' : _studentGradeDisplay(student),
-        'section': student == null ? '-' : _studentSectionDisplay(student),
-        'paid': true,
-        'isRead': n.isRead,
-      });
-      seenStudents.add(sid);
-    }
+    // Also include currently-overdue IDs set for callers that only need counts.
+    overdueIds.removeAll(paidStudentIds);
 
     items.sort((a, b) {
       final ap = a['paid'] == true ? 1 : 0;
@@ -4694,7 +4696,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                 child: Text(
                   dueCount == 0 && paidCount == 0
                       ? '✅ المستحقون — لا يوجد حالياً'
-                      : '⚠️ المستحقون — الأقساط الشهرية',
+                      : '⚠️ المستحقون — الأقساط الشهرية (إدارة/محاسبة)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
