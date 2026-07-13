@@ -3,7 +3,9 @@
 *.log
 *.pyc
 *.swp
+*~
 .DS_Store
+Thumbs.db
 .atom/
 .build/
 .buildlog/
@@ -12,16 +14,18 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# Editor / IDE
 *.iml
 *.ipr
 *.iws
 .idea/
+# .vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Local backup / temp editor files (never commit)
+*.bak
+*.bak_*
+*.orig
+*.tmp
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -48,4 +52,15 @@ app.*.map.json
 /backups/
 /preview_only_package/
 /ROSE_SCHOOL_DESKTOP_READY_PACKAGE/
+/tmp_updates/
 *.zip
+
+# Secrets / local env (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+secrets/
+credentials/
