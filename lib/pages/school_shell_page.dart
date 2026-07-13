@@ -4557,34 +4557,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     final overdue = _studentsWithOverdueInstallments();
     final overdueIds = overdue.map((s) => s.id).toSet();
     final items = <Map<String, dynamic>>[];
+    final seenStudents = <int>{};
 
-    // Green paid cards remain until admin archives/deletes.
-    for (final n in NotificationService.instance.active) {
-      final isPaid = n.category == 'installment_paid' ||
-          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
-      if (!isPaid) continue;
-      final sid = int.tryParse(n.meta['studentId'] ?? n.targetId ?? '') ?? 0;
-      if (sid <= 0 || overdueIds.contains(sid)) continue;
-      StudentRecord? student;
-      for (final s in _students) {
-        if (s.id == sid) {
-          student = s;
-          break;
-        }
-      }
-      final name = n.meta['studentName'] ?? student?.fullName ?? n.title.replaceFirst('تم الدفع — ', '');
-      items.add(<String, dynamic>{
-        'key': n.id,
-        'notificationId': n.id,
-        'studentId': sid,
-        'name': name,
-        'grade': student == null ? '-' : _studentGradeDisplay(student),
-        'section': student == null ? '-' : _studentSectionDisplay(student),
-        'paid': true,
-        'isRead': n.isRead,
-      });
-    }
-
+    // 1) Yellow due cards for currently overdue students.
     for (final student in overdue) {
       String? notifId;
       for (final n in NotificationService.instance.active) {
@@ -4606,12 +4581,42 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         'paid': false,
         'isRead': false,
       });
+      seenStudents.add(student.id);
+    }
+
+    // 2) Green paid cards from notices (stay until archive/delete).
+    for (final n in NotificationService.instance.active) {
+      final isPaid = n.category == 'installment_paid' ||
+          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
+      if (!isPaid) continue;
+      final sid = int.tryParse(n.meta['studentId'] ?? n.targetId ?? '') ?? 0;
+      if (sid <= 0) continue;
+      if (overdueIds.contains(sid) || seenStudents.contains(sid)) continue;
+      StudentRecord? student;
+      for (final s in _students) {
+        if (s.id == sid) {
+          student = s;
+          break;
+        }
+      }
+      final name = n.meta['studentName'] ?? student?.fullName ?? n.title.replaceFirst('تم الدفع — ', '');
+      items.add(<String, dynamic>{
+        'key': n.id,
+        'notificationId': n.id,
+        'studentId': sid,
+        'name': name,
+        'grade': student == null ? '-' : _studentGradeDisplay(student),
+        'section': student == null ? '-' : _studentSectionDisplay(student),
+        'paid': true,
+        'isRead': n.isRead,
+      });
+      seenStudents.add(sid);
     }
 
     items.sort((a, b) {
       final ap = a['paid'] == true ? 1 : 0;
       final bp = b['paid'] == true ? 1 : 0;
-      if (ap != bp) return ap.compareTo(bp);
+      if (ap != bp) return ap.compareTo(bp); // due first, paid after
       return a['name'].toString().compareTo(b['name'].toString());
     });
     return items;

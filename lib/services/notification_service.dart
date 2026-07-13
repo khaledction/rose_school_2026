@@ -229,8 +229,10 @@ class NotificationService {
     var changed = false;
     for (var i = 0; i < _notifications.length; i++) {
       final n = _notifications[i];
+      if (n.isArchived) continue;
       final dueLike = n.category == 'installment_due' ||
-          (n.type == 'warning' && (n.title.contains('مستحق') || n.body.contains('مستحق')));
+          n.title.contains('مستحق') ||
+          (n.type == 'warning' && n.body.contains('مستحق'));
       if (!dueLike) continue;
       final sid = n.meta['studentId'] ?? n.targetId ?? '';
       final id = int.tryParse(sid) ?? -1;
@@ -245,6 +247,8 @@ class NotificationService {
         isArchived: false,
         meta: {
           ...n.meta,
+          if (id > 0) 'studentId': id.toString(),
+          'studentName': name,
           'status': 'paid',
         },
       );

@@ -431,7 +431,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               itemCount: _filteredStudents.length,
                               itemBuilder: (context, index) {
                                 final student = _filteredStudents[index];
-                                final overdue = _studentHasOverdueInstallment(student);
                                 return InkWell(
                                   onTap: () {
                                     setState(() {
@@ -441,9 +440,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: overdue ? const Color(0xFFFFFBEA) : null,
-                                      border: const Border(bottom: BorderSide(color: Color(0xFFEDF3F8))),
+                                    decoration: const BoxDecoration(
+                                      border: Border(bottom: BorderSide(color: Color(0xFFEDF3F8))),
                                     ),
                                     child: Row(
                                       children: <Widget>[
@@ -722,23 +720,30 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               Row(
                 children: <Widget>[
                   Flexible(
-                    child: Container(
-                      padding: overdue ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3) : EdgeInsets.zero,
-                      decoration: overdue
-                          ? BoxDecoration(
-                              color: const Color(0xFFFFF3BF),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE6C200)),
-                            )
-                          : null,
-                      child: Text(
-                        student.fullName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: overdue ? const Color(0xFF7A5A00) : AppPalette.deepNavySoft,
-                        ),
+                    child: Text(
+                      student.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppPalette.deepNavySoft,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isFemale ? const Color(0xFFFDECEE) : const Color(0xFFEDF6FF),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: isFemale ? AppPalette.roseRed.withOpacity(0.35) : AppPalette.royalBlue.withOpacity(0.35)),
+                    ),
+                    child: Text(
+                      isFemale ? 'أنثى' : 'ذكر',
+                      style: TextStyle(
+                        color: isFemale ? AppPalette.roseRed : AppPalette.royalBlue,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 10,
                       ),
                     ),
                   ),
@@ -757,23 +762,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       ),
                     ),
                   ],
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isFemale ? const Color(0xFFFDECEE) : const Color(0xFFEDF6FF),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: isFemale ? AppPalette.roseRed.withOpacity(0.35) : AppPalette.royalBlue.withOpacity(0.35)),
-                    ),
-                    child: Text(
-                      isFemale ? 'أنثى' : 'ذكر',
-                      style: TextStyle(
-                        color: isFemale ? AppPalette.roseRed : AppPalette.royalBlue,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -4073,10 +4061,29 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     return n.day >= 1 && n.day <= 5;
   }
 
-  /// Overdue after day 5 if student has invoices and no qualifying payment.
+  /// True when admin has an active "paid" notice for this student.
+  bool _studentHasPaidInstallmentNotice(int studentId) {
+    final sid = studentId.toString();
+    for (final n in NotificationService.instance.active) {
+      final matches = (n.meta['studentId'] ?? n.targetId ?? '') == sid;
+      if (!matches) continue;
+      final paid = n.category == 'installment_paid' ||
+          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
+      if (paid) return true;
+    }
+    return false;
+  }
+
+  /// Overdue after day 5 if student has invoices and no payment evidence.
+  /// Payment evidence = receipt this month, any receipt covering invoices,
+  /// or an active green "تم الدفع" admin notice.
   bool _studentHasOverdueInstallment(StudentRecord student, [DateTime? now]) {
     final n = now ?? DateTime.now();
     if (n.day <= 5) {
+      return false;
+    }
+    // Explicit paid notice always wins (admin board + student list).
+    if (_studentHasPaidInstallmentNotice(student.id)) {
       return false;
     }
     final invoices = _studentInvoices(student.id);
@@ -4087,14 +4094,30 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     if (receipts.isEmpty) {
       return true;
     }
+    // Any receipt in current month clears due.
     final paidThisMonth = receipts.any((r) {
       final d = _parseFlexibleDate(r.date) ?? DateTime.tryParse(r.date);
-      if (d == null) {
-        return true;
-      }
+      if (d == null) return true;
       return d.year == n.year && d.month == n.month;
     });
     if (paidThisMonth) {
+      return false;
+    }
+    // Latest receipt on/after the newest invoice also counts as paid.
+    DateTime? latestInvoice;
+    for (final inv in invoices) {
+      final d = _parseFlexibleDate(inv.date) ?? DateTime.tryParse(inv.date);
+      if (d != null && (latestInvoice == null || d.isAfter(latestInvoice))) {
+        latestInvoice = d;
+      }
+    }
+    final paidAfterInvoice = receipts.any((r) {
+      final d = _parseFlexibleDate(r.date) ?? DateTime.tryParse(r.date);
+      if (d == null) return true;
+      if (latestInvoice == null) return true;
+      return !d.isBefore(DateTime(latestInvoice.year, latestInvoice.month, 1));
+    });
+    if (paidAfterInvoice) {
       return false;
     }
     final invTotal = invoices.fold<double>(0, (s, e) => s + e.amount);
@@ -4628,13 +4651,33 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       studentId: selectedStudentId,
                       studentName: studentName,
                     );
+                    // Force receipt date to today when empty/invalid so monthly due logic updates.
+                    final normalizedDate = (_parseFlexibleDate(payDate) == null)
+                        ? DateTime.now().toIso8601String().split('T').first
+                        : payDate;
+                    // update last inserted receipt date if needed
+                    if (_receipts.isNotEmpty && _receipts.first.studentId == selectedStudentId) {
+                      final last = _receipts.first;
+                      if (last.date != normalizedDate) {
+                        _receipts[0] = AccountingReceiptEntry(
+                          studentId: last.studentId,
+                          title: last.title,
+                          amount: last.amount,
+                          currency: last.currency,
+                          date: normalizedDate,
+                          note: last.note,
+                        );
+                        await _persistAll();
+                      }
+                    }
                     await NotificationService.instance.markInstallmentPaidForStudent(
                       studentId: selectedStudentId,
                       studentName: studentName,
                       amount: amount,
                       currency: currency,
-                      date: payDate,
+                      date: normalizedDate,
                     );
+                    // Convert any remaining yellow due notices for students no longer overdue.
                     final stillOverdue = _studentsWithOverdueInstallments().map((s) => s.id).toSet();
                     await NotificationService.instance.clearDueForStudentsNotIn(stillOverdue);
                     if (mounted) {
@@ -4643,12 +4686,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     if (Navigator.of(dialogContext).canPop()) {
                       Navigator.of(dialogContext).pop();
                     }
-                    final removed = !stillOverdue.contains(selectedStudentId);
-                    _showSnack(
-                      removed
-                          ? 'تم الدفع. أُزيل الطالب من المستحقات وتحوّل الإشعار إلى أخضر (تم الدفع).'
-                          : 'تم تسجيل الدفعة وتحويل الإشعار إلى أخضر. إن بقي الاسم اضغط تحديث في الإدارة.',
-                    );
+                    _showSnack('تم الدفع. بطاقة الإدارة أصبحت خضراء (تم الدفع) واختفت شارة مستحق من قائمة الطلاب.');
                   },
                   child: const Text('حفظ الدفعة'),
                 ),
