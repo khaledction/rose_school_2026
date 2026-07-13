@@ -3645,9 +3645,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         );
       case 'donations':
         return const _PageInfo(
-          'التبرعات',
-          'المحاسبة، التبرعات',
-          'إدارة التبرعات العينية والمادية مع ربطها بسجل الطالب والبيانات المالية.',
+          'الأقساط والدفعات',
+          'المحاسبة، الأقساط والدفعات',
+          'شاشات التبرعات والمساعدات أُزيلت من هذا الباب. استخدم الأقساط والدفعات أو الإيرادات والصرفيات.',
         );
       case 'reports':
         return const _PageInfo(
@@ -3798,14 +3798,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
             // Notification bell
             InkWell(
               borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                final unread = NotificationService.instance.unreadCount;
-                if (unread > 0) {
-                  NotificationService.instance.markAllAsRead();
-                  setState(() {});
-                  _showSnack('تم تحديد $unread إشعار/إشعارات كمقروءة.');
-                }
-              },
+              onTap: _showNotificationsPanel,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
@@ -3869,6 +3862,159 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showNotificationsPanel() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final items = NotificationService.instance.active;
+            final archived = NotificationService.instance.archived;
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: Row(
+                  children: <Widget>[
+                    const Expanded(
+                      child: Text('🔔 إشعارات الإدارة', style: TextStyle(fontWeight: FontWeight.w900)),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        await NotificationService.instance.markAllAsRead();
+                        setDialogState(() {});
+                        setState(() {});
+                      },
+                      child: const Text('تعليم الكل كمقروء'),
+                    ),
+                  ],
+                ),
+                content: SizedBox(
+                  width: 560,
+                  height: 480,
+                  child: items.isEmpty && archived.isEmpty
+                      ? const Center(child: Text('لا توجد إشعارات.', style: TextStyle(color: AppPalette.muted)))
+                      : ListView(
+                          children: <Widget>[
+                            if (items.isNotEmpty) ...<Widget>[
+                              const Text('النشطة', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+                              const SizedBox(height: 8),
+                              ...items.map((n) => _notificationAdminTile(n, setDialogState)),
+                            ],
+                            if (archived.isNotEmpty) ...<Widget>[
+                              const SizedBox(height: 14),
+                              const Text('الأرشيف', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.muted)),
+                              const SizedBox(height: 8),
+                              ...archived.map((n) => _notificationAdminTile(n, setDialogState, archivedView: true)),
+                            ],
+                          ],
+                        ),
+                ),
+                actions: <Widget>[
+                  TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('إغلاق')),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (mounted) setState(() {});
+  }
+
+  Widget _notificationAdminTile(NotificationItem n, StateSetter setDialogState, {bool archivedView = false}) {
+    final isPaid = n.type == 'success' || n.category == 'installment_paid' || n.category == 'salary_paid';
+    final isDue = n.type == 'warning' || n.category == 'installment_due';
+    final bg = isPaid
+        ? const Color(0xFFE7F7EE)
+        : isDue
+            ? const Color(0xFFFFF3BF)
+            : const Color(0xFFFBFDFF);
+    final border = isPaid
+        ? const Color(0xFFB7E0C3)
+        : isDue
+            ? const Color(0xFFE6C200)
+            : AppPalette.line;
+    final titleColor = isPaid
+        ? AppPalette.leafGreen
+        : isDue
+            ? const Color(0xFF8A6D00)
+            : AppPalette.deepNavySoft;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(n.title, style: TextStyle(fontWeight: FontWeight.w900, color: titleColor)),
+              ),
+              Text(n.timeAgo, style: const TextStyle(color: AppPalette.muted, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(n.body, style: const TextStyle(height: 1.55, fontSize: 12, color: AppPalette.deepNavySoft)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: <Widget>[
+              if (!n.isRead && !archivedView)
+                TextButton(
+                  onPressed: () async {
+                    await NotificationService.instance.markAsRead(n.id);
+                    setDialogState(() {});
+                    setState(() {});
+                  },
+                  child: const Text('مقروء'),
+                ),
+              if (!archivedView)
+                TextButton(
+                  onPressed: () async {
+                    await NotificationService.instance.archive(n.id);
+                    setDialogState(() {});
+                    setState(() {});
+                  },
+                  child: const Text('أرشفة'),
+                ),
+              if (archivedView)
+                TextButton(
+                  onPressed: () async {
+                    await NotificationService.instance.unarchive(n.id);
+                    setDialogState(() {});
+                    setState(() {});
+                  },
+                  child: const Text('استعادة'),
+                ),
+              TextButton(
+                onPressed: () async {
+                  await NotificationService.instance.remove(n.id);
+                  setDialogState(() {});
+                  setState(() {});
+                },
+                child: const Text('حذف', style: TextStyle(color: AppPalette.roseRed)),
+              ),
+              if (n.targetPage != null && n.targetPage!.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    setState(() => _currentPage = n.targetPage!);
+                  },
+                  child: const Text('فتح'),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -4318,6 +4464,14 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Widget _adminOverdueInstallmentsPanel() {
     final overdue = _studentsWithOverdueInstallments();
+    // Keep admin notifications in sync with current overdue set.
+    for (final student in overdue) {
+      NotificationService.instance.ensureInstallmentDueNotification(
+        studentId: student.id,
+        studentName: student.fullName,
+        gradeLabel: 'الصف ${_studentGradeDisplay(student)}',
+      );
+    }
     final now = DateTime.now();
     final windowNote = now.day <= 5
         ? 'نافذة الدفع الحالية: من 1 إلى 5 من هذا الشهر. بعد اليوم 5 يظهر المستحقون بالأصفر.'

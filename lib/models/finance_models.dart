@@ -60,7 +60,7 @@ class ExpenseCategory {
 }
 
 const List<ExpenseCategory> kDefaultExpenseCategories = [
-  ExpenseCategory(id: 'salaries', name: 'رواتب الموظفين', isDefault: true),
+  ExpenseCategory(id: 'salaries', name: 'رواتب و أجور', isDefault: true),
   ExpenseCategory(id: 'electricity', name: 'فواتير كهرباء', isDefault: true),
   ExpenseCategory(id: 'water', name: 'فواتير ماء', isDefault: true),
   ExpenseCategory(id: 'internet', name: 'فواتير إنترنت', isDefault: true),

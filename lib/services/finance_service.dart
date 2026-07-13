@@ -53,6 +53,17 @@ class FinanceService {
     }
     if (_expenseCategories.isEmpty) {
       _expenseCategories.addAll(kDefaultExpenseCategories);
+    } else {
+      for (var i = 0; i < _expenseCategories.length; i++) {
+        final c = _expenseCategories[i];
+        if (c.id == 'salaries' && c.name != 'رواتب و أجور') {
+          _expenseCategories[i] = ExpenseCategory(id: c.id, name: 'رواتب و أجور', isDefault: c.isDefault);
+        }
+      }
+      final hasSalaries = _expenseCategories.any((c) => c.id == 'salaries' || c.name.contains('رواتب'));
+      if (!hasSalaries) {
+        _expenseCategories.insert(0, const ExpenseCategory(id: 'salaries', name: 'رواتب و أجور', isDefault: true));
+      }
     }
   }
 

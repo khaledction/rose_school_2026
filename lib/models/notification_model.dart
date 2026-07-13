@@ -8,7 +8,10 @@ class NotificationItem {
     this.targetId,
     required this.createdAt,
     this.isRead = false,
+    this.isArchived = false,
     this.roles = const [],
+    this.category = '',
+    this.meta = const {},
   });
 
   final String id;
@@ -19,7 +22,11 @@ class NotificationItem {
   final String? targetId;
   final String createdAt;
   final bool isRead;
+  final bool isArchived;
   final List<String> roles;
+  /// Optional logical group, e.g. installment_due / installment_paid / salary_paid
+  final String category;
+  final Map<String, String> meta;
 
   NotificationItem copyWith({
     String? id,
@@ -30,7 +37,10 @@ class NotificationItem {
     String? targetId,
     String? createdAt,
     bool? isRead,
+    bool? isArchived,
     List<String>? roles,
+    String? category,
+    Map<String, String>? meta,
   }) {
     return NotificationItem(
       id: id ?? this.id,
@@ -41,7 +51,10 @@ class NotificationItem {
       targetId: targetId ?? this.targetId,
       createdAt: createdAt ?? this.createdAt,
       isRead: isRead ?? this.isRead,
+      isArchived: isArchived ?? this.isArchived,
       roles: roles ?? this.roles,
+      category: category ?? this.category,
+      meta: meta ?? this.meta,
     );
   }
 
@@ -54,7 +67,10 @@ class NotificationItem {
         'targetId': targetId,
         'createdAt': createdAt,
         'isRead': isRead,
+        'isArchived': isArchived,
         'roles': roles,
+        'category': category,
+        'meta': meta,
       };
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) => NotificationItem(
@@ -66,7 +82,11 @@ class NotificationItem {
         targetId: json['targetId']?.toString(),
         createdAt: json['createdAt']?.toString() ?? '',
         isRead: json['isRead'] == true,
+        isArchived: json['isArchived'] == true,
         roles: (json['roles'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+        category: json['category']?.toString() ?? '',
+        meta: (json['meta'] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k.toString(), v.toString())) ??
+            const <String, String>{},
       );
 
   String get timeAgo {

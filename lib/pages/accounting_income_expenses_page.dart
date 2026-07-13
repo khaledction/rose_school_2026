@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../models/finance_models.dart';
 import '../services/finance_service.dart';
+import '../services/employee_service.dart';
+import '../services/notification_service.dart';
+import '../models/employee_model.dart';
 import '../theme/app_palette.dart';
 
 class AccountingIncomeExpensesPage extends StatefulWidget {
@@ -12,9 +15,14 @@ class AccountingIncomeExpensesPage extends StatefulWidget {
 }
 
 class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesPage> {
-  String _tab = 'summary'; // 'summary', 'income', 'expenses', 'categories'
+  String _tab = 'summary'; // 'summary', 'income', 'expenses', 'categories', 'reports'
   String _incomeCategoryFilter = 'الكل';
   String _expenseCategoryFilter = 'الكل';
+  int? _selectedSalaryEmployeeId;
+  String _reportScope = 'all'; // all | jobType | employee | category
+  String _reportJobType = 'الكل';
+  int? _reportEmployeeId;
+  String _reportCategoryId = 'الكل';
 
   // Form controllers
   final _incomeAmountController = TextEditingController();
@@ -99,12 +107,30 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
     _showSnack('✅ تم إضافة الإيراد بنجاح');
   }
 
-  Future<void> _addExpense() async {
-    final amount = double.tryParse(_expenseAmountController.text.trim());
-    if (amount == null || amount <= 0) {
-      _showSnack('يرجى إدخال مبلغ صحيح');
-      return;
+  bool get _isSalaryCategory {
+    final cats = FinanceService.instance.expenseCategories;
+    ExpenseCategory? cat;
+    for (final c in cats) {
+      if (c.id == _expenseCategoryId) {
+        cat = c;
+        break;
+      }
     }
+    if (cat == null) return false;
+    return cat.id == 'salaries' || cat.name.contains('رواتب') || cat.name.contains('أجور');
+  }
+
+  Future<void> _ensureSalaryCategoryPresent() async {
+    await FinanceService.instance.init();
+    final cats = FinanceService.instance.expenseCategories;
+    final has = cats.any((c) => c.id == 'salaries' || c.name.contains('رواتب'));
+    if (!has) {
+      await FinanceService.instance.addExpenseCategory('رواتب و أجور');
+    }
+  }
+
+  Future<void> _addExpense() async {
+    await _ensureSalaryCategoryPresent();
     if (_expenseCategoryId.isEmpty) {
       _showSnack('يرجى اختيار تصنيف الصرفية');
       return;
@@ -114,21 +140,91 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
       orElse: () => const ExpenseCategory(id: '', name: 'أخرى', isDefault: true),
     );
 
+    double amount;
+    int? employeeId;
+    String employeeName = _expenseEmployeeNameController.text.trim();
+    String description = _expenseDescController.text.trim();
+
+    if (_isSalaryCategory) {
+      if (_selectedSalaryEmployeeId == null) {
+        _showSnack('اختر الموظف لصرف الراتب');
+        return;
+      }
+      final emp = EmployeeService.instance.byId(_selectedSalaryEmployeeId!);
+      if (emp == null) {
+        _showSnack('الموظف غير موجود');
+        return;
+      }
+      // Locked salary from admin review (no edit from accounting).
+      amount = emp.monthlyTotal > 0 ? emp.monthlyTotal : emp.salary;
+      if (amount <= 0) {
+        _showSnack('لا يوجد راتب معتمد لهذا الموظف من الإدارة.');
+        return;
+      }
+      employeeId = emp.id;
+      employeeName = emp.fullName;
+      if (description.isEmpty) {
+        description = 'صرف راتب/أجر — ${emp.jobType} / ${emp.department}';
+      }
+    } else {
+      amount = double.tryParse(_expenseAmountController.text.trim()) ?? 0;
+      if (amount <= 0) {
+        _showSnack('يرجى إدخال مبلغ صحيح');
+        return;
+      }
+    }
+
+    final entryId = DateTime.now().microsecondsSinceEpoch.toString();
+    final date = _expenseDateController.text.trim().isEmpty
+        ? DateTime.now().toIso8601String().split('T').first
+        : _expenseDateController.text.trim();
+
     await FinanceService.instance.addExpense(ExpenseEntry(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      categoryId: _expenseCategoryId,
+      id: entryId,
+      categoryId: category.id.isEmpty ? _expenseCategoryId : category.id,
       categoryName: category.name,
       amount: amount,
       currency: _expenseCurrency,
-      date: _expenseDateController.text.trim(),
-      description: _expenseDescController.text.trim(),
-      employeeName: _expenseEmployeeNameController.text.trim(),
+      date: date,
+      description: description,
+      employeeId: employeeId,
+      employeeName: employeeName,
       createdAt: DateTime.now().toIso8601String(),
     ));
 
+    if (_isSalaryCategory && employeeId != null) {
+      await EmployeeService.instance.addFinanceLog(EmployeeFinanceLog(
+        id: entryId,
+        employeeId: employeeId,
+        type: 'salary_paid',
+        amount: amount,
+        oldValue: '',
+        newValue: amount.toStringAsFixed(0),
+        note: description,
+        createdAt: DateTime.now().toIso8601String(),
+        createdBy: 'accounting',
+      ));
+      await NotificationService.instance.addSimple(
+        type: 'success',
+        title: 'تسليم راتب — $employeeName',
+        body: 'تم تسليم راتب/أجر للموظف $employeeName بقيمة ${amount.toStringAsFixed(0)} $_expenseCurrency بتاريخ $date.',
+        targetPage: 'employee_review',
+        targetId: employeeId.toString(),
+        roles: const ['الإدارة'],
+        category: 'salary_paid',
+        meta: {
+          'employeeId': employeeId.toString(),
+          'employeeName': employeeName,
+          'amount': amount.toStringAsFixed(0),
+          'date': date,
+        },
+      );
+    }
+
     _clearExpenseForm();
+    _selectedSalaryEmployeeId = null;
     setState(() {});
-    _showSnack('✅ تم إضافة الصرفية بنجاح');
+    _showSnack(_isSalaryCategory ? '✅ تم صرف الراتب وتسجيله في سجل الموظف' : '✅ تم إضافة الصرفية بنجاح');
   }
 
   Future<void> _addCategory() async {
@@ -175,6 +271,7 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
           if (_tab == 'summary') _buildSummary(),
           if (_tab == 'income') _buildIncomeSection(),
           if (_tab == 'expenses') _buildExpenseSection(),
+          if (_tab == 'reports') _buildReportsSection(),
           if (_tab == 'categories') _buildCategoriesSection(),
         ],
       ),
@@ -186,6 +283,7 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
       {'id': 'summary', 'label': '📊 الملخص'},
       {'id': 'income', 'label': '💰 الإيرادات'},
       {'id': 'expenses', 'label': '💸 الصرفيات'},
+      {'id': 'reports', 'label': '📑 الكشوفات'},
       {'id': 'categories', 'label': '🏷️ التصنيفات'},
     ];
 
@@ -479,6 +577,20 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
   }
 
   Widget _buildExpenseForm(List<ExpenseCategory> categories) {
+    final salaryMode = _isSalaryCategory;
+    final employees = EmployeeService.instance.active;
+    if (employees.isEmpty) {
+      // fallback all
+    }
+    final employeeList = employees.isNotEmpty ? employees : EmployeeService.instance.all;
+    EmployeeRecord? selectedEmp;
+    if (_selectedSalaryEmployeeId != null) {
+      selectedEmp = EmployeeService.instance.byId(_selectedSalaryEmployeeId!);
+    }
+    final lockedSalary = selectedEmp == null
+        ? 0.0
+        : (selectedEmp.monthlyTotal > 0 ? selectedEmp.monthlyTotal : selectedEmp.salary);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -495,16 +607,68 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
             spacing: 12,
             runSpacing: 12,
             children: <Widget>[
-              _field('المبلغ *', _expenseAmountController, isNumber: true),
-              _field('التاريخ', _expenseDateController),
               _expenseCategoryDropdown(categories),
+              _field('التاريخ', _expenseDateController),
               _expenseCurrencyDropdown(),
-              _field('البيان/الوصف', _expenseDescController, span2: true),
-              _field('اسم الموظف/المورد', _expenseEmployeeNameController),
+              if (salaryMode) ...<Widget>[
+                SizedBox(
+                  width: 320,
+                  child: DropdownButtonFormField<int>(
+                    value: _selectedSalaryEmployeeId,
+                    isExpanded: true,
+                    items: employeeList
+                        .map((e) => DropdownMenuItem<int>(
+                              value: e.id,
+                              child: Text('${e.fullName} • ${e.jobType}', overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedSalaryEmployeeId = v),
+                    decoration: const InputDecoration(
+                      labelText: 'الموظف *',
+                      filled: true,
+                      fillColor: Color(0xFFFBFDFF),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                        borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 260,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E8),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE8DDBF)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const Text('الراتب المعتمد (من الإدارة — غير قابل للتعديل)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppPalette.goldDark)),
+                      const SizedBox(height: 6),
+                      Text(
+                        selectedEmp == null ? '—' : '${lockedSalary.toStringAsFixed(0)} $_expenseCurrency',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft),
+                      ),
+                    ],
+                  ),
+                ),
+                _field('ملاحظة', _expenseDescController, span2: true),
+              ] else ...<Widget>[
+                _field('المبلغ *', _expenseAmountController, isNumber: true),
+                _field('البيان/الوصف', _expenseDescController, span2: true),
+                _field('اسم الموظف/المورد', _expenseEmployeeNameController),
+              ],
             ],
           ),
           const SizedBox(height: 12),
-          _actionButton('➕ إضافة الصرفية', AppPalette.roseRed, Colors.white, _addExpense),
+          _actionButton(
+            salaryMode ? '💵 صرف الراتب' : '➕ إضافة الصرفية',
+            AppPalette.roseRed,
+            Colors.white,
+            _addExpense,
+          ),
         ],
       ),
     );
@@ -685,6 +849,178 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
     );
   }
 
+  // ─── Reports Tab ──────────────────────────────────────────────
+
+  Widget _buildReportsSection() {
+    final expenses = FinanceService.instance.expenses;
+    final incomes = FinanceService.instance.incomes;
+    final employees = EmployeeService.instance.all;
+    final jobTypes = <String>{'الكل', ...employees.map((e) => e.jobType).where((e) => e.isNotEmpty)};
+    final categories = FinanceService.instance.expenseCategories;
+
+    List<ExpenseEntry> filteredExpenses = expenses;
+    if (_reportScope == 'jobType' && _reportJobType != 'الكل') {
+      final ids = employees.where((e) => e.jobType == _reportJobType).map((e) => e.id).toSet();
+      filteredExpenses = expenses.where((e) => e.employeeId != null && ids.contains(e.employeeId)).toList();
+    } else if (_reportScope == 'employee' && _reportEmployeeId != null) {
+      filteredExpenses = expenses.where((e) => e.employeeId == _reportEmployeeId).toList();
+    } else if (_reportScope == 'category' && _reportCategoryId != 'الكل') {
+      filteredExpenses = expenses.where((e) => e.categoryId == _reportCategoryId).toList();
+    }
+
+    final salaryOnly = filteredExpenses.where((e) => e.categoryId == 'salaries' || e.categoryName.contains('رواتب') || e.categoryName.contains('أجور')).toList();
+    final salaryTotal = salaryOnly.fold<double>(0, (s, e) => s + e.amount);
+    final expenseTotal = filteredExpenses.fold<double>(0, (s, e) => s + e.amount);
+    final incomeTotal = incomes.fold<double>(0, (s, e) => s + e.amount);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppPalette.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('📑 كشوفات الرواتب والأجور والصرفيات', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft, fontSize: 16)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: <Widget>[
+                  DropdownButton<String>(
+                    value: _reportScope,
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('كل الموظفين / عام')),
+                      DropdownMenuItem(value: 'jobType', child: Text('حسب الفئة/الوظيفة')),
+                      DropdownMenuItem(value: 'employee', child: Text('حسب موظف')),
+                      DropdownMenuItem(value: 'category', child: Text('حسب تصنيف الصرفية')),
+                    ],
+                    onChanged: (v) => setState(() => _reportScope = v ?? 'all'),
+                  ),
+                  if (_reportScope == 'jobType')
+                    DropdownButton<String>(
+                      value: jobTypes.contains(_reportJobType) ? _reportJobType : 'الكل',
+                      items: jobTypes.map((j) => DropdownMenuItem(value: j, child: Text(j))).toList(),
+                      onChanged: (v) => setState(() => _reportJobType = v ?? 'الكل'),
+                    ),
+                  if (_reportScope == 'employee')
+                    DropdownButton<int?>(
+                      value: _reportEmployeeId,
+                      items: [
+                        const DropdownMenuItem<int?>(value: null, child: Text('اختر موظفًا')),
+                        ...employees.map((e) => DropdownMenuItem<int?>(value: e.id, child: Text(e.fullName))),
+                      ],
+                      onChanged: (v) => setState(() => _reportEmployeeId = v),
+                    ),
+                  if (_reportScope == 'category')
+                    DropdownButton<String>(
+                      value: _reportCategoryId,
+                      items: [
+                        const DropdownMenuItem(value: 'الكل', child: Text('كل التصنيفات')),
+                        ...categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))),
+                      ],
+                      onChanged: (v) => setState(() => _reportCategoryId = v ?? 'الكل'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: <Widget>[
+                  _reportChip('إجمالي الرواتب/الأجور (نطاق)', salaryTotal),
+                  _reportChip('إجمالي الصرفيات (نطاق)', expenseTotal),
+                  _reportChip('إجمالي كل الإيرادات', incomeTotal),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        _reportListCard(
+          title: '💵 كشف الرواتب والأجور',
+          empty: 'لا توجد رواتب/أجور ضمن النطاق.',
+          rows: salaryOnly
+              .map((e) => '${e.date} • ${e.employeeName.isEmpty ? '—' : e.employeeName} • ${e.amount.toStringAsFixed(0)} ${e.currency} • ${e.description}')
+              .toList(),
+        ),
+        const SizedBox(height: 12),
+        _reportListCard(
+          title: '💸 كشف عام للصرفيات',
+          empty: 'لا توجد صرفيات.',
+          rows: filteredExpenses
+              .map((e) => '${e.date} • ${e.categoryName} • ${e.amount.toStringAsFixed(0)} ${e.currency} • ${e.employeeName.isEmpty ? e.description : e.employeeName}')
+              .toList(),
+        ),
+        const SizedBox(height: 12),
+        _reportListCard(
+          title: '💰 كشف عام للإيرادات',
+          empty: 'لا توجد إيرادات.',
+          rows: incomes
+              .map((e) => '${e.date} • ${e.categoryName} • ${e.amount.toStringAsFixed(0)} ${e.currency} • ${e.studentName.isEmpty ? e.description : e.studentName}')
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _reportChip(String label, double value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFDFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppPalette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(label, style: const TextStyle(color: AppPalette.muted, fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(value.toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppPalette.deepNavySoft)),
+        ],
+      ),
+    );
+  }
+
+  Widget _reportListCard({required String title, required List<String> rows, required String empty}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppPalette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft, fontSize: 15)),
+          const SizedBox(height: 10),
+          if (rows.isEmpty)
+            Text(empty, style: const TextStyle(color: AppPalette.muted))
+          else
+            ...rows.take(80).map((r) => Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFBFDFF),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppPalette.line),
+                  ),
+                  child: Text(r, style: const TextStyle(height: 1.5, fontWeight: FontWeight.w700, fontSize: 12)),
+                )),
+        ],
+      ),
+    );
+  }
+
   // ─── Shared widgets ───────────────────────────────────────────
 
   Widget _field(String label, TextEditingController controller, {bool span2 = false, bool isNumber = false}) {
@@ -741,7 +1077,12 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
       child: DropdownButtonFormField<String>(
         value: _expenseCategoryId.isEmpty ? null : _expenseCategoryId,
         items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-        onChanged: (v) => setState(() => _expenseCategoryId = v!),
+        onChanged: (v) => setState(() {
+          _expenseCategoryId = v!;
+          if (!_isSalaryCategory) {
+            _selectedSalaryEmployeeId = null;
+          }
+        }),
         decoration: const InputDecoration(
           labelText: 'التصنيف *',
           filled: true,

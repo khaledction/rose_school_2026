@@ -2082,7 +2082,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             const SizedBox(height: 12),
           ],
           if (student != null) ...<Widget>[
-            _subSectionBanner('سجل المحاسبة المرتبط', subtitle: 'يظهر هنا فقط ما تمت إضافته من باب المحاسبة: قسط أو تبرع أو مساعدة أو مقبوض.'),
+            _subSectionBanner('سجل المحاسبة المرتبط', subtitle: 'يظهر هنا ما تمت إضافته من باب الأقساط والدفعات: قسط أو مقبوض.'),
             const SizedBox(height: 12),
             ..._buildLinkedAccountingHistory(student.id),
           ] else
@@ -4012,67 +4012,21 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Widget _donationsPageSection() {
-    final student = _selectedStudent ?? _students.first;
-    final items = _studentAccountingDonations(student.id);
-    return SingleChildScrollView(
-      child: Column(
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              const Expanded(
-                child: Text('🎁 التبرعات', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  _actionButton('إضافة تبرع', AppPalette.goldDark, Colors.white, _showSecretariatDonationDialog),
-                  
-                  _actionButton('تحديث القائمة', Colors.white, const Color(0xFF667586), () => setState(() {})),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppPalette.line),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _dropdownStudentPicker(student),
-                const SizedBox(height: 16),
-                if (items.isEmpty)
-                  const Text('لا توجد تبرعات لهذا الطالب حتى الآن.', style: TextStyle(color: AppPalette.muted))
-                else
-                  ...items.map((entry) => Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppPalette.line)),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(entry.title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppPalette.deepNavySoft)),
-                                  const SizedBox(height: 4),
-                                  Text('${entry.donationKind} • ${entry.amount.toStringAsFixed(0)} ${entry.currency} • ${entry.date}', style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.6)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-              ],
-            ),
-          ),
-        ],
+    return Center(
+      child: Container(
+        width: 620,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.96),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppPalette.line),
+        ),
+        child: const Text(
+          'تم حذف شاشات التبرعات والمساعدات من باب الأقساط والدفعات.
+استخدم «الإيرادات والصرفيات» عند الحاجة لتسجيل إيرادات أخرى.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppPalette.muted, height: 1.8, fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }
@@ -4660,6 +4614,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       description: 'دفعة: $payTitle — الطالب: $studentName${payNote.isEmpty ? '' : ' — $payNote'}',
                       studentId: selectedStudentId,
                       studentName: studentName,
+                    );
+                    await NotificationService.instance.markInstallmentPaidForStudent(
+                      studentId: selectedStudentId,
+                      studentName: studentName,
+                      amount: amount,
+                      currency: currency,
+                      date: payDate,
                     );
                     if (Navigator.of(dialogContext).canPop()) {
                       Navigator.of(dialogContext).pop();
@@ -5530,25 +5491,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     late final IconData focusedIcon;
     late final List<Widget> focusedChildren;
 
+    // donations/aids screens removed from this board.
+    if (_accountingView == 'donations' || _accountingView == 'aids') {
+      _accountingView = 'installments';
+    }
     switch (_accountingView) {
-      case 'donations':
-        focusedTitle = 'شاشة التبرعات';
-        focusedSubtitle = '${_accountingScopeText(filteredStudents.length)} • عرض ${donationEntries.length} سجلًا';
-        focusedAccent = AppPalette.royalBlue;
-        focusedIcon = Icons.volunteer_activism_outlined;
-        focusedChildren = donationEntries.isEmpty
-            ? const <Widget>[Text('لا توجد تبرعات ضمن الفرز الحالي.', style: TextStyle(color: AppPalette.muted))]
-            : _buildAccountingDonationTiles(donationEntries);
-        break;
-      case 'aids':
-        focusedTitle = 'شاشة المساعدات والحسومات';
-        focusedSubtitle = '${_accountingScopeText(filteredStudents.length)} • عرض ${aidEntries.length} سجلًا';
-        focusedAccent = AppPalette.leafGreen;
-        focusedIcon = Icons.favorite_outline;
-        focusedChildren = aidEntries.isEmpty
-            ? const <Widget>[Text('لا توجد مساعدات أو حسومات ضمن الفرز الحالي.', style: TextStyle(color: AppPalette.muted))]
-            : _buildAccountingAidTiles(aidEntries);
-        break;
       case 'payments':
         focusedTitle = 'شاشة الدفعات';
         focusedSubtitle = '${_accountingScopeText(filteredStudents.length)} • عرض ${receiptEntries.length} دفعة';
@@ -5576,7 +5523,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             children: <Widget>[
               const Expanded(
                 child: Text(
-                  '💰 المحاسبة',
+                  '💰 الأقساط والدفعات',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                 ),
               ),
@@ -5664,7 +5611,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 const SizedBox(height: 14),
                 _subSectionBanner(
                   'الأقساط والدفعات',
-                  subtitle: 'الأقساط والدفعات هنا. التبرعات والمساعدات تُدار من باب الإيرادات والصرفيات. كل قسط/دفعة يُرحَّل تلقائيًا للإيرادات.',
+                  subtitle: 'الأقساط والدفعات فقط. كل قسط/دفعة يُرحَّل تلقائيًا للإيرادات. شاشات التبرعات/المساعدات أُزيلت من هذا الباب.',
                 ),
                 const SizedBox(height: 14),
                 Wrap(
@@ -5783,26 +5730,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       accent: const Color(0xFF0F766E),
                       soft: const Color(0xFFE8F8F5),
                       icon: Icons.payments_outlined,
-                    ),
-                    _accountingTypeCard(
-                      id: 'donations',
-                      title: 'التبرعات',
-                      subtitle: 'تظهر السجلات المادية والعينية بشكل واضح ومنسق.',
-                      count: donationEntries.length,
-                      value: '${donationsTotal.toStringAsFixed(0)} / ${donationEntries.where((entry) => entry.donationKind == 'عينية').length} عيني',
-                      accent: AppPalette.royalBlue,
-                      soft: const Color(0xFFEDF6FF),
-                      icon: Icons.volunteer_activism_outlined,
-                    ),
-                    _accountingTypeCard(
-                      id: 'aids',
-                      title: 'المساعدات',
-                      subtitle: 'المساعدات والحسومات المادية والعينية ضمن شاشة واحدة.',
-                      count: aidEntries.length,
-                      value: '${discountTotal.toStringAsFixed(0)} / ${aidEntries.where((entry) => entry.aidKind == 'عينية').length} عيني',
-                      accent: AppPalette.leafGreen,
-                      soft: const Color(0xFFE7F7EE),
-                      icon: Icons.favorite_outline,
                     ),
                   ],
                 ),

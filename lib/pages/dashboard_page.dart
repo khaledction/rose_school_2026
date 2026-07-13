@@ -227,7 +227,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildNotificationsCard() {
-    final recent = NotificationService.instance.all.take(5).toList();
+    final recent = NotificationService.instance.active.take(5).toList();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -283,26 +283,18 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _notificationTile(NotificationItem notif) {
-    IconData icon;
-    Color color;
-    switch (notif.type) {
-      case 'success':
-        icon = Icons.check_circle;
-        color = AppPalette.leafGreen;
-        break;
-      case 'warning':
-        icon = Icons.warning_amber_rounded;
-        color = AppPalette.goldDark;
-        break;
-      case 'error':
-        icon = Icons.error;
-        color = AppPalette.roseRed;
-        break;
-      default:
-        icon = Icons.info_outline;
-        color = AppPalette.royalBlue;
-    }
-
+    final isPaid = notif.type == 'success' || notif.category == 'installment_paid' || notif.category == 'salary_paid';
+    final isDue = notif.type == 'warning' || notif.category == 'installment_due';
+    final accent = isPaid
+        ? AppPalette.leafGreen
+        : isDue
+            ? const Color(0xFF8A6D00)
+            : (notif.type == 'error' ? AppPalette.roseRed : AppPalette.royalBlue);
+    final bg = isPaid
+        ? const Color(0xFFE7F7EE)
+        : isDue
+            ? const Color(0xFFFFF3BF)
+            : (notif.isRead ? Colors.white : const Color(0xFFEDF6FF));
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -315,40 +307,27 @@ class _DashboardPageState extends State<DashboardPage> {
             widget.onNavigate(notif.targetPage!, targetId: notif.targetId);
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isPaid ? const Color(0xFFB7E0C3) : (isDue ? const Color(0xFFE6C200) : AppPalette.line)),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 8),
+              Icon(isPaid ? Icons.check_circle : (isDue ? Icons.warning_amber_rounded : Icons.info_outline), size: 18, color: accent),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            notif.title,
-                            style: TextStyle(
-                              fontWeight: notif.isRead ? FontWeight.w500 : FontWeight.w700,
-                              color: AppPalette.deepNavySoft,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        Text(notif.timeAgo,
-                            style: const TextStyle(
-                                color: AppPalette.muted, fontSize: 10)),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(notif.body,
-                        style: const TextStyle(
-                            color: AppPalette.muted, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    Text(notif.title, style: TextStyle(fontWeight: FontWeight.w800, color: accent, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text(notif.body, style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.5)),
+                    const SizedBox(height: 4),
+                    Text(notif.timeAgo, style: const TextStyle(color: AppPalette.muted, fontSize: 11)),
                   ],
                 ),
               ),
