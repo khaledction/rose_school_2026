@@ -3966,8 +3966,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   Widget _notificationAdminTile(NotificationItem n, StateSetter setDialogState, {bool archivedView = false}) {
-    final isPaid = n.type == 'success' || n.category == 'installment_paid' || n.category == 'salary_paid';
-    final isDue = n.type == 'warning' || n.category == 'installment_due';
+    final isPaid = n.type == 'success' || n.category == 'installment_paid' || n.category == 'salary_paid' || n.title.startsWith('تم الدفع');
+    final isDue = !isPaid && (n.type == 'warning' || n.category == 'installment_due' || n.title.contains('مستحق'));
     final bg = isPaid
         ? const Color(0xFFE7F7EE)
         : isDue
@@ -3991,68 +3991,97 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: border),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(n.title, style: TextStyle(fontWeight: FontWeight.w900, color: titleColor)),
-              ),
-              Text(n.timeAgo, style: const TextStyle(color: AppPalette.muted, fontSize: 11)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(n.body, style: const TextStyle(height: 1.55, fontSize: 12, color: AppPalette.deepNavySoft)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: <Widget>[
+          // left options checkbox/menu (RTL visual left)
+          PopupMenuButton<String>(
+            tooltip: 'خيارات الإشعار',
+            onSelected: (value) async {
+              if (value == 'delete') {
+                await NotificationService.instance.remove(n.id);
+              } else if (value == 'archive') {
+                await NotificationService.instance.archive(n.id);
+              } else if (value == 'restore') {
+                await NotificationService.instance.unarchive(n.id);
+              } else if (value == 'read') {
+                await NotificationService.instance.markAsRead(n.id);
+              } else if (value == 'open' && n.targetPage != null && n.targetPage!.isNotEmpty) {
+                Navigator.of(context).pop();
+                setState(() => _currentPage = n.targetPage!);
+                return;
+              }
+              setDialogState(() {});
+              setState(() {});
+            },
+            itemBuilder: (context) => <PopupMenuEntry<String>>[
               if (!n.isRead && !archivedView)
-                TextButton(
-                  onPressed: () async {
-                    await NotificationService.instance.markAsRead(n.id);
-                    setDialogState(() {});
-                    setState(() {});
-                  },
-                  child: const Text('مقروء'),
-                ),
+                const PopupMenuItem<String>(value: 'read', child: Text('تعليم كمقروء')),
               if (!archivedView)
-                TextButton(
-                  onPressed: () async {
-                    await NotificationService.instance.archive(n.id);
-                    setDialogState(() {});
-                    setState(() {});
-                  },
-                  child: const Text('أرشفة'),
-                ),
+                const PopupMenuItem<String>(value: 'archive', child: Text('أرشفة الإشعار')),
               if (archivedView)
-                TextButton(
-                  onPressed: () async {
-                    await NotificationService.instance.unarchive(n.id);
-                    setDialogState(() {});
-                    setState(() {});
-                  },
-                  child: const Text('استعادة'),
-                ),
-              TextButton(
-                onPressed: () async {
-                  await NotificationService.instance.remove(n.id);
-                  setDialogState(() {});
-                  setState(() {});
-                },
-                child: const Text('حذف', style: TextStyle(color: AppPalette.roseRed)),
-              ),
+                const PopupMenuItem<String>(value: 'restore', child: Text('استعادة من الأرشيف')),
               if (n.targetPage != null && n.targetPage!.isNotEmpty)
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    setState(() => _currentPage = n.targetPage!);
-                  },
-                  child: const Text('فتح'),
-                ),
+                const PopupMenuItem<String>(value: 'open', child: Text('فتح')),
+              const PopupMenuItem<String>(
+                value: 'delete',
+                child: Text('حذف الإشعار', style: TextStyle(color: AppPalette.roseRed)),
+              ),
             ],
+            child: Container(
+              width: 28,
+              height: 28,
+              margin: const EdgeInsets.only(left: 8, top: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFD0D7DE)),
+              ),
+              child: Icon(
+                archivedView ? Icons.inventory_2_outlined : Icons.check_box_outline_blank_rounded,
+                size: 18,
+                color: AppPalette.deepNavySoft,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(n.title, style: TextStyle(fontWeight: FontWeight.w900, color: titleColor)),
+                    ),
+                    if (isPaid)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDDF6E5),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFFB7E0C3)),
+                        ),
+                        child: const Text('تم الدفع', style: TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w900, fontSize: 10)),
+                      ),
+                    if (isDue)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3BF),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0xFFE6C200)),
+                        ),
+                        child: const Text('مستحق', style: TextStyle(color: Color(0xFF8A6D00), fontWeight: FontWeight.w900, fontSize: 10)),
+                      ),
+                    const SizedBox(width: 8),
+                    Text(n.timeAgo, style: const TextStyle(color: AppPalette.muted, fontSize: 11)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(n.body, style: const TextStyle(height: 1.55, fontSize: 12, color: AppPalette.deepNavySoft)),
+              ],
+            ),
           ),
         ],
       ),
@@ -4531,29 +4560,44 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.96),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE6C200)),
+        border: Border.all(color: overdue.isEmpty ? const Color(0xFFB7E0C3) : const Color(0xFFE6C200)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Expanded(
+              Expanded(
                 child: Text(
-                  '⚠️ المستحقون — الأقساط الشهرية',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF7A5A00)),
+                  overdue.isEmpty ? '✅ المستحقون — لا يوجد حالياً' : '⚠️ المستحقون — الأقساط الشهرية',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: overdue.isEmpty ? AppPalette.leafGreen : const Color(0xFF7A5A00),
+                  ),
                 ),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  await _syncOverdueInstallmentNotifications();
+                  if (mounted) setState(() {});
+                },
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('تحديث'),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3BF),
+                  color: overdue.isEmpty ? const Color(0xFFE7F7EE) : const Color(0xFFFFF3BF),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: const Color(0xFFE6C200)),
+                  border: Border.all(color: overdue.isEmpty ? const Color(0xFFB7E0C3) : const Color(0xFFE6C200)),
                 ),
                 child: Text(
                   '${overdue.length} طالب',
-                  style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF8A6D00)),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: overdue.isEmpty ? AppPalette.leafGreen : const Color(0xFF8A6D00),
+                  ),
                 ),
               ),
             ],

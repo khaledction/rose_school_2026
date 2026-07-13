@@ -4073,7 +4073,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     return n.day >= 1 && n.day <= 5;
   }
 
-  /// Overdue after day 5 if student has invoices and no receipt this month.
+  /// Overdue after day 5 if student has invoices and no qualifying payment.
   bool _studentHasOverdueInstallment(StudentRecord student, [DateTime? now]) {
     final n = now ?? DateTime.now();
     if (n.day <= 5) {
@@ -4084,11 +4084,25 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       return false;
     }
     final receipts = _studentReceipts(student.id);
+    if (receipts.isEmpty) {
+      return true;
+    }
     final paidThisMonth = receipts.any((r) {
-      final d = _parseFlexibleDate(r.date);
-      return d != null && d.year == n.year && d.month == n.month;
+      final d = _parseFlexibleDate(r.date) ?? DateTime.tryParse(r.date);
+      if (d == null) {
+        return true;
+      }
+      return d.year == n.year && d.month == n.month;
     });
-    return !paidThisMonth;
+    if (paidThisMonth) {
+      return false;
+    }
+    final invTotal = invoices.fold<double>(0, (s, e) => s + e.amount);
+    final recTotal = receipts.fold<double>(0, (s, e) => s + e.amount);
+    if (invTotal > 0 && recTotal + 0.0001 >= invTotal) {
+      return false;
+    }
+    return true;
   }
 
   List<StudentRecord> _studentsWithOverdueInstallments([DateTime? now]) {
@@ -4621,16 +4635,20 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       currency: currency,
                       date: payDate,
                     );
-                    await NotificationService.instance.clearDueForStudentsNotIn(
-                      _studentsWithOverdueInstallments().map((s) => s.id).toSet(),
-                    );
+                    final stillOverdue = _studentsWithOverdueInstallments().map((s) => s.id).toSet();
+                    await NotificationService.instance.clearDueForStudentsNotIn(stillOverdue);
                     if (mounted) {
                       setState(() {});
                     }
                     if (Navigator.of(dialogContext).canPop()) {
                       Navigator.of(dialogContext).pop();
                     }
-                    _showSnack('تمت إضافة الدفعة. أُزيل/تحوّل إشعار المستحق إلى تم الدفع.');
+                    final removed = !stillOverdue.contains(selectedStudentId);
+                    _showSnack(
+                      removed
+                          ? 'تم الدفع. أُزيل الطالب من المستحقات وتحوّل الإشعار إلى أخضر (تم الدفع).'
+                          : 'تم تسجيل الدفعة وتحويل الإشعار إلى أخضر. إن بقي الاسم اضغط تحديث في الإدارة.',
+                    );
                   },
                   child: const Text('حفظ الدفعة'),
                 ),
@@ -5150,10 +5168,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     final active = _accountingView == id;
     return InkWell(
       borderRadius: BorderRadius.circular(24),
-      onTap: () => setState(() => _accountingView = id),
+      onTap: () => setState(() {
+        if (_accountingView == id) {
+          _accountingView = '';
+        } else {
+          _accountingView = id;
+        }
+      }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 362,
+        width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
@@ -5266,11 +5290,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     required IconData icon,
     required List<Widget> children,
   }) {
-    return AnimatedContainer(
+    return Container(
       key: key,
-      duration: const Duration(milliseconds: 180),
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -5283,36 +5305,28 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: accent.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(icon, color: accent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                    const SizedBox(height: 4),
-                    Text(subtitle, style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.6)),
-                  ],
-                ),
-              ),
-            ],
+      child: Theme(
+        data: ThemeData().copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          maintainState: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: accent),
           ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.w900, color: accent, fontSize: 16)),
+          subtitle: Text(subtitle, style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.5)),
+          children: children.isEmpty
+              ? <Widget>[const Text('لا توجد سجلات.', style: TextStyle(color: AppPalette.muted))]
+              : children,
+        ),
       ),
     );
   }
@@ -5628,7 +5642,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   runSpacing: 12,
                   children: <Widget>[
                     _accountingFilterCard(
-                      label: 'الطالب المخصص للإضافة / الاستعراض',
+                      label: 'اسم الطالب',
                       child: DropdownButtonFormField<String>(
                         value: _accountingFilterStudentId?.toString() ?? 'all',
                         decoration: InputDecoration(
@@ -5690,69 +5704,53 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         },
                       ),
                     ),
-                    _accountingFilterCard(
-                      label: 'الطالب النشط للإدخال',
-                      child: Text(
-                        currentStudent.fullName,
-                        style: const TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w800, fontSize: 15),
-                      ),
                     ),
-                    _accountingFilterCard(
-                      label: 'ملخص الفرز الحالي',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(_accountingScopeText(filteredStudents.length), style: const TextStyle(color: AppPalette.deepNavySoft, height: 1.7, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 10),
-                          _actionButton('إلغاء الفرز', Colors.white, const Color(0xFF667586), () {
-                            setState(() {
-                              _accountingFilterStudentId = null;
-                              _accountingSectionFilter = 'الكل';
-                            });
-                          }),
-                        ],
-                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
+                Row(
                   children: <Widget>[
-                    _accountingTypeCard(
-                      id: 'installments',
-                      title: 'الأقساط',
-                      subtitle: 'عرض فقط — بدون تعديل من المحاسبة.',
-                      count: installmentEntries.length,
-                      value: installmentsTotal.toStringAsFixed(0),
-                      accent: AppPalette.goldDark,
-                      soft: const Color(0xFFF7F3EA),
-                      icon: Icons.account_balance_wallet_outlined,
+                    Expanded(
+                      child: _accountingTypeCard(
+                        id: 'installments',
+                        title: 'الأقساط',
+                        subtitle: 'للمعاينة — اضغط لفتح/طي السجلات.',
+                        count: installmentEntries.length,
+                        value: installmentsTotal.toStringAsFixed(0),
+                        accent: AppPalette.goldDark,
+                        soft: const Color(0xFFF7F3EA),
+                        icon: Icons.account_balance_wallet_outlined,
+                      ),
                     ),
-                    _accountingTypeCard(
-                      id: 'payments',
-                      title: 'الدفعات',
-                      subtitle: 'دفعات يضيفها المحاسب مباشرة لحساب الطالب.',
-                      count: receiptEntries.length,
-                      value: receiptsTotal.toStringAsFixed(0),
-                      accent: const Color(0xFF0F766E),
-                      soft: const Color(0xFFE8F8F5),
-                      icon: Icons.payments_outlined,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _accountingTypeCard(
+                        id: 'payments',
+                        title: 'الدفعات',
+                        subtitle: 'دفعات يضيفها المحاسب مباشرة لحساب الطالب.',
+                        count: receiptEntries.length,
+                        value: receiptsTotal.toStringAsFixed(0),
+                        accent: const Color(0xFF0F766E),
+                        soft: const Color(0xFFE8F8F5),
+                        icon: Icons.payments_outlined,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 180),
-                  child: _accountingFocusedPanel(
-                    key: ValueKey<String>(_accountingView),
-                    title: focusedTitle,
-                    subtitle: focusedSubtitle,
-                    accent: focusedAccent,
-                    icon: focusedIcon,
-                    children: focusedChildren,
-                  ),
+                  child: (_accountingView == 'installments' || _accountingView == 'payments')
+                      ? _accountingFocusedPanel(
+                          key: ValueKey<String>(_accountingView),
+                          title: focusedTitle,
+                          subtitle: focusedSubtitle,
+                          accent: focusedAccent,
+                          icon: focusedIcon,
+                          children: focusedChildren,
+                        )
+                      : const SizedBox.shrink(key: ValueKey<String>('collapsed')),
                 ),
               ],
             ),
@@ -6190,12 +6188,32 @@ extension SchoolShellPageSections on _SchoolShellPageState {
 
 
   Future<void> _launchExternalUri(Uri uri) async {
+    final raw = uri.toString();
     if (Platform.isWindows) {
-      await Process.start('cmd', <String>['/c', 'start', '', uri.toString()], runInShell: true);
-    } else if (Platform.isMacOS) {
-      await Process.start('open', <String>[uri.toString()]);
-    } else {
-      await Process.start('xdg-open', <String>[uri.toString()]);
+      final ps = "Start-Process '" + raw.replace("'", "''") + "'";
+      final result = await Process.run(
+        'powershell',
+        <String>['-NoProfile', '-Command', ps],
+        runInShell: true,
+      );
+      if (result.exitCode != 0) {
+        final fallback = await Process.run('cmd', <String>['/c', 'start', '', raw], runInShell: true);
+        if (fallback.exitCode != 0) {
+          throw Exception('تعذر فتح تطبيق المراسلة على ويندوز');
+        }
+      }
+      return;
+    }
+    if (Platform.isMacOS) {
+      final result = await Process.run('open', <String>[raw]);
+      if (result.exitCode != 0) {
+        throw Exception(result.stderr.toString());
+      }
+      return;
+    }
+    final result = await Process.run('xdg-open', <String>[raw]);
+    if (result.exitCode != 0) {
+      throw Exception(result.stderr.toString());
     }
   }
 
@@ -7324,7 +7342,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         final mailBody = Uri.encodeComponent('$body\n\n— المرسل: $schoolEmail (اعتمادات المدرسة)');
                         await _launchExternalUri(Uri.parse('mailto:$emailTo?subject=$subject&body=$mailBody'));
                       } else if (_messageType == 'واتساب') {
-                        final digits = waTo.replaceAll(RegExp(r'[^0-9]'), '');
+                        var digits = waTo.replaceAll(RegExp(r'[^0-9]'), '');
+                        if (digits.startsWith('00')) {
+                          digits = digits.substring(2);
+                        }
+                        if (digits.startsWith('0') && digits.length >= 9) {
+                          digits = '963' + digits.substring(1);
+                        }
                         final text = Uri.encodeComponent('$body\n\n— من: $schoolWa (اعتمادات المدرسة)');
                         await _launchExternalUri(Uri.parse('https://wa.me/$digits?text=$text'));
                       }
