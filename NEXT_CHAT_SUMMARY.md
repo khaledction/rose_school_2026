@@ -70,3 +70,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1
 - `RoseSchoolSetup.exe`
 - `RoseSchool2026_Portable_....zip`
 
+## 📝 أرشيف المحادثة
+
+لقراءة الجلسة كاملة غدًا:
+
+```text
+docs/CONVERSATION_ARCHIVE_2026-07-13.md
+```
+
+نسخه إلى سطح المكتب:
+
+```powershell
+copy /Y "docs\CONVERSATION_ARCHIVE_2026-07-13.md" "%USERPROFILE%\Desktop\CONVERSATION_ARCHIVE_2026-07-13.md"
+```
