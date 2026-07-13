@@ -766,7 +766,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               ),
               const SizedBox(height: 4),
               Text(
-                hasPhoto ? '${student.mobile}\nصورة الطالب' : '${student.mobile}\nصورة الطالب غير مضافة بعد',
+                hasPhoto ? '${student.mobile}
+صورة الطالب' : '${student.mobile}
+صورة الطالب غير مضافة بعد',
                 style: const TextStyle(color: Color(0xFF8A95A3), fontSize: 12, height: 1.55),
               ),
             ],
