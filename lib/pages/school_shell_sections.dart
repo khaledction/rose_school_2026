@@ -4022,8 +4022,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           border: Border.all(color: AppPalette.line),
         ),
         child: const Text(
-          'تم حذف شاشات التبرعات والمساعدات من باب الأقساط والدفعات.
-استخدم «الإيرادات والصرفيات» عند الحاجة لتسجيل إيرادات أخرى.',
+          'تم حذف شاشات التبرعات والمساعدات من باب الأقساط والدفعات.\nاستخدم «الإيرادات والصرفيات» عند الحاجة لتسجيل إيرادات أخرى.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppPalette.muted, height: 1.8, fontWeight: FontWeight.w700),
         ),
