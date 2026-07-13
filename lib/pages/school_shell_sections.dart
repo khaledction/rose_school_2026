@@ -5704,8 +5704,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         },
                       ),
                     ),
-                    ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
