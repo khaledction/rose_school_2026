@@ -4063,28 +4063,33 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     return n.day >= 1 && n.day <= 5;
   }
 
-  /// True when admin has an active "paid" notice for this student.
+  /// Active green "تم الدفع" notice for this student.
   bool _studentHasPaidInstallmentNotice(int studentId) {
     final sid = studentId.toString();
     for (final n in NotificationService.instance.active) {
       final matches = (n.meta['studentId'] ?? n.targetId ?? '') == sid;
       if (!matches) continue;
       final paid = n.category == 'installment_paid' ||
-          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
+          n.title.startsWith('تم الدفع') ||
+          (n.type == 'success' && n.body.contains('تم الدفع'));
       if (paid) return true;
     }
     return false;
   }
 
-  /// Overdue after day 5 if student has invoices and no payment evidence.
-  /// Payment evidence = receipt this month, any receipt covering invoices,
-  /// or an active green "تم الدفع" admin notice.
+  /// Automatic monthly settlement:
+  /// - after day 5
+  /// - student has at least one installment/invoice
+  /// - AND no payment evidence
+  /// Payment evidence - any one is enough:
+  /// - green paid notice
+  /// - any receipt recorded in the current month
+  /// - any receipt at all as fallback so payment never stays yellow
   bool _studentHasOverdueInstallment(StudentRecord student, [DateTime? now]) {
     final n = now ?? DateTime.now();
     if (n.day <= 5) {
       return false;
     }
-    // Explicit paid notice always wins (admin board + student list).
     if (_studentHasPaidInstallmentNotice(student.id)) {
       return false;
     }
@@ -4096,38 +4101,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     if (receipts.isEmpty) {
       return true;
     }
-    // Any receipt in current month clears due.
-    final paidThisMonth = receipts.any((r) {
-      final d = _parseFlexibleDate(r.date) ?? DateTime.tryParse(r.date);
-      if (d == null) return true;
-      return d.year == n.year && d.month == n.month;
-    });
-    if (paidThisMonth) {
-      return false;
-    }
-    // Latest receipt on/after the newest invoice also counts as paid.
-    DateTime? latestInvoice;
-    for (final inv in invoices) {
-      final d = _parseFlexibleDate(inv.date) ?? DateTime.tryParse(inv.date);
-      if (d != null && (latestInvoice == null || d.isAfter(latestInvoice))) {
-        latestInvoice = d;
-      }
-    }
-    final paidAfterInvoice = receipts.any((r) {
-      final d = _parseFlexibleDate(r.date) ?? DateTime.tryParse(r.date);
-      if (d == null) return true;
-      if (latestInvoice == null) return true;
-      return !d.isBefore(DateTime(latestInvoice.year, latestInvoice.month, 1));
-    });
-    if (paidAfterInvoice) {
-      return false;
-    }
-    final invTotal = invoices.fold<double>(0, (s, e) => s + e.amount);
-    final recTotal = receipts.fold<double>(0, (s, e) => s + e.amount);
-    if (invTotal > 0 && recTotal + 0.0001 >= invTotal) {
-      return false;
-    }
-    return true;
+    // Automatic: any receipt clears yellow immediately.
+    // This matches school workflow: once a payment is entered, student is settled.
+    return false;
   }
 
   List<StudentRecord> _studentsWithOverdueInstallments([DateTime? now]) {
@@ -4620,10 +4596,15 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       return;
                     }
                     final payTitle = titleController.text.trim().isEmpty ? 'دفعة' : titleController.text.trim();
-                    final payDate = dateController.text.trim().isEmpty
-                        ? DateTime.now().toIso8601String().split('T').first
-                        : dateController.text.trim();
-                    final payNote = noteController.text.trim().isEmpty ? 'دفعة من المحاسبة' : noteController.text.trim();
+                    final typedDate = dateController.text.trim();
+                    final payDate = DateTime.now().toIso8601String().split('T').first; // always today for auto settlement
+                    final payNote = () {
+                      final base = noteController.text.trim().isEmpty ? 'دفعة من المحاسبة' : noteController.text.trim();
+                      if (typedDate.isNotEmpty && typedDate != payDate) {
+                        return '$base • تاريخ مدخل: $typedDate';
+                      }
+                      return base;
+                    }();
                     final studentName = _students
                         .firstWhere((s) => s.id == selectedStudentId, orElse: () => _students.first)
                         .fullName;
@@ -4653,33 +4634,14 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       studentId: selectedStudentId,
                       studentName: studentName,
                     );
-                    // Force receipt date to today when empty/invalid so monthly due logic updates.
-                    final normalizedDate = (_parseFlexibleDate(payDate) == null)
-                        ? DateTime.now().toIso8601String().split('T').first
-                        : payDate;
-                    // update last inserted receipt date if needed
-                    if (_receipts.isNotEmpty && _receipts.first.studentId == selectedStudentId) {
-                      final last = _receipts.first;
-                      if (last.date != normalizedDate) {
-                        _receipts[0] = AccountingReceiptEntry(
-                          studentId: last.studentId,
-                          title: last.title,
-                          amount: last.amount,
-                          currency: last.currency,
-                          date: normalizedDate,
-                          note: last.note,
-                        );
-                        await _persistAll();
-                      }
-                    }
                     await NotificationService.instance.markInstallmentPaidForStudent(
                       studentId: selectedStudentId,
                       studentName: studentName,
                       amount: amount,
                       currency: currency,
-                      date: normalizedDate,
+                      date: payDate,
                     );
-                    // Convert any remaining yellow due notices for students no longer overdue.
+                    // Auto-convert any leftover yellow notices for settled students.
                     final stillOverdue = _studentsWithOverdueInstallments().map((s) => s.id).toSet();
                     await NotificationService.instance.clearDueForStudentsNotIn(stillOverdue);
                     if (mounted) {
@@ -4691,7 +4653,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     if (Navigator.of(dialogContext).canPop()) {
                       Navigator.of(dialogContext).pop();
                     }
-                    _showSnack('تم الدفع. بطاقة المستحقين أصبحت خضراء (تم الدفع) مع خيارات قراءة/أرشفة/حذف.');
+                    _showSnack('تم الدفع تلقائيًا: ${studentName} → أخضر (تم الدفع). العدد في المستحقين ينقص فورًا.');
                   },
                   child: const Text('حفظ الدفعة'),
                 ),

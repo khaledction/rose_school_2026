@@ -137,7 +137,8 @@ class NotificationService {
     final paidTitle = 'تم الدفع — $studentName';
     final paidBody =
         'تم الدفع • الطالب: $studentName • القيمة: ${amount.toStringAsFixed(0)} $currency • التاريخ: $date';
-    var converted = 0;
+
+    // Convert every due/warning card for this student to green paid.
     for (var i = 0; i < _notifications.length; i++) {
       final n = _notifications[i];
       final forStudent = _matchesStudent(n, sid) || n.title.contains(studentName);
@@ -145,8 +146,9 @@ class NotificationService {
       final dueLike = n.category == 'installment_due' ||
           n.type == 'warning' ||
           n.title.contains('مستحق') ||
-          n.body.contains('مستحق');
-      if (!dueLike && n.category != 'installment_paid') continue;
+          n.body.contains('مستحق') ||
+          n.category == 'installment_paid';
+      if (!dueLike) continue;
       _notifications[i] = n.copyWith(
         type: 'success',
         title: paidTitle,
@@ -164,27 +166,38 @@ class NotificationService {
           'status': 'paid',
         },
       );
-      converted++;
     }
-    if (converted == 0) {
-      await addSimple(
-        type: 'success',
-        title: paidTitle,
-        body: paidBody,
-        targetPage: 'accounting',
-        targetId: sid,
-        roles: const ['الإدارة'],
-        category: 'installment_paid',
-        meta: {
-          'studentId': sid,
-          'studentName': studentName,
-          'amount': amount.toStringAsFixed(0),
-          'currency': currency,
-          'date': date,
-          'status': 'paid',
-        },
+
+    // Always ensure at least one active green paid notice exists.
+    final hasActivePaid = _notifications.any((n) =>
+        !n.isArchived &&
+        n.category == 'installment_paid' &&
+        _matchesStudent(n, sid));
+    if (!hasActivePaid) {
+      _notifications.insert(
+        0,
+        NotificationItem(
+          id: DateTime.now().microsecondsSinceEpoch.toString(),
+          type: 'success',
+          title: paidTitle,
+          body: paidBody,
+          targetPage: 'accounting',
+          targetId: sid,
+          createdAt: DateTime.now().toIso8601String(),
+          isRead: false,
+          isArchived: false,
+          roles: const ['الإدارة'],
+          category: 'installment_paid',
+          meta: {
+            'studentId': sid,
+            'studentName': studentName,
+            'amount': amount.toStringAsFixed(0),
+            'currency': currency,
+            'date': date,
+            'status': 'paid',
+          },
+        ),
       );
-      return;
     }
     await _persist();
   }
