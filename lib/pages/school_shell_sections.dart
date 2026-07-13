@@ -4087,9 +4087,11 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   /// - any receipt at all as fallback so payment never stays yellow
   bool _studentHasOverdueInstallment(StudentRecord student, [DateTime? now]) {
     final n = now ?? DateTime.now();
+    // Monthly window 1-5: no overdue highlight yet.
     if (n.day <= 5) {
       return false;
     }
+    // Paid notice always settles.
     if (_studentHasPaidInstallmentNotice(student.id)) {
       return false;
     }
@@ -4097,13 +4099,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     if (invoices.isEmpty) {
       return false;
     }
+    // Any receipt/payment settles automatically.
     final receipts = _studentReceipts(student.id);
-    if (receipts.isEmpty) {
-      return true;
-    }
-    // Automatic: any receipt clears yellow immediately.
-    // This matches school workflow: once a payment is entered, student is settled.
-    return false;
+    return receipts.isEmpty;
   }
 
   List<StudentRecord> _studentsWithOverdueInstallments([DateTime? now]) {
@@ -4455,8 +4453,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                             if (!confirmed) {
                               return;
                             }
+                            final paidDate = DateTime.now().toIso8601String().split('T').first;
                             setState(() {
                               _selectedStudentId = selectedStudentId;
+                              // Keep invoice history
                               _invoices.insert(
                                 0,
                                 AccountingInvoiceEntry(
@@ -4467,7 +4467,19 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                                   date: dueLabel,
                                 ),
                               );
-                              _accountingView = 'installments';
+                              // Auto payment receipt so student leaves "مستحق" immediately
+                              _receipts.insert(
+                                0,
+                                AccountingReceiptEntry(
+                                  studentId: selectedStudentId,
+                                  title: 'سداد $installmentTitle',
+                                  amount: unitAmount,
+                                  currency: currency,
+                                  date: paidDate,
+                                  note: 'سداد تلقائي من زر القسط',
+                                ),
+                              );
+                              _accountingView = 'dues';
                               _accountingFilterStudentId = selectedStudentId;
                             });
                             await _persistAll();
@@ -4476,20 +4488,30 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               preferredCategoryName: 'أقساط دراسية',
                               amount: unitAmount,
                               currency: currency,
-                              date: dueLabel,
-                              description: 'قسط: $installmentTitle — الطالب: $studentName',
+                              date: paidDate,
+                              description: 'قسط/سداد: $installmentTitle — الطالب: $studentName',
                               studentId: selectedStudentId,
                               studentName: studentName,
                             );
+                            await NotificationService.instance.markInstallmentPaidForStudent(
+                              studentId: selectedStudentId,
+                              studentName: studentName,
+                              amount: unitAmount,
+                              currency: currency,
+                              date: paidDate,
+                            );
+                            final stillOverdue = _studentsWithOverdueInstallments().map((s) => s.id).toSet();
+                            await NotificationService.instance.clearDueForStudentsNotIn(stillOverdue);
                             if (Navigator.of(dialogContext).canPop()) {
                               Navigator.of(dialogContext).pop();
                             }
                             if (mounted) {
+                              setState(() {});
                               final left = maxCount - nextIndex;
                               _showSnack(
                                 left > 0
-                                    ? 'تمت إضافة قسط $nextIndex/$maxCount للطالب $studentName. المتبقي: $left'
-                                    : 'تمت إضافة آخر قسط ($nextIndex/$maxCount) للطالب $studentName.',
+                                    ? 'تم سداد قسط $nextIndex/$maxCount لـ $studentName تلقائيًا → أخضر (تم الدفع). المتبقي: $left'
+                                    : 'تم سداد آخر قسط ($nextIndex/$maxCount) لـ $studentName تلقائيًا → أخضر (تم الدفع).',
                               );
                             }
                           },
