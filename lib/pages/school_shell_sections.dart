@@ -5340,7 +5340,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     required Color accent,
     required IconData icon,
     required List<Widget> children,
+    int? count,
   }) {
+    final total = count ?? children.length;
+    final expandByDefault = total <= 5;
     return Container(
       key: key,
       width: double.infinity,
@@ -5359,7 +5362,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       child: Theme(
         data: ThemeData().copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          initiallyExpanded: true,
+          initiallyExpanded: expandByDefault,
           maintainState: true,
           tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
@@ -5374,6 +5377,22 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           ),
           title: Text(title, style: TextStyle(fontWeight: FontWeight.w900, color: accent, fontSize: 16)),
           subtitle: Text(subtitle, style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.5)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: accent.withOpacity(0.25)),
+                ),
+                child: Text('$total', style: TextStyle(fontWeight: FontWeight.w900, color: accent)),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.expand_more),
+            ],
+          ),
           children: children.isEmpty
               ? <Widget>[const Text('لا توجد سجلات.', style: TextStyle(color: AppPalette.muted))]
               : children,
@@ -5954,6 +5973,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                           accent: focusedAccent,
                           icon: focusedIcon,
                           children: focusedChildren,
+                          count: _accountingView == 'installments'
+                              ? installmentEntries.length
+                              : _accountingView == 'payments'
+                                  ? receiptEntries.length
+                                  : _accountingView == 'dues'
+                                      ? dueOnlyCount + paidOnlyCount
+                                      : focusedChildren.length,
                         )
                       : const SizedBox.shrink(key: ValueKey<String>('collapsed')),
                 ),

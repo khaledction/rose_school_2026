@@ -454,13 +454,21 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
         ),
         const SizedBox(height: 8),
 
-        // List
-        ...filtered.map(_buildIncomeCard),
-        if (filtered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(30),
-            child: Text('لا توجد إيرادات', style: TextStyle(color: AppPalette.muted)),
+        _countAccordion(
+          title: 'سجل الإيرادات',
+          count: filtered.length,
+          child: Column(
+            children: <Widget>[
+              if (filtered.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('لا توجد إيرادات', style: TextStyle(color: AppPalette.muted)),
+                )
+              else
+                ...filtered.map(_buildIncomeCard),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -576,12 +584,21 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
           ],
         ),
         const SizedBox(height: 8),
-        ...filtered.map(_buildExpenseCard),
-        if (filtered.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(30),
-            child: Text('لا توجد صرفيات', style: TextStyle(color: AppPalette.muted)),
+        _countAccordion(
+          title: 'سجل الصرفيات',
+          count: filtered.length,
+          child: Column(
+            children: <Widget>[
+              if (filtered.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('لا توجد صرفيات', style: TextStyle(color: AppPalette.muted)),
+                )
+              else
+                ...filtered.map(_buildExpenseCard),
+            ],
           ),
+        ),
       ],
     );
   }
@@ -999,23 +1016,16 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
   }
 
   Widget _reportListCard({required String title, required List<String> rows, required String empty}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppPalette.line),
-      ),
+    return _countAccordion(
+      title: title,
+      count: rows.length,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft, fontSize: 15)),
-          const SizedBox(height: 10),
           if (rows.isEmpty)
             Text(empty, style: const TextStyle(color: AppPalette.muted))
           else
-            ...rows.take(80).map((r) => Container(
+            ...rows.take(200).map((r) => Container(
                   width: double.infinity,
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
@@ -1192,4 +1202,49 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
       ),
     );
   }
+
+  Widget _countAccordion({
+    required String title,
+    required int count,
+    required Widget child,
+    bool forceCollapseWhenMany = true,
+  }) {
+    final expanded = !(forceCollapseWhenMany && count > 5);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppPalette.line),
+      ),
+      child: Theme(
+        data: ThemeData().copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: expanded,
+          maintainState: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDF6FF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('$count', style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.royalBlue)),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.expand_more),
+            ],
+          ),
+          children: <Widget>[child],
+        ),
+      ),
+    );
+  }
+
 }

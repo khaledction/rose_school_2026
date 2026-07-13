@@ -227,29 +227,37 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildNotificationsCard() {
-    final recent = NotificationService.instance.active.take(5).toList();
+    final all = NotificationService.instance.active;
+    final total = all.length;
+    final preview = all.take(5).toList();
+    final rest = all.skip(5).toList();
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppPalette.line),
-        boxShadow: const [
-          BoxShadow(color: Color.fromRGBO(20, 40, 90, 0.06), blurRadius: 12, offset: Offset(0, 6)),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
-              const Text('🔔 آخر الإشعارات',
-                  style: TextStyle(
-                      color: AppPalette.deepNavySoft,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16)),
-              const Spacer(),
-              if (NotificationService.instance.unreadCount > 0)
+              const Expanded(
+                child: Text('🔔 آخر الإشعارات',
+                    style: TextStyle(color: AppPalette.deepNavySoft, fontWeight: FontWeight.w800, fontSize: 16)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDF6FF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('$total', style: const TextStyle(color: AppPalette.royalBlue, fontWeight: FontWeight.w900, fontSize: 12)),
+              ),
+              if (NotificationService.instance.unreadCount > 0) ...<Widget>[
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -258,25 +266,46 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   child: Text(
                     '${NotificationService.instance.unreadCount} جديد',
-                    style: const TextStyle(
-                        color: AppPalette.roseRed,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11),
+                    style: const TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800, fontSize: 11),
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 10),
-          if (recent.isEmpty)
+          if (all.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text('لا توجد إشعارات بعد',
-                    style: TextStyle(color: AppPalette.muted)),
-              ),
+              child: Center(child: Text('لا توجد إشعارات بعد', style: TextStyle(color: AppPalette.muted))),
             )
-          else
-            ...recent.map((notif) => _notificationTile(notif)),
+          else ...<Widget>[
+            ...preview.map(_notificationTile),
+            if (rest.isNotEmpty)
+              Theme(
+                data: ThemeData().copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  initiallyExpanded: false,
+                  maintainState: true,
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('عرض المزيد من الإشعارات', style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDF6FF),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text('${rest.length}+', style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.royalBlue)),
+                      ),
+                      const Icon(Icons.expand_more),
+                    ],
+                  ),
+                  children: rest.map(_notificationTile).toList(),
+                ),
+              ),
+          ],
         ],
       ),
     );

@@ -3329,7 +3329,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         primaryColor: const Color(0xFFA82A38),
         secondaryColor: const Color(0xFF10295A),
         items: const <_NavItem>[
-          _NavItem('admin_hub', '🏛️ الإدارة'),
+          _NavItem('admin_hub', '🛡️ الصلاحيات والتحكم'),
           _NavItem('employee_review', '🔍 مراجعة الموظفين'),
         ],
       ),
@@ -3596,9 +3596,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       case 'dashboard':
       case 'admin_dashboard':
         return const _PageInfo(
-          '🏛️ الإدارة',
-          'الإدارة، لوحة القيادة والإدارة',
-          'مركز إداري موحّد يجمع لوحة القيادة ولوحة الإدارة مع إحصائيات حية وصلاحيات المستخدم والوصول السريع للعمليات.',
+          '🛡️ الصلاحيات والتحكم',
+          'الإدارة، الصلاحيات والتحكم',
+          'مركز إداري موحّد للصلاحيات والتحكم مع إحصائيات حية وإدارة المستخدمين والوصول السريع للعمليات.',
         );
       case 'employees':
         return const _PageInfo(
@@ -3748,11 +3748,11 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   static String _pageLabel(String id) {
     const labels = <String, String>{
-      'admin_hub': '🏛️ الإدارة',
-      'dashboard': '🏛️ الإدارة',
+      'admin_hub': '🛡️ الصلاحيات والتحكم',
+      'dashboard': '🛡️ الصلاحيات والتحكم',
       'employees': '👥 الموظفين',
       'employee_review': '🔍 مراجعة الموظفين',
-      'admin_dashboard': '🏛️ الإدارة',
+      'admin_dashboard': '🛡️ الصلاحيات والتحكم',
       'admin_identity': 'الهوية والاعتماد',
       'attendance': 'الحضور والغياب',
       'donations': 'الأقساط والدفعات',
@@ -3945,15 +3945,24 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                       : ListView(
                           children: <Widget>[
                             if (items.isNotEmpty) ...<Widget>[
-                              const Text('النشطة', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
-                              const SizedBox(height: 8),
-                              ...items.map((n) => _notificationAdminTile(n, setDialogState)),
+                              _collapsibleSection(
+                                title: 'النشطة',
+                                count: items.length,
+                                initiallyExpanded: items.length <= 5,
+                                child: Column(
+                                  children: items.map((n) => _notificationAdminTile(n, setDialogState)).toList(),
+                                ),
+                              ),
                             ],
                             if (archived.isNotEmpty) ...<Widget>[
-                              const SizedBox(height: 14),
-                              const Text('الأرشيف', style: TextStyle(fontWeight: FontWeight.w900, color: AppPalette.muted)),
-                              const SizedBox(height: 8),
-                              ...archived.map((n) => _notificationAdminTile(n, setDialogState, archivedView: true)),
+                              _collapsibleSection(
+                                title: 'الأرشيف',
+                                count: archived.length,
+                                initiallyExpanded: archived.length <= 5,
+                                child: Column(
+                                  children: archived.map((n) => _notificationAdminTile(n, setDialogState, archivedView: true)).toList(),
+                                ),
+                              ),
                             ],
                           ],
                         ),
@@ -4777,7 +4786,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
           if (items.isEmpty)
             const Text('لا يوجد مستحقون أو بطاقات دفع بانتظار المتابعة.', style: TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800))
           else
-            ...items.map((item) {
+            _collapsibleSection(
+              title: 'قائمة المستحقين والمدفوعين',
+              count: items.length,
+              initiallyExpanded: items.length <= 5,
+              child: Column(
+                children: items.map((item) {
+
               final paid = item['paid'] == true;
               final key = item['key'].toString();
               final selected = _dueBoardSelectedIds.contains(key);
@@ -4872,11 +4887,58 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                   ],
                 ),
               );
-            }),
+            }).toList(),
+              ),
+            ),
         ],
       ),
     );
   }
+
+  Widget _collapsibleSection({
+    required String title,
+    required int count,
+    required Widget child,
+    bool initiallyExpanded = false,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.98),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppPalette.line),
+      ),
+      child: Theme(
+        data: ThemeData().copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          maintainState: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.deepNavySoft)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDF6FF),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFD0E4F5)),
+                ),
+                child: Text('$count', style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.royalBlue)),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.expand_more),
+            ],
+          ),
+          children: <Widget>[child],
+        ),
+      ),
+    );
+  }
+
 
 
   Widget _dashboardPageWrapped() {
