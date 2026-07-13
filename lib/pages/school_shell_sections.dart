@@ -4621,10 +4621,16 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       currency: currency,
                       date: payDate,
                     );
+                    await NotificationService.instance.clearDueForStudentsNotIn(
+                      _studentsWithOverdueInstallments().map((s) => s.id).toSet(),
+                    );
+                    if (mounted) {
+                      setState(() {});
+                    }
                     if (Navigator.of(dialogContext).canPop()) {
                       Navigator.of(dialogContext).pop();
                     }
-                    _showSnack('تمت إضافة الدفعة إلى حساب الطالب وترحيلها للإيرادات.');
+                    _showSnack('تمت إضافة الدفعة. أُزيل/تحوّل إشعار المستحق إلى تم الدفع.');
                   },
                   child: const Text('حفظ الدفعة'),
                 ),
@@ -5546,6 +5552,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     setState(() => _accountingView = 'payments');
                     _showStudentPaymentDialog();
                   }),
+                  _actionButton('تحديث', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
+                    // ignore: discarded_futures
+                    _refreshCurrentPageData();
+                  }),
                 ],
               ),
             ],
@@ -6191,7 +6201,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             children: <Widget>[
               const Expanded(
                 child: Text(
-                  '✉️ مراسلات أولياء الأمور',
+                  '✉️ المراسلات',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft),
                 ),
               ),
@@ -7086,7 +7096,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
       _guardianWhatsappController.text = currentStudent.guardianWhatsapp;
     }
 
-    _messageType = 'مراسلة الكترونية';
+    _messageType = 'بريد إلكتروني';
     _messageReasonController.clear();
     _messageDateController.text = DateTime.now().toIso8601String().split('T').first;
     _messageTimeController.text = '10:00';
@@ -7113,8 +7123,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: <String>['مراسلة الكترونية', 'مراسلة ورقية'].map((option) {
+                        children: <String>['بريد إلكتروني', 'واتساب', 'مراسلة ورقية'].map((option) {
                           final active = _messageType == option;
+                          final icon = option == 'بريد إلكتروني'
+                              ? '📧'
+                              : option == 'واتساب'
+                                  ? '💬'
+                                  : '🖨️';
                           return InkWell(
                             onTap: () => setDialogState(() => _messageType = option),
                             borderRadius: BorderRadius.circular(999),
@@ -7125,10 +7140,28 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                                 color: active ? AppPalette.goldDark : const Color(0xFFEDF5FB),
                                 border: Border.all(color: active ? AppPalette.goldDark : const Color(0xFFD8E7F4)),
                               ),
-                              child: Text(option, style: TextStyle(color: active ? Colors.white : const Color(0xFF29446F), fontWeight: FontWeight.w800, fontSize: 12)),
+                              child: Text('$icon $option', style: TextStyle(color: active ? Colors.white : const Color(0xFF29446F), fontWeight: FontWeight.w800, fontSize: 12)),
                             ),
                           );
                         }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7FBFF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppPalette.line),
+                        ),
+                        child: Text(
+                          _messageType == 'بريد إلكتروني'
+                              ? 'المرسل (اعتمادات المدرسة): ${_schoolIdentity.email.isEmpty ? 'غير محدد' : _schoolIdentity.email}\nالمستلم (استمارة الطالب): ${_guardianEmailController.text.trim().isEmpty ? 'غير محدد' : _guardianEmailController.text.trim()}'
+                              : _messageType == 'واتساب'
+                                  ? 'رقم المرسل (اعتمادات المدرسة): ${_schoolIdentity.whatsapp.isEmpty ? 'غير محدد' : _schoolIdentity.whatsapp}\nرقم المستلم (واتساب ولي الأمر): ${_guardianWhatsappController.text.trim().isEmpty ? 'غير محدد' : _guardianWhatsappController.text.trim()}'
+                                  : 'مراسلة ورقية — بدون قناة إلكترونية.',
+                          style: const TextStyle(color: AppPalette.deepNavySoft, height: 1.6, fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
                       ),
                       const SizedBox(height: 14),
                       DropdownButtonFormField<int>(
@@ -7153,11 +7186,25 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                           Expanded(child: TextField(controller: _messageTimeController, decoration: const InputDecoration(labelText: 'الساعة'))),
                         ],
                       ),
-                      if (_messageType == 'مراسلة الكترونية') ...<Widget>[
+                      if (_messageType == 'بريد إلكتروني') ...<Widget>[
                         const SizedBox(height: 12),
-                        TextField(controller: _guardianEmailController, decoration: const InputDecoration(labelText: 'ايميل ولي الأمر')),
+                        TextField(
+                          controller: _guardianEmailController,
+                          decoration: const InputDecoration(
+                            labelText: 'البريد الإلكتروني لولي الأمر (من استمارة الطالب)',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                        ),
+                      ],
+                      if (_messageType == 'واتساب') ...<Widget>[
                         const SizedBox(height: 12),
-                        TextField(controller: _guardianWhatsappController, decoration: const InputDecoration(labelText: 'رقم وتس الاب لولي الأمر')),
+                        TextField(
+                          controller: _guardianWhatsappController,
+                          decoration: const InputDecoration(
+                            labelText: 'رقم واتساب ولي الأمر (من استمارة الطالب)',
+                            prefixIcon: Icon(Icons.chat_outlined),
+                          ),
+                        ),
                       ],
                       const SizedBox(height: 12),
                       TextField(
@@ -7212,23 +7259,78 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               actions: <Widget>[
                 TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إغلاق')),
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    final body = _messageBodyController.text.trim().isEmpty
+                        ? 'يرجى مراجعة إدارة المدرسة.'
+                        : _messageBodyController.text.trim();
+                    final emailTo = _guardianEmailController.text.trim();
+                    final waTo = _guardianWhatsappController.text.trim();
+                    final schoolEmail = _schoolIdentity.email.trim();
+                    final schoolWa = _schoolIdentity.whatsapp.trim();
+
+                    if (_messageType == 'بريد إلكتروني') {
+                      if (emailTo.isEmpty) {
+                        _showSnack('لا يوجد بريد لولي الأمر في استمارة الطالب.');
+                        return;
+                      }
+                      if (schoolEmail.isEmpty) {
+                        _showSnack('حدّد بريد المدرسة من الهوية والاعتماد أولًا.');
+                        return;
+                      }
+                    }
+                    if (_messageType == 'واتساب') {
+                      if (waTo.isEmpty) {
+                        _showSnack('لا يوجد رقم واتساب لولي الأمر في استمارة الطالب.');
+                        return;
+                      }
+                      if (schoolWa.isEmpty) {
+                        _showSnack('حدّد واتساب المدرسة من الهوية والاعتماد أولًا.');
+                        return;
+                      }
+                    }
+
                     setState(() {
-                      _messages.insert(0, ParentMessageEntry(
-                        studentId: currentStudent.id,
-                        type: _messageType,
-                        subject: 'دعوة ولي / أولياء الأمور',
-                        body: _messageBodyController.text.trim().isEmpty ? 'يرجى مراجعة إدارة المدرسة.' : _messageBodyController.text.trim(),
-                        date: _messageDateController.text.trim(),
-                        time: _messageTimeController.text.trim(),
-                        reason: _messageReasonController.text.trim(),
-                        guardianEmail: _guardianEmailController.text.trim(),
-                        guardianWhatsapp: _guardianWhatsappController.text.trim(),
-                      ));
+                      _messages.insert(
+                        0,
+                        ParentMessageEntry(
+                          studentId: currentStudent.id,
+                          type: _messageType,
+                          subject: 'دعوة ولي / أولياء الأمور',
+                          body: body,
+                          date: _messageDateController.text.trim(),
+                          time: _messageTimeController.text.trim(),
+                          reason: _messageReasonController.text.trim(),
+                          guardianEmail: emailTo,
+                          guardianWhatsapp: waTo,
+                        ),
+                      );
                     });
-                    _persistAll();
-                    Navigator.pop(dialogContext);
-                    _showSnack('تم إرسال المراسلة بنجاح.');
+                    await _persistAll();
+
+                    try {
+                      if (_messageType == 'بريد إلكتروني') {
+                        final subject = Uri.encodeComponent('دعوة ولي أمر — ${currentStudent.fullName}');
+                        final mailBody = Uri.encodeComponent('$body\n\n— المرسل: $schoolEmail (اعتمادات المدرسة)');
+                        await _launchExternalUri(Uri.parse('mailto:$emailTo?subject=$subject&body=$mailBody'));
+                      } else if (_messageType == 'واتساب') {
+                        final digits = waTo.replaceAll(RegExp(r'[^0-9]'), '');
+                        final text = Uri.encodeComponent('$body\n\n— من: $schoolWa (اعتمادات المدرسة)');
+                        await _launchExternalUri(Uri.parse('https://wa.me/$digits?text=$text'));
+                      }
+                    } catch (e) {
+                      _showSnack('حُفظت المراسلة، وتعذر فتح القناة: $e');
+                    }
+
+                    if (Navigator.of(dialogContext).canPop()) {
+                      Navigator.pop(dialogContext);
+                    }
+                    _showSnack(
+                      _messageType == 'بريد إلكتروني'
+                          ? 'تم حفظ/إرسال المراسلة عبر البريد.'
+                          : _messageType == 'واتساب'
+                              ? 'تم حفظ/إرسال المراسلة عبر واتساب.'
+                              : 'تم حفظ المراسلة الورقية.',
+                    );
                   },
                   child: const Text('إرسال'),
                 ),

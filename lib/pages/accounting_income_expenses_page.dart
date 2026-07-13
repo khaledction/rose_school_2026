@@ -265,6 +265,16 @@ class _AccountingIncomeExpensesPageState extends State<AccountingIncomeExpensesP
         children: <Widget>[
           // ─── Tabs ────────────────────────────────────────────
           _buildTabs(),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _actionButton('تحديث', const Color(0xFFEDF6FF), const Color(0xFF24436F), () async {
+              await FinanceService.instance.init();
+              await EmployeeService.instance.init();
+              setState(() {});
+              _showSnack('تم تحديث البيانات المالية.');
+            }),
+          ),
           const SizedBox(height: 14),
 
           // ─── Tab content ─────────────────────────────────────

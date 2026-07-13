@@ -323,6 +323,11 @@ class _EmployeesPageState extends State<EmployeesPage> {
                 () => setState(() => _showForm = !_showForm),
               ),
               const SizedBox(width: 10),
+              _actionButton('تحديث', const Color(0xFFEDF6FF), const Color(0xFF24436F), () async {
+                await EmployeeService.instance.init();
+                setState(() {});
+              }),
+              const SizedBox(width: 10),
               DropdownButton<String>(
                 value: _filterStatus,
                 items: const [

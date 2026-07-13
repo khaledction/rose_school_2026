@@ -310,7 +310,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   bool _initiativeInKind = false;
   bool _initiativeProjects = false;
   String _attendanceStatus = 'حاضر';
-  String _messageType = 'مراسلة الكترونية';
+  String _messageType = 'بريد إلكتروني';
   String _disciplineType = 'مكافأة';
   String _certificateKind = 'شهادة تقدير';
   String _invoiceCurrency = 'ليرة سورية';
@@ -3795,6 +3795,28 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
               ),
             ),
             const SizedBox(width: 18),
+            // Refresh current page data
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _refreshCurrentPageData(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppPalette.line),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.refresh_rounded, size: 18, color: AppPalette.deepNavySoft),
+                    SizedBox(width: 6),
+                    Text('تحديث', style: TextStyle(fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
             // Notification bell
             InkWell(
               borderRadius: BorderRadius.circular(14),
@@ -3863,6 +3885,25 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         ),
       ],
     );
+  }
+
+  Future<void> _refreshCurrentPageData({bool silent = false}) async {
+    try {
+      await FinanceService.instance.init();
+      await EmployeeService.instance.init();
+      await NotificationService.instance.init();
+      await MeetingService.instance.init();
+      await _syncOverdueInstallmentNotifications();
+      if (!mounted) return;
+      setState(() {});
+      if (!silent) {
+        _showSnack('تم تحديث البيانات.');
+      }
+    } catch (e) {
+      if (!silent && mounted) {
+        _showSnack('تعذر التحديث: $e');
+      }
+    }
   }
 
   Future<void> _showNotificationsPanel() async {
@@ -4462,16 +4503,24 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     );
   }
 
-  Widget _adminOverdueInstallmentsPanel() {
+  Future<void> _syncOverdueInstallmentNotifications() async {
     final overdue = _studentsWithOverdueInstallments();
-    // Keep admin notifications in sync with current overdue set.
+    final overdueIds = overdue.map((s) => s.id).toSet();
     for (final student in overdue) {
-      NotificationService.instance.ensureInstallmentDueNotification(
+      await NotificationService.instance.ensureInstallmentDueNotification(
         studentId: student.id,
         studentName: student.fullName,
         gradeLabel: 'الصف ${_studentGradeDisplay(student)}',
       );
     }
+    await NotificationService.instance.clearDueForStudentsNotIn(overdueIds);
+  }
+
+  Widget _adminOverdueInstallmentsPanel() {
+    final overdue = _studentsWithOverdueInstallments();
+    // Keep admin notifications in sync with current overdue set.
+    // ignore: discarded_futures
+    _syncOverdueInstallmentNotifications();
     final now = DateTime.now();
     final windowNote = now.day <= 5
         ? 'نافذة الدفع الحالية: من 1 إلى 5 من هذا الشهر. بعد اليوم 5 يظهر المستحقون بالأصفر.'

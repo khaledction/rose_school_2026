@@ -115,7 +115,18 @@ class NotificationService {
     await _persist();
   }
 
+  bool _matchesStudent(NotificationItem n, String sid) {
+    return n.targetId == sid || n.meta['studentId'] == sid;
+  }
+
+  bool _isDueNotification(NotificationItem n) {
+    if (n.category == 'installment_due') return true;
+    if (n.category == 'installment_paid') return false;
+    return n.type == 'warning' && (n.title.contains('مستحق') || n.body.contains('مستحق'));
+  }
+
   /// Mark installment-due notifications for a student as paid (green).
+  /// Ensures the yellow due state never remains after payment.
   Future<void> markInstallmentPaidForStudent({
     required int studentId,
     required String studentName,
@@ -127,14 +138,19 @@ class NotificationService {
     var changed = false;
     for (var i = 0; i < _notifications.length; i++) {
       final n = _notifications[i];
-      final isDue = n.category == 'installment_due' ||
-          (n.targetId == sid && (n.title.contains('مستحق') || n.body.contains('مستحق')));
-      if (!isDue) continue;
-      if (n.targetId != null && n.targetId != sid && n.meta['studentId'] != sid) continue;
+      if (!_matchesStudent(n, sid)) continue;
+      if (!_isDueNotification(n) && n.category != 'installment_due') {
+        // still convert any leftover yellow due-like item for this student
+        if (!(n.type == 'warning' && n.title.contains(studentName))) continue;
+      }
+      if (n.category == 'installment_paid' && n.type == 'success') continue;
+      if (!_isDueNotification(n) && n.category != 'installment_due' && !(n.type == 'warning')) {
+        continue;
+      }
       _notifications[i] = n.copyWith(
         type: 'success',
         title: 'تم الدفع — $studentName',
-        body: 'تم دفع قسط/دفعة للطالب $studentName بقيمة ${amount.toStringAsFixed(0)} $currency بتاريخ $date.',
+        body: 'تم دفع قسط/دفعة للطالب $studentName بقيمة ${amount.toStringAsFixed(0)} $currency بتاريخ $date. يمكن للإدارة حذف الإشعار أو أرشفته.',
         category: 'installment_paid',
         isRead: false,
         isArchived: false,
@@ -150,11 +166,16 @@ class NotificationService {
       );
       changed = true;
     }
+    // remove any remaining pure yellow due items that failed conversion edge cases
+    final before = _notifications.length;
+    _notifications.removeWhere((n) => _matchesStudent(n, sid) && _isDueNotification(n) && n.category != 'installment_paid');
+    if (_notifications.length != before) changed = true;
+
     if (!changed) {
       await addSimple(
         type: 'success',
         title: 'تم الدفع — $studentName',
-        body: 'تم دفع قسط/دفعة للطالب $studentName بقيمة ${amount.toStringAsFixed(0)} $currency بتاريخ $date.',
+        body: 'تم دفع قسط/دفعة للطالب $studentName بقيمة ${amount.toStringAsFixed(0)} $currency بتاريخ $date. يمكن للإدارة حذف الإشعار أو أرشفته.',
         targetPage: 'accounting',
         targetId: sid,
         roles: const ['الإدارة'],
@@ -179,10 +200,16 @@ class NotificationService {
     required String gradeLabel,
   }) async {
     final sid = studentId.toString();
+    // never re-create yellow if a paid notice exists for this student
+    final hasPaid = _notifications.any((n) =>
+        !n.isArchived &&
+        n.category == 'installment_paid' &&
+        _matchesStudent(n, sid));
+    if (hasPaid) return;
     final exists = _notifications.any((n) =>
         !n.isArchived &&
         n.category == 'installment_due' &&
-        (n.targetId == sid || n.meta['studentId'] == sid));
+        _matchesStudent(n, sid));
     if (exists) return;
     await addSimple(
       type: 'warning',
@@ -198,6 +225,34 @@ class NotificationService {
         'status': 'due',
       },
     );
+  }
+
+  /// Convert/remove yellow due notices for students who are no longer overdue.
+  Future<void> clearDueForStudentsNotIn(Set<int> overdueStudentIds) async {
+    var changed = false;
+    for (var i = 0; i < _notifications.length; i++) {
+      final n = _notifications[i];
+      if (!_isDueNotification(n) && n.category != 'installment_due') continue;
+      final sid = n.meta['studentId'] ?? n.targetId ?? '';
+      final id = int.tryParse(sid) ?? -1;
+      if (id > 0 && overdueStudentIds.contains(id)) continue;
+      // student paid / not overdue anymore -> turn green summary or drop yellow
+      final name = n.meta['studentName'] ?? n.title.replaceFirst('مستحق — ', '');
+      _notifications[i] = n.copyWith(
+        type: 'success',
+        title: 'تم الدفع — $name',
+        body: 'لم يعد هذا الطالب ضمن المستحقات الحالية. يمكن للإدارة حذف الإشعار أو أرشفته.',
+        category: 'installment_paid',
+        isRead: n.isRead,
+        isArchived: false,
+        meta: {
+          ...n.meta,
+          'status': 'paid',
+        },
+      );
+      changed = true;
+    }
+    if (changed) await _persist();
   }
 
   Future<void> _persist() async {

@@ -210,6 +210,12 @@ class _ParentMeetingsPageState extends State<ParentMeetingsPage> {
               _viewButton('📋 الاجتماعات', 'list'),
               const SizedBox(width: 8),
               _viewButton('➕ اجتماع جديد', 'add'),
+              const SizedBox(width: 8),
+              _actionChip('تحديث', () async {
+                await MeetingService.instance.init();
+                setState(() {});
+                _showSnack('تم تحديث الاجتماعات.');
+              }),
               if (_selectedMeetingId != null) ...[
                 const SizedBox(width: 8),
                 _viewButton('📝 تسجيل حضور', 'attendance'),
@@ -225,6 +231,23 @@ class _ParentMeetingsPageState extends State<ParentMeetingsPage> {
           if (_view == 'attendance') _buildAttendanceView(),
           if (_view == 'report') _buildReportView(),
         ],
+      ),
+    );
+  }
+
+
+  Widget _actionChip(String label, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppPalette.line),
+        ),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800, color: AppPalette.muted, fontSize: 13)),
       ),
     );
   }
