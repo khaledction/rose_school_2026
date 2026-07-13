@@ -431,6 +431,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               itemCount: _filteredStudents.length,
                               itemBuilder: (context, index) {
                                 final student = _filteredStudents[index];
+                                final overdue = _studentHasOverdueInstallment(student);
                                 return InkWell(
                                   onTap: () {
                                     setState(() {
@@ -440,8 +441,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                    decoration: const BoxDecoration(
-                                      border: Border(bottom: BorderSide(color: Color(0xFFEDF3F8))),
+                                    decoration: BoxDecoration(
+                                      color: overdue ? const Color(0xFFFFFBEA) : null,
+                                      border: const Border(bottom: BorderSide(color: Color(0xFFEDF3F8))),
                                     ),
                                     child: Row(
                                       children: <Widget>[
@@ -708,6 +710,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   Widget _studentCell(StudentRecord student) {
     final hasPhoto = _fileStorage.fileExistsSync(student.studentPhotoPath);
     final isFemale = student.gender == 'أنثى';
+    final overdue = _studentHasOverdueInstallment(student);
     return Row(
       children: <Widget>[
         _studentAvatar(student),
@@ -719,13 +722,41 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               Row(
                 children: <Widget>[
                   Flexible(
-                    child: Text(
-                      student.fullName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    child: Container(
+                      padding: overdue ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3) : EdgeInsets.zero,
+                      decoration: overdue
+                          ? BoxDecoration(
+                              color: const Color(0xFFFFF3BF),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE6C200)),
+                            )
+                          : null,
+                      child: Text(
+                        student.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: overdue ? const Color(0xFF7A5A00) : AppPalette.deepNavySoft,
+                        ),
+                      ),
                     ),
                   ),
+                  if (overdue) ...<Widget>[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3BF),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFE6C200)),
+                      ),
+                      child: const Text(
+                        'مستحق',
+                        style: TextStyle(color: Color(0xFF8A6D00), fontWeight: FontWeight.w900, fontSize: 10),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -4058,6 +4089,170 @@ extension SchoolShellPageSections on _SchoolShellPageState {
         .fold<double>(0, (sum, e) => sum + e.amount);
   }
 
+
+  String _todayIsoDate() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _parseFlexibleDate(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+    final iso = DateTime.tryParse(value);
+    if (iso != null) {
+      return DateTime(iso.year, iso.month, iso.day);
+    }
+    final parts = value.split(RegExp(r'[/-]'));
+    if (parts.length == 3) {
+      final y = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      final d = int.tryParse(parts[2]);
+      if (y != null && m != null && d != null) {
+        return DateTime(y, m, d);
+      }
+    }
+    return null;
+  }
+
+  /// Monthly installment window: day 1..5 of current month.
+  bool _isInsideInstallmentPaymentWindow([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    return n.day >= 1 && n.day <= 5;
+  }
+
+  /// Overdue after day 5 if student has invoices and no receipt this month.
+  bool _studentHasOverdueInstallment(StudentRecord student, [DateTime? now]) {
+    final n = now ?? DateTime.now();
+    if (n.day <= 5) {
+      return false;
+    }
+    final invoices = _studentInvoices(student.id);
+    if (invoices.isEmpty) {
+      return false;
+    }
+    final receipts = _studentReceipts(student.id);
+    final paidThisMonth = receipts.any((r) {
+      final d = _parseFlexibleDate(r.date);
+      return d != null && d.year == n.year && d.month == n.month;
+    });
+    return !paidThisMonth;
+  }
+
+  List<StudentRecord> _studentsWithOverdueInstallments([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    return _students.where((s) => _studentHasOverdueInstallment(s, n)).toList()
+      ..sort((a, b) => a.fullName.compareTo(b.fullName));
+  }
+
+  IncomeCategory _resolveIncomeCategory(String preferredId, String preferredName) {
+    final cats = FinanceService.instance.incomeCategories;
+    for (final c in cats) {
+      if (c.id == preferredId) {
+        return c;
+      }
+    }
+    for (final c in cats) {
+      if (c.name == preferredName) {
+        return c;
+      }
+    }
+    if (cats.isNotEmpty) {
+      return cats.first;
+    }
+    return IncomeCategory(id: preferredId, name: preferredName, isDefault: true);
+  }
+
+  Future<void> _pushIncomeFromAccounting({
+    required String preferredCategoryId,
+    required String preferredCategoryName,
+    required double amount,
+    required String currency,
+    required String date,
+    required String description,
+    required int studentId,
+    required String studentName,
+  }) async {
+    if (amount <= 0) {
+      return;
+    }
+    await FinanceService.instance.init();
+    final cat = _resolveIncomeCategory(preferredCategoryId, preferredCategoryName);
+    await FinanceService.instance.addIncome(
+      IncomeEntry(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        categoryId: cat.id,
+        categoryName: cat.name,
+        amount: amount,
+        currency: currency.isEmpty ? 'ليرة سورية' : currency,
+        date: date.isEmpty ? _todayIsoDate() : date,
+        description: description,
+        studentId: studentId,
+        studentName: studentName,
+        createdBy: _authenticatedUser?.username ?? 'system',
+        createdAt: DateTime.now().toIso8601String(),
+      ),
+    );
+  }
+
+  Future<bool> _confirmInstallmentSaveDialog({
+    required String studentName,
+    required double amount,
+    required String currency,
+    required String date,
+    required String installmentLabel,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('تأكيد إدخال القسط', style: TextStyle(fontWeight: FontWeight.w900)),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'تم إدخال قسط للطالب ($studentName) بقيمة ${amount.toStringAsFixed(0)} $currency بتاريخ $date.',
+                    style: const TextStyle(height: 1.7, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    installmentLabel,
+                    style: const TextStyle(color: AppPalette.muted, fontSize: 12, height: 1.5),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'اضغط «موافق» للحفظ، أو «إلغاء» لعدم حفظ الإدخال.',
+                    style: TextStyle(color: AppPalette.muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppPalette.goldDark,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('موافق'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    return result == true;
+  }
+
   Future<void> _showInstallmentPresetDialog({String presetType = 'normal'}) async {
     if (_students.isEmpty) {
       _showSnack('لا يوجد طلاب لإضافة قسط.');
@@ -4275,18 +4470,30 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     onPressed: !canAdd
                         ? null
                         : () async {
-                            // ONE installment only per click.
+                            // ONE installment only per click + explicit confirm dialog.
                             final today = DateTime.now();
                             final due = DateTime(today.year, today.month + existingCount, today.day);
                             final dueLabel =
                                 '${due.year.toString().padLeft(4, '0')}-${due.month.toString().padLeft(2, '0')}-${due.day.toString().padLeft(2, '0')}';
+                            final studentName = student.fullName;
+                            final installmentTitle = '$titlePrefix — قسط $nextIndex/$maxCount';
+                            final confirmed = await _confirmInstallmentSaveDialog(
+                              studentName: studentName,
+                              amount: unitAmount,
+                              currency: currency,
+                              date: dueLabel,
+                              installmentLabel: installmentTitle,
+                            );
+                            if (!confirmed) {
+                              return;
+                            }
                             setState(() {
                               _selectedStudentId = selectedStudentId;
                               _invoices.insert(
                                 0,
                                 AccountingInvoiceEntry(
                                   studentId: selectedStudentId,
-                                  title: '$titlePrefix — قسط $nextIndex/$maxCount',
+                                  title: installmentTitle,
                                   amount: unitAmount,
                                   currency: currency,
                                   date: dueLabel,
@@ -4296,14 +4503,25 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                               _accountingFilterStudentId = selectedStudentId;
                             });
                             await _persistAll();
-                            // Keep dialog open so user can add next one; refresh remaining count.
-                            setDialogState(() {});
+                            await _pushIncomeFromAccounting(
+                              preferredCategoryId: 'tuition',
+                              preferredCategoryName: 'أقساط دراسية',
+                              amount: unitAmount,
+                              currency: currency,
+                              date: dueLabel,
+                              description: 'قسط: $installmentTitle — الطالب: $studentName',
+                              studentId: selectedStudentId,
+                              studentName: studentName,
+                            );
+                            if (Navigator.of(dialogContext).canPop()) {
+                              Navigator.of(dialogContext).pop();
+                            }
                             if (mounted) {
                               final left = maxCount - nextIndex;
                               _showSnack(
                                 left > 0
-                                    ? 'تمت إضافة قسط $nextIndex/$maxCount. المتبقي: $left'
-                                    : 'تمت إضافة آخر قسط ($nextIndex/$maxCount).',
+                                    ? 'تمت إضافة قسط $nextIndex/$maxCount للطالب $studentName. المتبقي: $left'
+                                    : 'تمت إضافة آخر قسط ($nextIndex/$maxCount) للطالب $studentName.',
                               );
                             }
                           },
@@ -4403,32 +4621,50 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   child: const Text('إلغاء'),
                 ),
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
                     final amount = double.tryParse(amountController.text.trim()) ?? 0;
                     if (amount <= 0) {
                       _showSnack('أدخل مبلغ دفعة صالحاً.');
                       return;
                     }
+                    final payTitle = titleController.text.trim().isEmpty ? 'دفعة' : titleController.text.trim();
+                    final payDate = dateController.text.trim().isEmpty
+                        ? DateTime.now().toIso8601String().split('T').first
+                        : dateController.text.trim();
+                    final payNote = noteController.text.trim().isEmpty ? 'دفعة من المحاسبة' : noteController.text.trim();
+                    final studentName = _students
+                        .firstWhere((s) => s.id == selectedStudentId, orElse: () => _students.first)
+                        .fullName;
                     setState(() {
                       _receipts.insert(
                         0,
                         AccountingReceiptEntry(
                           studentId: selectedStudentId,
-                          title: titleController.text.trim().isEmpty ? 'دفعة' : titleController.text.trim(),
+                          title: payTitle,
                           amount: amount,
                           currency: currency,
-                          date: dateController.text.trim().isEmpty
-                              ? DateTime.now().toIso8601String().split('T').first
-                              : dateController.text.trim(),
-                          note: noteController.text.trim().isEmpty ? 'دفعة من المحاسبة' : noteController.text.trim(),
+                          date: payDate,
+                          note: payNote,
                         ),
                       );
                       _accountingView = 'payments';
                       _accountingFilterStudentId = selectedStudentId;
                     });
-                    _persistAll();
-                    Navigator.of(dialogContext).pop();
-                    _showSnack('تمت إضافة الدفعة إلى حساب الطالب بنجاح.');
+                    await _persistAll();
+                    await _pushIncomeFromAccounting(
+                      preferredCategoryId: 'tuition',
+                      preferredCategoryName: 'أقساط دراسية',
+                      amount: amount,
+                      currency: currency,
+                      date: payDate,
+                      description: 'دفعة: $payTitle — الطالب: $studentName${payNote.isEmpty ? '' : ' — $payNote'}',
+                      studentId: selectedStudentId,
+                      studentName: studentName,
+                    );
+                    if (Navigator.of(dialogContext).canPop()) {
+                      Navigator.of(dialogContext).pop();
+                    }
+                    _showSnack('تمت إضافة الدفعة إلى حساب الطالب وترحيلها للإيرادات.');
                   },
                   child: const Text('حفظ الدفعة'),
                 ),
@@ -5262,7 +5498,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
             border: Border.all(color: AppPalette.line),
           ),
           child: const Text(
-            'لا يوجد طلاب بعد. أضف طالبًا أولًا لكي تظهر لوحة المحاسبة.',
+            'لا يوجد طلاب بعد. أضف طالبًا أولًا لكي تظهر الأقساط والدفعات.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppPalette.muted, height: 1.8),
           ),
@@ -5364,14 +5600,6 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     setState(() => _accountingView = 'payments');
                     _showStudentPaymentDialog();
                   }),
-                  _actionButton('إضافة تبرع', const Color(0xFFEDF6FF), const Color(0xFF24436F), () {
-                    setState(() => _accountingView = 'donations');
-                    _showAccountingDonationDialog();
-                  }),
-                  _actionButton('إضافة مساعدة', const Color(0xFFE7F7EE), AppPalette.leafGreen, () {
-                    setState(() => _accountingView = 'aids');
-                    _showAccountingAidDialog();
-                  }),
                 ],
               ),
             ],
@@ -5416,7 +5644,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: const <Widget>[
-                            Text('لوحة المدفوعات الحديثة', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
+                            Text('الأقساط والدفعات', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900)),
                             SizedBox(height: 6),
                             Text('تنسيق أحدث وأكثر انسيابية مع الحفاظ على نفس المعلومات الأساسية وربطها الكامل بالمحاسبة.', style: TextStyle(color: Colors.white70, height: 1.7)),
                           ],
@@ -5435,8 +5663,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 ),
                 const SizedBox(height: 14),
                 _subSectionBanner(
-                  'لوحة المدفوعات الحديثة',
-                  subtitle: 'الأقساط للعرض فقط. أضف الدفعات من زر «دفعة» دون الحاجة لتدخل الإدارة. التبرعات والمساعدات تبقى كما هي مع فرز حسب الطالب/الشعبة.',
+                  'الأقساط والدفعات',
+                  subtitle: 'الأقساط والدفعات هنا. التبرعات والمساعدات تُدار من باب الإيرادات والصرفيات. كل قسط/دفعة يُرحَّل تلقائيًا للإيرادات.',
                 ),
                 const SizedBox(height: 14),
                 Wrap(

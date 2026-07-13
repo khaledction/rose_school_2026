@@ -25,6 +25,7 @@ import '../services/backup_service.dart';
 import '../services/notification_service.dart';
 import '../services/employee_service.dart';
 import '../services/finance_service.dart';
+import '../models/finance_models.dart';
 import '../services/meeting_service.dart';
 import '../theme/app_palette.dart';
 import 'dashboard_page.dart';
@@ -3333,8 +3334,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         primaryColor: const Color(0xFF123A78),
         secondaryColor: const Color(0xFF0D1D43),
         items: const <_NavItem>[
-          _NavItem('students', 'قائمة الطلاب'),
           _NavItem('employees', '👥 الموظفين'),
+          _NavItem('students', 'قائمة الطلاب'),
           _NavItem('form', 'استمارة طالب'),
           _NavItem('attendance', 'الحضور والغياب'),
           _NavItem('awards', '🏅 الشهادات والمكافآت والعقوبات'),
@@ -3360,7 +3361,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         primaryColor: const Color(0xFF1E7A43),
         secondaryColor: const Color(0xFF2F9A8E),
         items: const <_NavItem>[
-          _NavItem('accounting', 'لوحة المحاسبة'),
+          _NavItem('accounting', 'الأقساط والدفعات'),
           _NavItem('income_expenses', '💰 الإيرادات والصرفيات'),
         ],
       ),
@@ -3485,6 +3486,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
               child: Column(
                 children: group.items.map((item) {
                   final active = item.id == _currentPage;
+                  final isEmployees = item.id == 'employees';
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 7),
                     child: InkWell(
@@ -3511,8 +3513,15 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                           borderRadius: BorderRadius.circular(14),
                           gradient: active
                               ? LinearGradient(colors: <Color>[group.primaryColor, group.secondaryColor])
+                              : (isEmployees
+                                  ? const LinearGradient(colors: <Color>[Color(0x33C9A04E), Color(0x22123A78)])
+                                  : null),
+                          color: active
+                              ? null
+                              : (isEmployees ? const Color(0x22C9A04E) : Colors.white.withOpacity(0.06)),
+                          border: isEmployees && !active
+                              ? Border.all(color: const Color(0x66C9A04E))
                               : null,
-                          color: active ? null : Colors.white.withOpacity(0.06),
                         ),
                         child: Row(
                           children: <Widget>[
@@ -3520,13 +3529,17 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                               child: Text(
                                 item.label,
                                 style: TextStyle(
-                                  color: active ? Colors.white : Colors.white.withOpacity(0.84),
-                                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                                  color: active
+                                      ? Colors.white
+                                      : (isEmployees ? const Color(0xFFFFE7B0) : Colors.white.withOpacity(0.84)),
+                                  fontWeight: active || isEmployees ? FontWeight.w800 : FontWeight.w500,
                                 ),
                               ),
                             ),
                             if (active)
                               const Text('•', style: TextStyle(color: Colors.white)),
+                            if (!active && isEmployees)
+                              const Text('★', style: TextStyle(color: Color(0xFFFFD27A), fontSize: 12)),
                           ],
                         ),
                       ),
@@ -3709,9 +3722,9 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         );
       case 'accounting':
         return const _PageInfo(
-          'المحاسبة',
-          'المحاسبة، القوائم الذكية للمدفوعات',
-          'تم تحديث لوحة المحاسبة لتعرض القسط والتبرع والمساعدة فقط، مع فرز جميل حسب الطالب وحسب الشعبة وشاشات عرض مستقلة لكل نوع.',
+          'الأقساط والدفعات',
+          'المحاسبة، الأقساط والدفعات',
+          'إدارة الأقساط والدفعات للطالب. عند إضافة قسط أو دفعة تُرحَّل تلقائيًا إلى باب الإيرادات والصرفيات. المستحقات الشهرية تظهر باللون الأصفر في قائمة الطلاب ولدى الإدارة.',
         );
       case 'exams':
         return const _PageInfo(
@@ -3737,7 +3750,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'admin_dashboard': '🏛️ الإدارة',
       'admin_identity': 'الهوية والاعتماد',
       'attendance': 'الحضور والغياب',
-      'donations': 'لوحة المحاسبة',
+      'donations': 'الأقساط والدفعات',
       'awards': '🏅 الشهادات والمكافآت والعقوبات',
       'discipline': 'المكافآت والعقوبات',
       'certificates': 'الشهادات',
@@ -3750,7 +3763,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       'data_center': '📁 مركز البيانات المحلي',
       'messages': '📅 اجتماعات ومراسلات أولياء الأمور',
       'exams': '📚 الدرجات والجلاء المدرسي',
-      'accounting': 'لوحة المحاسبة',
+      'accounting': 'الأقساط والدفعات',
     };
     return labels[id] ?? id;
   }
@@ -4296,6 +4309,99 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
             'المعلمون: $teachers • الموظفون: ${employees.length} • المستخدمون: ${_adminUsers.length}',
             style: const TextStyle(color: AppPalette.muted, fontWeight: FontWeight.w700),
           ),
+          const SizedBox(height: 14),
+          _adminOverdueInstallmentsPanel(),
+        ],
+      ),
+    );
+  }
+
+  Widget _adminOverdueInstallmentsPanel() {
+    final overdue = _studentsWithOverdueInstallments();
+    final now = DateTime.now();
+    final windowNote = now.day <= 5
+        ? 'نافذة الدفع الحالية: من 1 إلى 5 من هذا الشهر. بعد اليوم 5 يظهر المستحقون بالأصفر.'
+        : 'انتهت نافذة الدفع (1–5). الأسماء التالية لم تُسجَّل لها دفعة هذا الشهر.';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE6C200)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Expanded(
+                child: Text(
+                  '⚠️ المستحقون — الأقساط الشهرية',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF7A5A00)),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3BF),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFE6C200)),
+                ),
+                child: Text(
+                  '${overdue.length} طالب',
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF8A6D00)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(windowNote, style: const TextStyle(color: AppPalette.muted, height: 1.6, fontSize: 12)),
+          const SizedBox(height: 12),
+          if (overdue.isEmpty)
+            const Text(
+              'لا يوجد مستحقون حاليًا.',
+              style: TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800),
+            )
+          else
+            ...overdue.map((student) {
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEA),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE6C200)),
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        student.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF7A5A00)),
+                      ),
+                    ),
+                    Text(
+                      'الصف ${_studentGradeDisplay(student)} • شعبة ${_studentSectionDisplay(student)}',
+                      style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 10),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _loadStudent(student);
+                          _currentPage = 'accounting';
+                          _accountingFilterStudentId = student.id;
+                          _accountingView = 'payments';
+                        });
+                      },
+                      child: const Text('فتح المحاسبة'),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );

@@ -38,16 +38,69 @@ class _EmployeesPageState extends State<EmployeesPage> {
   final _hireDateController = TextEditingController();
   final _notesController = TextEditingController();
 
+  static const List<String> _qualificationOptions = <String>[
+    'يجيد القراءة و الكتابة',
+    'الأبتدائية',
+    'شهادة التعليم الأساسي',
+    'شهادة الثانوية',
+    'معهد متوسط',
+    'اجازة 4 سنوات',
+    'اجازة 5 سنوات',
+    'اجازة 6 سنوات',
+    'دبلوم تأهيل تربوي',
+    'دراسات عليا',
+    'ماجستير',
+    'دكتوراه',
+  ];
+
+  /// مواد الجلاء (بدون تكرار) + خيار عام
+  static const List<String> _specializationOptions = <String>[
+    'أنشطة',
+    'اجتماعيات',
+    'التربية الدينية',
+    'التربية الرياضية',
+    'التربية الموسيقية',
+    'الرياضيات',
+    'العلوم والتربية الصحية',
+    'العلوم العامة',
+    'الفنون الجمالية',
+    'اللغة الإنكليزية',
+    'اللغة الأجنبية',
+    'اللغة العربية',
+    'اللغة الفرنسية',
+    'مهارات شفوية',
+    'مهارات كتابية',
+    'سلوك',
+    'تكنلوجيا المعلومات والاتصالات',
+    'المعلوماتية',
+    'التاريخ',
+    'الجغرافيا',
+    'الفلسفة',
+    'الوطنية',
+    'الفيزياء',
+    'الكيمياء',
+    'علم الأحياء',
+    'إداري',
+    'أخرى',
+  ];
+
   static const List<String> _departmentOptions = <String>[
     'روضة',
-    'تعليم اساسي حلقة 1',
-    'تعليم اساسي حلقة 2',
-    'تعليم ثنوي - علمي',
-    'تعليم ثانوي - أدبي',
-    'تعليم ثانوي - أخر',
+    'نشاطات وترفيه',
+    'التعليم الاساسي ( 1 - 4 )',
+    'التعليم الاساسي ( 5 - 6 )',
+    'التعليم الاساسي ( 7 - 9 )',
+    'الثانوي',
+    'الإداري',
+    'العمالة',
+    'أخر',
   ];
 
   String _department = 'روضة';
+  String _departmentOther = '';
+  final _departmentOtherController = TextEditingController();
+  String _qualification = 'شهادة الثانوية';
+  String _specialization = 'الرياضيات';
   String _jobType = 'معلم';
   String _gender = 'ذكر';
   String _photoPath = '';
@@ -68,6 +121,7 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _specializationController.dispose();
     _hireDateController.dispose();
     _notesController.dispose();
+    _departmentOtherController.dispose();
     super.dispose();
   }
 
@@ -90,6 +144,10 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _specializationController.clear();
     _hireDateController.clear();
     _department = _departmentOptions.first;
+    _departmentOther = '';
+    _departmentOtherController.clear();
+    _qualification = _qualificationOptions.first;
+    _specialization = _specializationOptions.first;
     _notesController.clear();
     _jobType = 'معلم';
     _gender = 'ذكر';
@@ -108,7 +166,27 @@ class _EmployeesPageState extends State<EmployeesPage> {
     _qualificationController.text = emp.qualification;
     _specializationController.text = emp.specialization;
     _hireDateController.text = emp.hireDate;
-    _department = _departmentOptions.contains(emp.department) ? emp.department : _departmentOptions.first;
+    if (_departmentOptions.contains(emp.department)) {
+      _department = emp.department;
+      _departmentOther = '';
+    _departmentOtherController.clear();
+    } else if (emp.department.isEmpty) {
+      _department = _departmentOptions.first;
+      _departmentOther = '';
+    _departmentOtherController.clear();
+    } else {
+      _department = 'أخر';
+      _departmentOther = emp.department;
+    }
+    _qualification = _qualificationOptions.contains(emp.qualification)
+        ? emp.qualification
+        : (emp.qualification.isEmpty ? _qualificationOptions.first : emp.qualification);
+    _specialization = _specializationOptions.contains(emp.specialization)
+        ? emp.specialization
+        : (emp.specialization.isEmpty ? _specializationOptions.first : emp.specialization);
+    // keep controllers in sync for legacy display
+    _qualificationController.text = _qualification;
+    _specializationController.text = _specialization;
     _notesController.text = emp.notes;
     _jobType = emp.jobType;
     _gender = (emp.gender == 'أنثى') ? 'أنثى' : 'ذكر';
@@ -155,11 +233,18 @@ class _EmployeesPageState extends State<EmployeesPage> {
       residence: _residenceController.text.trim(),
       mobile: _mobileController.text.trim(),
       email: _emailController.text.trim(),
-      qualification: _qualificationController.text.trim(),
-      specialization: _specializationController.text.trim(),
+      qualification: _qualification,
+      specialization: _specialization,
       hireDate: _hireDateController.text.trim(),
       jobType: _jobType,
-      department: _department,
+      department: _department == 'أخر'
+          ? (() {
+              final other = _departmentOtherController.text.trim().isEmpty
+                  ? _departmentOther.trim()
+                  : _departmentOtherController.text.trim();
+              return other.isEmpty ? 'أخر' : other;
+            })()
+          : _department,
       gender: _gender,
       photoPath: _photoPath,
       notes: _notesController.text.trim(),
@@ -340,10 +425,31 @@ class _EmployeesPageState extends State<EmployeesPage> {
                 _field('مكان الإقامة', _residenceController, span2: true),
                 _field('رقم الموبايل', _mobileController),
                 _field('البريد الإلكتروني', _emailController),
-                _field('المؤهل العلمي', _qualificationController),
-                _field('الاختصاص', _specializationController),
+                _qualificationDropdown(),
+                _specializationDropdown(),
                 _field('تاريخ التعيين', _hireDateController),
                 _departmentDropdown(),
+                if (_department == 'أخر')
+                  SizedBox(
+                    width: 540,
+                    child: TextFormField(
+                      controller: _departmentOtherController,
+                      onChanged: (v) => _departmentOther = v,
+                      decoration: const InputDecoration(
+                        labelText: 'حدد القسم (أخر)',
+                        filled: true,
+                        fillColor: Color(0xFFFBFDFF),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                          borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(14)),
+                          borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+                        ),
+                      ),
+                    ),
+                  ),
                 _jobTypeDropdown(),
                 _genderDropdown(),
                 _field('ملاحظات', _notesController, span2: true, maxLines: 3),
@@ -485,13 +591,82 @@ class _EmployeesPageState extends State<EmployeesPage> {
     );
   }
 
+  Widget _qualificationDropdown() {
+    final value = _qualificationOptions.contains(_qualification) ? _qualification : _qualificationOptions.first;
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<String>(
+        value: value,
+        isExpanded: true,
+        items: _qualificationOptions.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
+        onChanged: (v) => setState(() {
+          _qualification = v ?? _qualificationOptions.first;
+          _qualificationController.text = _qualification;
+        }),
+        decoration: const InputDecoration(
+          labelText: 'المؤهل العلمي',
+          filled: true,
+          fillColor: Color(0xFFFBFDFF),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _specializationDropdown() {
+    final options = <String>[..._specializationOptions];
+    if (_specialization.isNotEmpty && !options.contains(_specialization)) {
+      options.insert(0, _specialization);
+    }
+    final value = options.contains(_specialization) ? _specialization : options.first;
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<String>(
+        value: value,
+        isExpanded: true,
+        items: options.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
+        onChanged: (v) => setState(() {
+          _specialization = v ?? options.first;
+          _specializationController.text = _specialization;
+        }),
+        decoration: const InputDecoration(
+          labelText: 'الاختصاص',
+          filled: true,
+          fillColor: Color(0xFFFBFDFF),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+            borderSide: BorderSide(color: Color(0xFFD9E7F3)),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _departmentDropdown() {
     return SizedBox(
       width: 540,
       child: DropdownButtonFormField<String>(
         value: _departmentOptions.contains(_department) ? _department : _departmentOptions.first,
+        isExpanded: true,
         items: _departmentOptions.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-        onChanged: (v) => setState(() => _department = v ?? _departmentOptions.first),
+        onChanged: (v) => setState(() {
+          _department = v ?? _departmentOptions.first;
+          if (_department != 'أخر') {
+            _departmentOther = '';
+    _departmentOtherController.clear();
+          }
+        }),
         decoration: const InputDecoration(
           labelText: 'القسم *',
           filled: true,
