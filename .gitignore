@@ -64,3 +64,13 @@ app.*.map.json
 *.key
 secrets/
 credentials/
+
+# Local docs/previews that must not re-enter the repo
+/mockups/
+/reference/
+/FULL_PROJECT_DEMO.html
+/PROJECT_COMPREHENSIVE_INTERACTIVE_PREVIEW.html
+/SECRETARIAT_FULL_INTERACTIVE.html
+/PHASE_2_VISUAL_SHOWCASE.html
+*.bak
+/tmp_updates/

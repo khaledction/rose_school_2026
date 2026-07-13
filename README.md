@@ -2,7 +2,7 @@
 
 نظام إدارة مدرسي محلي لويندوز — Flutter + SQLite (عربي / RTL).
 
-## التشغيل
+## التشغيل (تطوير)
 
 ```cmd
 cd C:\Users\khaledction\Desktop\new-rose
@@ -14,42 +14,43 @@ flutter pub get
 flutter run -d windows
 ```
 
-> بعد أي `push` من Arena: نفّذ الأوامر أعلاه على Desktop حتى يصبح المجلد المحلي = `origin/main`.
-
 ## المستودع
 
 https://github.com/khaledction/rose_school_2026
 
-## الوثائق
+## الوثائق الحية
 
 | ملف | الغرض |
 |-----|--------|
-| `NEXT_CHAT_SUMMARY.md` | **المرجع الحي** — آخر حالة + الأولوية التالية |
-| `ROSE_SCHOOL_2026_FULL_PLAN.md` | الخطة الكاملة |
-| `WINDOWS_FULL_IMPLEMENTATION_PLAN.md` | خطة ويندوز |
-| `WINDOWS_TEST_CHECKLIST.md` | اختبارات يدوية |
+| `NEXT_CHAT_SUMMARY.md` | المرجع الحي — آخر حالة + الأولوية التالية |
+| `README.md` | تشغيل سريع + بناء تنفيذي |
 
-## آخر حالة (2026-07-13) — تنظيف ومزامنة
+## بناء ملف تنفيذي لويندوز (Release)
 
-- حذف نسخ `.bak` المكررة من `lib/pages/`
-- حذف مجلد `tmp_updates/` (نسخ قديمة أقدم من `lib/pages`)
-- حذف `lib/pages/README.md` و`lib/pages/NEXT_CHAT_SUMMARY.md` (مكررات)
-- حذف `PHASE_2_VISUAL_SHOWCASE.html` (نسخة مطابقة لـ `FULL_PROJECT_DEMO.html`)
-- تعزيز `.gitignore` ضد النسخ المؤقتة والأسرار
+على جهاز فيه Flutter + Visual Studio (Desktop development with C++):
 
-## الجلاء المدرسي (2026-07-11 / 12)
+```cmd
+cd C:\Users\khaledction\Desktop\new-rose
+flutter clean
+flutter pub get
+flutter build windows --release
+```
 
-- A4 عمودي مع هوامش طباعة رسمية.
-- النماذج حسب الحلقة/المرحلة: 1-4 / 5-6 / 7-9 / ثانوي أدبي–علمي.
-- رأس الجدول بالنموذج الرسمي + مدير المدرسة فوق مشرف القسم.
-- بطاقات إنجاز المواد + ذكور/إناث في الشريط العلوي.
+المخرجات:
 
-## المحاسبة
+```text
+build\windows\x64\runner\Release\
+```
 
-- أزرار الأقساط: 💵 / 💵🚌 / 💵🚌🎁
-- **قسط واحد لكل ضغطة** بقيمة الإدارة (قراءة فقط).
+انسخ مجلد `Release` كاملًا إلى الجهاز الآخر وشغّل:
 
-## أمان
+```text
+rose_school.exe
+```
 
-- لا تلصق GitHub token في المحادثات.
-- إن ظهر token: ألغِه فورًا من GitHub Settings → Developer settings → Personal access tokens.
+> مهم: انسخ المجلد كاملًا (لا exe وحده) لأنه يحتوي DLLs وdata.
+
+## ملاحظات الحجم
+
+- التطبيق موجّه لويندوز أساسًا.
+- مجلدات `android/ios/macos/linux/web` باقية كدعم Flutter متعدد المنصات، ويمكن حذفها لاحقًا إذا أردت Windows-only صارم.
