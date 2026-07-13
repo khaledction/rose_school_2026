@@ -6188,6 +6188,17 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     );
   }
 
+
+  Future<void> _launchExternalUri(Uri uri) async {
+    if (Platform.isWindows) {
+      await Process.start('cmd', <String>['/c', 'start', '', uri.toString()], runInShell: true);
+    } else if (Platform.isMacOS) {
+      await Process.start('open', <String>[uri.toString()]);
+    } else {
+      await Process.start('xdg-open', <String>[uri.toString()]);
+    }
+  }
+
   Widget _messagesPageSection() {
     final student = _selectedStudent ?? _students.first;
     final messages = _messages
