@@ -48,7 +48,15 @@ flutter run -d windows
 ### أُضيف
 - `scripts/build_release_installer.ps1` — بناء Release + ZIP + Setup
 - `installer/RoseSchool.iss` — قالب Inno Setup
+- `installer/welcome_ar.txt` — ترحيب
+- `installer/license_ar.txt` — ترخيص
+- `installer/infoafter_ar.txt` — بعد التثبيت
 - `installer/README_INSTALLER.md` — دليل التثبيت الأنيق
+
+### مزايا المثبت
+- اختصار عربي: **مدرسة روز 2026**
+- أيقونة Setup مخصصة
+- صفحات ترحيب / ترخيص / إنهاء
 
 ### أوامر سريعة
 ```powershell
