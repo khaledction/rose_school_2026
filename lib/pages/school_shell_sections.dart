@@ -6188,7 +6188,8 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   Future<void> _launchExternalUri(Uri uri) async {
     final raw = uri.toString();
     if (Platform.isWindows) {
-      final ps = "Start-Process '" + raw.replace("'", "''") + "'";
+      final escaped = raw.replaceAll("'", "''");
+      final ps = "Start-Process '$escaped'";
       final result = await Process.run(
         'powershell',
         <String>['-NoProfile', '-Command', ps],
