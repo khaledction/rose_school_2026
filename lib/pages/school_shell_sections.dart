@@ -5081,15 +5081,39 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     if (_accountingSectionFilter != 'الكل' && _studentSectionDisplay(student) != _accountingSectionFilter) {
       return false;
     }
+    if (_accountingGradeFilter != 'الكل' && _studentGradeDisplay(student) != _accountingGradeFilter) {
+      return false;
+    }
+    final q = _accountingStudentSearch.trim();
+    if (q.isNotEmpty && !student.fullName.contains(q)) {
+      return false;
+    }
     return true;
   }
 
+  List<String> _accountingAvailableGrades() {
+    final grades = _students
+        .map(_studentGradeDisplay)
+        .where((value) => value.trim().isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return <String>['الكل', ...grades];
+  }
+
   List<StudentRecord> _accountingFilteredStudents() {
+    final q = _accountingStudentSearch.trim();
     final result = _students.where((student) {
       if (_accountingFilterStudentId != null && student.id != _accountingFilterStudentId) {
         return false;
       }
       if (_accountingSectionFilter != 'الكل' && _studentSectionDisplay(student) != _accountingSectionFilter) {
+        return false;
+      }
+      if (_accountingGradeFilter != 'الكل' && _studentGradeDisplay(student) != _accountingGradeFilter) {
+        return false;
+      }
+      if (q.isNotEmpty && !student.fullName.contains(q)) {
         return false;
       }
       return true;
@@ -5643,8 +5667,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                   children: <Widget>[
                     _accountingFilterCard(
                       label: 'اسم الطالب',
+                      width: 360,
                       child: DropdownButtonFormField<String>(
                         value: _accountingFilterStudentId?.toString() ?? 'all',
+                        isExpanded: true,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: const Color(0xFFFBFDFF),
@@ -5669,9 +5695,12 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                             } else {
                               _accountingFilterStudentId = int.tryParse(value);
                               _accountingSectionFilter = 'الكل';
+                              _accountingGradeFilter = 'الكل';
                               final selected = _studentById(_accountingFilterStudentId!);
                               if (selected != null) {
                                 _loadStudent(selected);
+                                _accountingStudentSearch = selected.fullName;
+                                _accountingStudentSearchController.text = selected.fullName;
                               }
                             }
                           });
@@ -5679,9 +5708,136 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       ),
                     ),
                     _accountingFilterCard(
+                      label: 'بحث بالاسم (إكمال تلقائي)',
+                      width: 360,
+                      child: Autocomplete<StudentRecord>(
+                        displayStringForOption: (s) => s.fullName,
+                        optionsBuilder: (textEditingValue) {
+                          final q = textEditingValue.text.trim();
+                          if (q.isEmpty) {
+                            return _students.take(12);
+                          }
+                          return _students.where((s) => s.fullName.contains(q)).take(20);
+                        },
+                        onSelected: (student) {
+                          setState(() {
+                            _accountingFilterStudentId = student.id;
+                            _accountingStudentSearch = student.fullName;
+                            _accountingStudentSearchController.text = student.fullName;
+                            _loadStudent(student);
+                          });
+                        },
+                        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                          // keep controller text in sync with state search
+                          if (controller.text != _accountingStudentSearchController.text && _accountingStudentSearchController.text.isNotEmpty) {
+                            controller.value = _accountingStudentSearchController.value;
+                          }
+                          return TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            decoration: InputDecoration(
+                              hintText: 'اكتب اسم الطالب...',
+                              filled: true,
+                              fillColor: const Color(0xFFFBFDFF),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+                              ),
+                              suffixIcon: controller.text.isEmpty
+                                  ? const Icon(Icons.search)
+                                  : IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        controller.clear();
+                                        setState(() {
+                                          _accountingStudentSearch = '';
+                                          _accountingStudentSearchController.clear();
+                                          _accountingFilterStudentId = null;
+                                        });
+                                      },
+                                    ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                _accountingStudentSearch = value;
+                                _accountingStudentSearchController.text = value;
+                                // free typing search should not force exact id unless selected
+                                if (_accountingFilterStudentId != null) {
+                                  final selected = _studentById(_accountingFilterStudentId!);
+                                  if (selected == null || selected.fullName != value) {
+                                    _accountingFilterStudentId = null;
+                                  }
+                                }
+                              });
+                            },
+                          );
+                        },
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topRight,
+                            child: Material(
+                              elevation: 6,
+                              borderRadius: BorderRadius.circular(12),
+                              child: SizedBox(
+                                width: 340,
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (context, index) {
+                                    final student = options.elementAt(index);
+                                    return ListTile(
+                                      dense: true,
+                                      title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.w800)),
+                                      subtitle: Text('الصف ${_studentGradeDisplay(student)} • شعبة ${_studentSectionDisplay(student)}'),
+                                      onTap: () => onSelected(student),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    _accountingFilterCard(
+                      label: 'فرز حسب الصف',
+                      width: 240,
+                      child: DropdownButtonFormField<String>(
+                        value: _accountingAvailableGrades().contains(_accountingGradeFilter) ? _accountingGradeFilter : 'الكل',
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFFBFDFF),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFD9E7F3)),
+                          ),
+                        ),
+                        items: _accountingAvailableGrades()
+                            .map((grade) => DropdownMenuItem<String>(value: grade, child: Text(grade == 'الكل' ? 'كل الصفوف' : 'الصف $grade')))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _accountingGradeFilter = value);
+                          }
+                        },
+                      ),
+                    ),
+                    _accountingFilterCard(
                       label: 'فرز حسب الشعبة',
+                      width: 240,
                       child: DropdownButtonFormField<String>(
                         value: _accountingAvailableSections().contains(_accountingSectionFilter) ? _accountingSectionFilter : 'الكل',
+                        isExpanded: true,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: const Color(0xFFFBFDFF),

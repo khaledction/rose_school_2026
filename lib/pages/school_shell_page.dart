@@ -328,6 +328,10 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   String _accountingView = 'installments';
   int? _accountingFilterStudentId;
   String _accountingSectionFilter = 'الكل';
+  String _accountingGradeFilter = 'الكل';
+  String _accountingStudentSearch = '';
+  final TextEditingController _accountingStudentSearchController = TextEditingController();
+  final Set<String> _dueBoardSelectedIds = <String>{}; // notification ids or due-student keys
   bool _isAuthenticated = false;
   int? _authenticatedUserId;
   int? _selectedAdminUserId;
@@ -2372,6 +2376,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   @override
   void dispose() {
+    _accountingStudentSearchController.dispose();
     _database.close();
     for (final node in _formFocusNodes) {
       node.dispose();
@@ -4545,22 +4550,135 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     await NotificationService.instance.clearDueForStudentsNotIn(overdueIds);
   }
 
-  Widget _adminOverdueInstallmentsPanel() {
+
+  String _dueBoardKeyForStudent(int studentId) => 'due-student-$studentId';
+
+  List<Map<String, dynamic>> _buildInstallmentDueBoardItems() {
     final overdue = _studentsWithOverdueInstallments();
-    // Keep admin notifications in sync with current overdue set.
+    final overdueIds = overdue.map((s) => s.id).toSet();
+    final items = <Map<String, dynamic>>[];
+
+    // Green paid cards remain until admin archives/deletes.
+    for (final n in NotificationService.instance.active) {
+      final isPaid = n.category == 'installment_paid' ||
+          (n.type == 'success' && (n.title.startsWith('تم الدفع') || n.body.contains('تم الدفع')));
+      if (!isPaid) continue;
+      final sid = int.tryParse(n.meta['studentId'] ?? n.targetId ?? '') ?? 0;
+      if (sid <= 0 || overdueIds.contains(sid)) continue;
+      StudentRecord? student;
+      for (final s in _students) {
+        if (s.id == sid) {
+          student = s;
+          break;
+        }
+      }
+      final name = n.meta['studentName'] ?? student?.fullName ?? n.title.replaceFirst('تم الدفع — ', '');
+      items.add(<String, dynamic>{
+        'key': n.id,
+        'notificationId': n.id,
+        'studentId': sid,
+        'name': name,
+        'grade': student == null ? '-' : _studentGradeDisplay(student),
+        'section': student == null ? '-' : _studentSectionDisplay(student),
+        'paid': true,
+        'isRead': n.isRead,
+      });
+    }
+
+    for (final student in overdue) {
+      String? notifId;
+      for (final n in NotificationService.instance.active) {
+        final sid = n.meta['studentId'] ?? n.targetId ?? '';
+        final dueLike = n.category == 'installment_due' || n.type == 'warning' || n.title.contains('مستحق');
+        if (dueLike && sid == student.id.toString()) {
+          notifId = n.id;
+          break;
+        }
+      }
+      final key = notifId ?? _dueBoardKeyForStudent(student.id);
+      items.add(<String, dynamic>{
+        'key': key,
+        'notificationId': notifId,
+        'studentId': student.id,
+        'name': student.fullName,
+        'grade': _studentGradeDisplay(student),
+        'section': _studentSectionDisplay(student),
+        'paid': false,
+        'isRead': false,
+      });
+    }
+
+    items.sort((a, b) {
+      final ap = a['paid'] == true ? 1 : 0;
+      final bp = b['paid'] == true ? 1 : 0;
+      if (ap != bp) return ap.compareTo(bp);
+      return a['name'].toString().compareTo(b['name'].toString());
+    });
+    return items;
+  }
+
+  Future<void> _dueBoardApplyAction(String action, List<Map<String, dynamic>> items) async {
+    for (final item in items) {
+      final notifId = item['notificationId']?.toString();
+      final sid = item['studentId'] as int;
+      if (action == 'read') {
+        if (notifId != null && notifId.isNotEmpty) {
+          await NotificationService.instance.markAsRead(notifId);
+        }
+      } else if (action == 'archive') {
+        if (notifId != null && notifId.isNotEmpty) {
+          await NotificationService.instance.archive(notifId);
+        } else {
+          await NotificationService.instance.ensureInstallmentDueNotification(
+            studentId: sid,
+            studentName: item['name'].toString(),
+            gradeLabel: 'الصف ${item['grade']}',
+          );
+          for (final n in List<NotificationItem>.from(NotificationService.instance.active)) {
+            final id = n.meta['studentId'] ?? n.targetId ?? '';
+            if (id == sid.toString() && (n.category == 'installment_due' || n.type == 'warning')) {
+              await NotificationService.instance.archive(n.id);
+            }
+          }
+        }
+      } else if (action == 'delete') {
+        if (notifId != null && notifId.isNotEmpty) {
+          await NotificationService.instance.remove(notifId);
+        } else {
+          for (final n in List<NotificationItem>.from(NotificationService.instance.active)) {
+            final id = n.meta['studentId'] ?? n.targetId ?? '';
+            if (id == sid.toString() &&
+                (n.category == 'installment_due' || n.category == 'installment_paid' || n.type == 'warning' || n.title.contains('مستحق') || n.title.startsWith('تم الدفع'))) {
+              await NotificationService.instance.remove(n.id);
+            }
+          }
+        }
+      }
+    }
+    _dueBoardSelectedIds.clear();
+    if (mounted) setState(() {});
+  }
+
+  Widget _adminOverdueInstallmentsPanel() {
     // ignore: discarded_futures
     _syncOverdueInstallmentNotifications();
+    final items = _buildInstallmentDueBoardItems();
+    final dueCount = items.where((e) => e['paid'] != true).length;
+    final paidCount = items.where((e) => e['paid'] == true).length;
+    final selectedItems = items.where((e) => _dueBoardSelectedIds.contains(e['key'].toString())).toList();
+    final allSelected = items.isNotEmpty && selectedItems.length == items.length;
     final now = DateTime.now();
     final windowNote = now.day <= 5
-        ? 'نافذة الدفع الحالية: من 1 إلى 5 من هذا الشهر. بعد اليوم 5 يظهر المستحقون بالأصفر.'
-        : 'انتهت نافذة الدفع (1–5). الأسماء التالية لم تُسجَّل لها دفعة هذا الشهر.';
+        ? 'نافذة الدفع الحالية: من 1 إلى 5 من هذا الشهر. بعد اليوم 5 يظهر المستحقون بالأصفر. عند الدفع تتحول البطاقة إلى أخضر مع خيارات الإدارة.'
+        : 'انتهت نافذة الدفع (1–5). الأصفر = لم يُدفع بعد، الأخضر = تم الدفع وبانتظار قراءة/أرشفة/حذف من الإدارة.';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.96),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: overdue.isEmpty ? const Color(0xFFB7E0C3) : const Color(0xFFE6C200)),
+        border: Border.all(color: dueCount == 0 ? const Color(0xFFB7E0C3) : const Color(0xFFE6C200)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4569,11 +4687,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  overdue.isEmpty ? '✅ المستحقون — لا يوجد حالياً' : '⚠️ المستحقون — الأقساط الشهرية',
+                  dueCount == 0 && paidCount == 0
+                      ? '✅ المستحقون — لا يوجد حالياً'
+                      : '⚠️ المستحقون — الأقساط الشهرية',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
-                    color: overdue.isEmpty ? AppPalette.leafGreen : const Color(0xFF7A5A00),
+                    color: dueCount == 0 ? AppPalette.leafGreen : const Color(0xFF7A5A00),
                   ),
                 ),
               ),
@@ -4588,63 +4708,160 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: overdue.isEmpty ? const Color(0xFFE7F7EE) : const Color(0xFFFFF3BF),
+                  color: const Color(0xFFFFF3BF),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: overdue.isEmpty ? const Color(0xFFB7E0C3) : const Color(0xFFE6C200)),
+                  border: Border.all(color: const Color(0xFFE6C200)),
                 ),
-                child: Text(
-                  '${overdue.length} طالب',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: overdue.isEmpty ? AppPalette.leafGreen : const Color(0xFF8A6D00),
-                  ),
+                child: Text('مستحق: $dueCount', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF8A6D00))),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE7F7EE),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0xFFB7E0C3)),
                 ),
+                child: Text('تم الدفع: $paidCount', style: const TextStyle(fontWeight: FontWeight.w900, color: AppPalette.leafGreen)),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(windowNote, style: const TextStyle(color: AppPalette.muted, height: 1.6, fontSize: 12)),
           const SizedBox(height: 12),
-          if (overdue.isEmpty)
-            const Text(
-              'لا يوجد مستحقون حاليًا.',
-              style: TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800),
-            )
+          if (items.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7FAFD),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppPalette.line),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Checkbox(
+                    value: allSelected,
+                    onChanged: (v) {
+                      setState(() {
+                        _dueBoardSelectedIds.clear();
+                        if (v == true) {
+                          for (final item in items) {
+                            _dueBoardSelectedIds.add(item['key'].toString());
+                          }
+                        }
+                      });
+                    },
+                  ),
+                  const Text('تحديد الكل', style: TextStyle(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: selectedItems.isEmpty ? null : () => _dueBoardApplyAction('archive', selectedItems),
+                    child: const Text('أرشفة المحدد'),
+                  ),
+                  TextButton(
+                    onPressed: selectedItems.isEmpty ? null : () => _dueBoardApplyAction('delete', selectedItems),
+                    child: const Text('حذف المحدد', style: TextStyle(color: AppPalette.roseRed)),
+                  ),
+                ],
+              ),
+            ),
+          if (items.isEmpty)
+            const Text('لا يوجد مستحقون أو بطاقات دفع بانتظار المتابعة.', style: TextStyle(color: AppPalette.leafGreen, fontWeight: FontWeight.w800))
           else
-            ...overdue.map((student) {
+            ...items.map((item) {
+              final paid = item['paid'] == true;
+              final key = item['key'].toString();
+              final selected = _dueBoardSelectedIds.contains(key);
+              final bg = paid ? const Color(0xFFE7F7EE) : const Color(0xFFFFFBEA);
+              final border = paid ? const Color(0xFFB7E0C3) : const Color(0xFFE6C200);
+              final nameColor = paid ? AppPalette.leafGreen : const Color(0xFF7A5A00);
               return Container(
                 width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEA),
+                  color: bg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE6C200)),
+                  border: Border.all(color: border),
                 ),
                 child: Row(
                   children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        student.fullName,
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF7A5A00)),
-                      ),
-                    ),
-                    Text(
-                      'الصف ${_studentGradeDisplay(student)} • شعبة ${_studentSectionDisplay(student)}',
-                      style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(width: 10),
-                    TextButton(
-                      onPressed: () {
+                    Checkbox(
+                      value: selected,
+                      onChanged: (v) {
                         setState(() {
-                          _loadStudent(student);
-                          _currentPage = 'accounting';
-                          _accountingFilterStudentId = student.id;
-                          _accountingView = 'payments';
+                          if (v == true) {
+                            _dueBoardSelectedIds.add(key);
+                          } else {
+                            _dueBoardSelectedIds.remove(key);
+                          }
                         });
                       },
-                      child: const Text('فتح المحاسبة'),
                     ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              Flexible(
+                                child: Text(item['name'].toString(), style: TextStyle(fontWeight: FontWeight.w900, color: nameColor)),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: paid ? const Color(0xFFDDF6E5) : const Color(0xFFFFF3BF),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: border),
+                                ),
+                                child: Text(paid ? 'تم الدفع' : 'مستحق', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: nameColor)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text('الصف ${item['grade']} • شعبة ${item['section']}', style: const TextStyle(color: AppPalette.muted, fontSize: 12, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      tooltip: 'خيارات',
+                      onSelected: (value) async {
+                        await _dueBoardApplyAction(value, <Map<String, dynamic>>[item]);
+                      },
+                      itemBuilder: (context) => const <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(value: 'read', child: Text('تمت القراءة')),
+                        PopupMenuItem<String>(value: 'archive', child: Text('أرشفة')),
+                        PopupMenuItem<String>(value: 'delete', child: Text('حذف', style: TextStyle(color: AppPalette.roseRed))),
+                      ],
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD0D7DE)),
+                        ),
+                        child: Icon(paid ? Icons.check_circle_outline : Icons.more_vert, size: 18, color: nameColor),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (!paid)
+                      TextButton(
+                        onPressed: () {
+                          final sid = item['studentId'] as int;
+                          final student = _students.firstWhere((s) => s.id == sid, orElse: () => _students.first);
+                          setState(() {
+                            _loadStudent(student);
+                            _currentPage = 'accounting';
+                            _accountingFilterStudentId = sid;
+                            _accountingView = 'payments';
+                          });
+                        },
+                        child: const Text('فتح المحاسبة'),
+                      ),
                   ],
                 ),
               );
@@ -4653,6 +4870,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       ),
     );
   }
+
 
   Widget _dashboardPageWrapped() {
     final studentCount = _students.length;
