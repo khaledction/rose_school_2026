@@ -90,3 +90,8 @@ copy /Y "docs\CONVERSATION_ARCHIVE_2026-07-13.md" "%USERPROFILE%\Desktop\CONVERS
 - النسخة المحمولة تتضمن `vc_redist.x64.exe`
 - أُضيف مجلد `متطلبات_العمل/` بكل برامج ومتطلبات التحويل إلى تنفيذي
 
+## ✍️ اعتماد المصمم داخل Setup
+- عدّل `installer/credits.iss.inc` (الاسم/الهاتف/الإيميل)
+- يظهر في الترحيب والإنهاء ومعلومات المثبت
+- التوزيع: Setup و Portable كلاهما أساسيان
+

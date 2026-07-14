@@ -12,6 +12,7 @@ dist\RoseSchoolSetup.exe
 - صفحة ترحيب عربية
 - صفحة ترخيص/موافقة
 - صفحة ختامية بعد التثبيت
+- جملة اعتماد: **تم التصميم والبرمجة من** + هاتف + إيميل
 - اختصارات سطح المكتب + قائمة ابدأ
 - **تثبيت VC++ Redistributable x64 تلقائيًا عند الحاجة** (لحل MSVCP140 / VCRUNTIME140_1)
 
@@ -71,6 +72,7 @@ installer\RoseSchool.iss
 | ملف | الدور |
 |-----|------|
 | `RoseSchool.iss` | سكربت Inno Setup |
+| `credits.iss.inc` | اسم المصمم/المبرمج + الهاتف + الإيميل |
 | `welcome_ar.txt` | صفحة الترحيب |
 | `license_ar.txt` | صفحة الترخيص/الموافقة |
 | `infoafter_ar.txt` | صفحة ما بعد التثبيت |
@@ -107,3 +109,31 @@ installer\RoseSchool.iss
 
 رابط Microsoft المباشر:
 - https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+
+## 9) تعديل بيانات المصمم/المبرمج
+
+عدّل الملف:
+
+```text
+installer\credits.iss.inc
+```
+
+مثال:
+
+```iss
+#define DesignerName "خالد ..."
+#define DesignerPhone "+963-9xx-xxx-xxx"
+#define DesignerEmail "you@email.com"
+#define DesignerNote "تم التصميم والبرمجة من:"
+```
+
+ثم حدّث أيضًا النصوص الظاهرة في:
+- `welcome_ar.txt`
+- `infoafter_ar.txt`
+
+وبعدها أعد البناء:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1 -SkipClean
+```
