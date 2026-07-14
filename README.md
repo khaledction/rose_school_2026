@@ -111,7 +111,13 @@ rose_school.exe
 ### ملاحظات توافق
 - Windows 10/11 (x64)
 - لا يحتاج Flutter على الجهاز الآخر
-- عند نقص DLL نادر: ثبّت **Microsoft Visual C++ Redistributable x64**
+- إذا ظهر:
+  - `MSVCP140.dll was not found`
+  - `VCRUNTIME140_1.dll was not found`
+  
+  ثبّت على الجهاز الثاني:
+  - https://aka.ms/vs/17/release/vc_redist.x64.exe
+  - ثم أعد تشغيل الجهاز وشغّل البرنامج
 
 ---
 
