@@ -153,14 +153,27 @@ if (-not $SkipInstaller) {
   )
   $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
+  $installerReason = $null
+
   if (-not $iscc) {
-    Write-Host "ISCC.exe not found. Install Inno Setup 6, then re-run without -SkipInstaller." -ForegroundColor Yellow
-    Write-Host "Download: https://jrsoftware.org/isinfo.php" -ForegroundColor Yellow
+    $installerReason = "Inno Setup compiler (ISCC.exe) was not found on this PC."
+    Write-Host ""
+    Write-Host "ERROR: $installerReason" -ForegroundColor Red
+    Write-Host "That is why you see: Installer : (not built)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "FIX:" -ForegroundColor Cyan
+    Write-Host "1) Download/install Inno Setup 6 from: https://jrsoftware.org/isinfo.php"
+    Write-Host "2) During install keep default path (Program Files x86\Inno Setup 6)"
+    Write-Host "3) Re-run this script"
+    Write-Host ""
+    Write-Host "Quick check after install:" -ForegroundColor Cyan
+    Write-Host '  Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"'
   } else {
     Write-Host "Using: $iscc"
     & $iscc $IssFile
     if ($LASTEXITCODE -ne 0) {
-      throw "Inno Setup compile failed with exit code $LASTEXITCODE"
+      $installerReason = "Inno Setup compile failed with exit code $LASTEXITCODE"
+      throw $installerReason
     }
 
     if (-not (Test-Path $SetupPath)) {
@@ -175,18 +188,24 @@ if (-not $SkipInstaller) {
     if (Test-Path $SetupPath) {
       Write-Host "Installer: $SetupPath" -ForegroundColor Green
     } else {
-      Write-Host "Installer compile finished, but exe not found in dist/. Check OutputDir in .iss" -ForegroundColor Yellow
+      $installerReason = "ISCC ran but RoseSchoolSetup.exe was not found in dist/. Check installer\RoseSchool.iss OutputDir."
+      Write-Host $installerReason -ForegroundColor Yellow
     }
   }
+} else {
+  $installerReason = "Installer step was skipped (-SkipInstaller)."
 }
 
 Write-Host ""
 Write-Host "================ DONE ================" -ForegroundColor Green
 Write-Host "Portable ZIP : $ZipPath"
 if (Test-Path $SetupPath) {
-  Write-Host "Installer    : $SetupPath"
+  Write-Host "Installer    : $SetupPath" -ForegroundColor Green
 } else {
-  Write-Host "Installer    : (not built)"
+  Write-Host "Installer    : (not built)" -ForegroundColor Yellow
+  if ($installerReason) {
+    Write-Host "Reason       : $installerReason" -ForegroundColor Yellow
+  }
 }
 Write-Host "Release dir  : $ReleaseDir"
 Write-Host "VC++ redist  : $VCRedistPath"
