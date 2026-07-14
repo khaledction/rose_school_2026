@@ -75,3 +75,8 @@ credentials/
 *.bak
 /tmp_updates/
 /dist/
+
+# Downloaded redistributables (fetched at build time)
+/installer/redist/*.exe
+/dist/
+

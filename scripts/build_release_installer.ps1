@@ -28,6 +28,37 @@ function Assert-Command([string]$name) {
   }
 }
 
+function Ensure-VCRedist([string]$TargetPath) {
+  $dir = Split-Path -Parent $TargetPath
+  if (-not (Test-Path $dir)) {
+    New-Item -ItemType Directory -Path $dir | Out-Null
+  }
+
+  if (Test-Path $TargetPath) {
+    $len = (Get-Item $TargetPath).Length
+    if ($len -gt 1000000) {
+      Write-Host "VC++ redistributable already present: $TargetPath" -ForegroundColor Yellow
+      return
+    }
+  }
+
+  $url = 'https://aka.ms/vs/17/release/vc_redist.x64.exe'
+  Write-Host "Downloading VC++ Redistributable x64..." -ForegroundColor Yellow
+  Write-Host $url
+  try {
+    Invoke-WebRequest -Uri $url -OutFile $TargetPath -UseBasicParsing
+  } catch {
+    # Fallback for older PowerShell
+    $wc = New-Object System.Net.WebClient
+    $wc.DownloadFile($url, $TargetPath)
+  }
+
+  if (-not (Test-Path $TargetPath) -or ((Get-Item $TargetPath).Length -lt 1000000)) {
+    throw "Failed to download vc_redist.x64.exe"
+  }
+  Write-Host "Saved: $TargetPath" -ForegroundColor Green
+}
+
 # Resolve project root (parent of scripts/)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
@@ -44,6 +75,8 @@ $ReleaseDirCandidates = @(
 )
 $DistDir = Join-Path $ProjectRoot 'dist'
 $InstallerDir = Join-Path $ProjectRoot 'installer'
+$RedistDir = Join-Path $InstallerDir 'redist'
+$VCRedistPath = Join-Path $RedistDir 'vc_redist.x64.exe'
 $IssFile = Join-Path $InstallerDir 'RoseSchool.iss'
 $Stamp = Get-Date -Format 'yyyyMMdd_HHmm'
 $ZipName = "RoseSchool2026_Portable_$Stamp.zip"
@@ -53,6 +86,10 @@ $SetupPath = Join-Path $DistDir 'RoseSchoolSetup.exe'
 if (-not (Test-Path $DistDir)) {
   New-Item -ItemType Directory -Path $DistDir | Out-Null
 }
+
+# Always ensure VC redist is available for installer packaging / portable bundle tip
+Write-Step "Ensure Microsoft VC++ Redistributable (x64)"
+Ensure-VCRedist -TargetPath $VCRedistPath
 
 if (-not $SkipClean) {
   Write-Step "flutter clean"
@@ -79,6 +116,19 @@ if (-not $ReleaseDir) {
 
 Write-Host "Release folder: $ReleaseDir" -ForegroundColor Yellow
 
+# Copy VC redist next to portable package for machines that run ZIP without Setup
+Write-Step "Attach VC++ runtime helper into portable package folder"
+Copy-Item -Force $VCRedistPath (Join-Path $ReleaseDir 'vc_redist.x64.exe')
+$ReadmePortable = @"
+Rose School 2026 - Portable
+
+1) If rose_school.exe shows MSVCP140.dll / VCRUNTIME140_1.dll missing:
+   run: vc_redist.x64.exe  (Install), then reboot, then run rose_school.exe
+
+2) Always keep this whole folder together (do not move exe alone).
+"@
+Set-Content -Path (Join-Path $ReleaseDir 'README_PORTABLE.txt') -Value $ReadmePortable -Encoding UTF8
+
 # Portable ZIP
 Write-Step "Creating portable ZIP"
 if (Test-Path $ZipPath) { Remove-Item $ZipPath -Force }
@@ -91,6 +141,9 @@ if (-not $SkipInstaller) {
 
   if (-not (Test-Path $IssFile)) {
     throw "Missing installer script: $IssFile"
+  }
+  if (-not (Test-Path $VCRedistPath)) {
+    throw "Missing VC redist for installer: $VCRedistPath"
   }
 
   $isccCandidates = @(
@@ -136,8 +189,9 @@ if (Test-Path $SetupPath) {
   Write-Host "Installer    : (not built)"
 }
 Write-Host "Release dir  : $ReleaseDir"
+Write-Host "VC++ redist  : $VCRedistPath"
 Write-Host ""
 Write-Host "Distribute either:" -ForegroundColor Cyan
-Write-Host "  1) RoseSchoolSetup.exe  (recommended install)"
-Write-Host "  2) Portable ZIP         (extract & run rose_school.exe)"
+Write-Host "  1) RoseSchoolSetup.exe  (recommended - auto installs VC++ if needed)"
+Write-Host "  2) Portable ZIP         (includes vc_redist.x64.exe helper)"
 Write-Host "======================================"

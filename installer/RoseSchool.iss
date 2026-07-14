@@ -5,6 +5,7 @@
 ; - Arabic shortcut names
 ; - Custom setup icon
 ; - Welcome + License + After-install pages
+; - Auto-install VC++ Redistributable x64 if missing
 ; ============================================================
 
 #define MyAppName "Rose School 2026"
@@ -25,6 +26,9 @@
 #define WelcomeFile "welcome_ar.txt"
 #define LicenseFileName "license_ar.txt"
 #define InfoAfterFileName "infoafter_ar.txt"
+
+; VC++ runtime bootstrap (downloaded by scripts\build_release_installer.ps1)
+#define VCRedist "redist\vc_redist.x64.exe"
 
 [Setup]
 AppId={{A7C9E2B1-4F18-4D6A-9C3E-ROSE2026SCH00}
@@ -74,7 +78,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; Name: "arabic"; MessagesFile: "compiler:Languages\Arabic.isl"
 
 [Messages]
-; English base with Arabic-friendly captions used in shortcuts/tasks.
 WelcomeLabel1=Welcome to {#MyAppNameAr} Setup
 WelcomeLabel2=This will install {#MyAppNameAr} on your computer.%n%nIt is recommended that you close all other applications before continuing.
 FinishedLabel=Setup has finished installing {#MyAppNameAr} on your computer.
@@ -91,6 +94,8 @@ Name: "quicklaunchicon"; Description: "إنشاء اختصار تشغيل سري
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Keep a dedicated icon file inside install folder for shortcuts
 Source: "{#AppIcon}"; DestDir: "{app}"; DestName: "app_icon.ico"; Flags: ignoreversion
+; VC++ Redistributable bootstrap (installed only when missing)
+Source: "{#VCRedist}"; DestDir: "{tmp}"; DestName: "vc_redist.x64.exe"; Flags: deleteafterinstall ignoreversion
 
 [Icons]
 ; Start Menu (Arabic)
@@ -104,6 +109,13 @@ Name: "{userprograms}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFi
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: quicklaunchicon
 
 [Run]
+; Install VC++ runtime automatically when needed (silent)
+Filename: "{tmp}\vc_redist.x64.exe"; \
+  Parameters: "/install /quiet /norestart"; \
+  StatusMsg: "جاري تثبيت مكتبات Microsoft Visual C++ المطلوبة..."; \
+  Check: VCRedistNeedsInstall; \
+  Flags: waituntilterminated
+; Launch app
 Filename: "{app}\{#MyAppExeName}"; Description: "تشغيل {#MyAppNameAr} الآن"; Flags: nowait postinstall skipifsilent unchecked
 
 [UninstallDelete]
@@ -111,6 +123,43 @@ Filename: "{app}\{#MyAppExeName}"; Description: "تشغيل {#MyAppNameAr} ال�
 ; Type: filesandordirs; Name: "{localappdata}\rose_school"
 
 [Code]
+function VCRedistNeedsInstall: Boolean;
+var
+  Major, Minor, Bld, Rbld: Cardinal;
+  Installed: Cardinal;
+begin
+  Result := True;
+
+  // VC++ 2015-2022 x64 runtime registry marker
+  if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Installed', Installed) then
+  begin
+    if Installed = 1 then
+    begin
+      // Optional: ensure a reasonably new build exists
+      if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Major', Major)
+         and RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Minor', Minor)
+         and RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Bld', Bld) then
+      begin
+        // Any installed 14.x runtime is enough for MSVCP140 / VCRUNTIME140_1
+        if Major >= 14 then
+          Result := False;
+      end
+      else
+        Result := False;
+    end;
+  end;
+
+  // Fallback older key casing used on some systems
+  if Result then
+  begin
+    if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64', 'Installed', Installed) then
+    begin
+      if Installed = 1 then
+        Result := False;
+    end;
+  end;
+end;
+
 function InitializeSetup(): Boolean;
 begin
   Result := True;
@@ -118,10 +167,10 @@ end;
 
 procedure InitializeWizard();
 begin
-  // Keep modern wizard; pages are provided via InfoBefore/License/InfoAfter files.
   WizardForm.WelcomeLabel1.Caption := 'مرحبًا بك في تثبيت مدرسة روز 2026';
   WizardForm.WelcomeLabel2.Caption :=
     'سيُثبَّت نظام Rose School 2026 على هذا الجهاز.' + #13#10 + #13#10 +
+    'سيقوم المثبت تلقائيًا بتثبيت مكتبات Visual C++ عند الحاجة.' + #13#10 + #13#10 +
     'يُنصح بإغلاق البرامج الأخرى قبل المتابعة.' + #13#10 + #13#10 +
     'اضغط "التالي" للمتابعة.';
 end;

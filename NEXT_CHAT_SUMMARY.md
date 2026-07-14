@@ -83,3 +83,10 @@ docs/CONVERSATION_ARCHIVE_2026-07-13.md
 ```powershell
 copy /Y "docs\CONVERSATION_ARCHIVE_2026-07-13.md" "%USERPROFILE%\Desktop\CONVERSATION_ARCHIVE_2026-07-13.md"
 ```
+
+## 🧰 تحديث المثبت + متطلبات العمل
+
+- المثبت يثبّت VC++ x64 تلقائيًا عند الحاجة
+- النسخة المحمولة تتضمن `vc_redist.x64.exe`
+- أُضيف مجلد `متطلبات_العمل/` بكل برامج ومتطلبات التحويل إلى تنفيذي
+

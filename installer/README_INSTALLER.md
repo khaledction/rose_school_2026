@@ -13,6 +13,7 @@ dist\RoseSchoolSetup.exe
 - صفحة ترخيص/موافقة
 - صفحة ختامية بعد التثبيت
 - اختصارات سطح المكتب + قائمة ابدأ
+- **تثبيت VC++ Redistributable x64 تلقائيًا عند الحاجة** (لحل MSVCP140 / VCRUNTIME140_1)
 
 ## 1) المتطلبات (مرة واحدة)
 1. Flutter SDK  
@@ -32,9 +33,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1
 ```
 
 ينفّذ:
-1. بناء Windows Release
-2. ZIP محمول في `dist\`
-3. `RoseSchoolSetup.exe` عبر Inno Setup
+1. تنزيل `installer\redist\vc_redist.x64.exe` إن لم يوجد
+2. بناء Windows Release
+3. ZIP محمول في `dist\` (مع `vc_redist.x64.exe` داخل الحزمة)
+4. `RoseSchoolSetup.exe` عبر Inno Setup
 
 ### خيارات
 ```powershell
@@ -53,12 +55,16 @@ flutter pub get
 flutter build windows --release
 ```
 
-ثم افتح:
+تأكد من وجود:
+```text
+installer\redist\vc_redist.x64.exe
+```
+(يمكن تنزيله من: https://aka.ms/vs/17/release/vc_redist.x64.exe)
 
+ثم افتح:
 ```text
 installer\RoseSchool.iss
 ```
-
 واضغط **Compile**.
 
 ## 4) ملفات المثبت
@@ -68,13 +74,14 @@ installer\RoseSchool.iss
 | `welcome_ar.txt` | صفحة الترحيب |
 | `license_ar.txt` | صفحة الترخيص/الموافقة |
 | `infoafter_ar.txt` | صفحة ما بعد التثبيت |
+| `redist\vc_redist.x64.exe` | مكتبات Microsoft (تُنزّل عند البناء) |
 | `..\windows\runner\resources\app_icon.ico` | أيقونة الـ Setup والاختصارات |
 
 ## 5) المخرجات
 | الملف | الاستخدام |
 |------|-----------|
-| `dist\RoseSchoolSetup.exe` | تثبيت أنيق |
-| `dist\RoseSchool2026_Portable_....zip` | تشغيل محمول |
+| `dist\RoseSchoolSetup.exe` | تثبيت أنيق + VC++ تلقائي |
+| `dist\RoseSchool2026_Portable_....zip` | تشغيل محمول + helper VC++ |
 | `build\windows\x64\runner\Release\` | مجلد التنفيذ الخام |
 
 ## 6) التوزيع
@@ -89,30 +96,14 @@ installer\RoseSchool.iss
 - لا يحتاج Flutter على الجهاز الهدف
 - بيانات المستخدم تُحفظ بعد الإلغاء افتراضيًا
 
-## 8) حل خطأ MSVCP140.dll / VCRUNTIME140_1.dll (مهم للأجهزة الأخرى)
+## 8) حل خطأ MSVCP140.dll / VCRUNTIME140_1.dll
+مع `RoseSchoolSetup.exe` الحديث: التثبيت يتم تلقائيًا.
 
-إذا ظهر على الجهاز الثاني:
+إذا ظهرت الرسالة رغم ذلك (أو عند استخدام ZIP):
+1. شغّل `vc_redist.x64.exe`
+2. Install
+3. أعد التشغيل
+4. افتح البرنامج
 
-```text
-MSVCP140.dll was not found
-VCRUNTIME140_1.dll was not found
-```
-
-فالحل:
-
-### تثبيت Microsoft Visual C++ Redistributable (x64)
-
-1. من الجهاز الثاني افتح المتصفح.
-2. حمّل الحزمة الرسمية من Microsoft:
-   - https://aka.ms/vs/17/release/vc_redist.x64.exe
-3. شغّل الملف: `vc_redist.x64.exe`
-4. اضغط **Install / تثبيت**
-5. انتظر حتى ينتهي
-6. أعد تشغيل الجهاز (مستحسن)
-7. شغّل `rose_school.exe` أو `RoseSchoolSetup.exe` مرة أخرى
-
-### ملاحظات
-- لازم تكون النسخة **x64** (وليست x86)
-- لا تحتاج Visual Studio كامل
-- لا تحتاج Flutter
-- بعد التثبيت مرة واحدة، لن تحتاج إعادته لكل تشغيل
+رابط Microsoft المباشر:
+- https://aka.ms/vs/17/release/vc_redist.x64.exe
