@@ -3122,18 +3122,20 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
             colors: <Color>[Color(0xFF0D1D43), Color(0xFF123A78), Color(0xFF2F9A8E)],
           ),
         ),
-        child: Center(
-          child: Container(
-            width: 980,
-            margin: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.96),
-              borderRadius: BorderRadius.circular(34),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.20), blurRadius: 30, offset: Offset(0, 12)),
-              ],
-            ),
-            child: Row(
+        child: Stack(
+          children: <Widget>[
+            Center(
+              child: Container(
+                width: 980,
+                margin: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.96),
+                  borderRadius: BorderRadius.circular(34),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.20), blurRadius: 30, offset: Offset(0, 12)),
+                  ],
+                ),
+                child: Row(
               children: <Widget>[
                 Expanded(
                   child: Container(
@@ -3316,6 +3318,76 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
               ],
             ),
           ),
+            ),
+            Positioned(
+              right: 18,
+              bottom: 16,
+              child: _loginDesignerCreditBadge(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _loginDesignerCreditBadge() {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: BoxDecoration(
+          color: const Color.fromRGBO(255, 255, 255, 0.93),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color.fromRGBO(255, 255, 255, 0.55)),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.14), blurRadius: 16, offset: Offset(0, 6)),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            const Text(
+              'تصميم و برمجة',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF1F335D),
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+                height: 1.25,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              'خالد جمال أبو فخر',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF0D1D43),
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+                height: 1.25,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.asset(
+                'assets/khaled_whatsapp_qr.png',
+                width: 78,
+                height: 78,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 78,
+                    height: 78,
+                    alignment: Alignment.center,
+                    color: const Color(0xFFEDF6FF),
+                    child: const Icon(Icons.qr_code_2, color: Color(0xFF1F335D)),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
