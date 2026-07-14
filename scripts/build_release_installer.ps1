@@ -147,11 +147,22 @@ if (-not $SkipInstaller) {
   }
 
   $isccCandidates = @(
-    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+    "$env:ProgramFiles\Inno Setup 7\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
     "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
     "${env:ProgramFiles(x86)}\Inno Setup 5\ISCC.exe"
   )
-  $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+  # Discover any Inno Setup * folder under Program Files
+  $extra = @()
+  foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) {
+    if ($root -and (Test-Path $root)) {
+      $extra += Get-ChildItem -Path $root -Directory -Filter 'Inno Setup *' -ErrorAction SilentlyContinue |
+        ForEach-Object { Join-Path $_.FullName 'ISCC.exe' }
+    }
+  }
+  $isccCandidates = @($isccCandidates + $extra) | Select-Object -Unique
+  $iscc = $isccCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
   $installerReason = $null
 
@@ -162,12 +173,13 @@ if (-not $SkipInstaller) {
     Write-Host "That is why you see: Installer : (not built)" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "FIX:" -ForegroundColor Cyan
-    Write-Host "1) Download/install Inno Setup 6 from: https://jrsoftware.org/isinfo.php"
-    Write-Host "2) During install keep default path (Program Files x86\Inno Setup 6)"
+    Write-Host "1) Install Inno Setup 6/7 from: https://jrsoftware.org/isinfo.php"
+    Write-Host "2) Confirm this exists:"
+    Write-Host '     C:\Program Files\Inno Setup 7\ISCC.exe'
     Write-Host "3) Re-run this script"
     Write-Host ""
-    Write-Host "Quick check after install:" -ForegroundColor Cyan
-    Write-Host '  Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"'
+    Write-Host "Quick check:" -ForegroundColor Cyan
+    Write-Host '  Test-Path "C:\Program Files\Inno Setup 7\ISCC.exe"'
   } else {
     Write-Host "Using: $iscc"
     & $iscc $IssFile
