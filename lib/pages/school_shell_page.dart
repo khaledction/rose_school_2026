@@ -3164,9 +3164,37 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                           style: TextStyle(color: Colors.white70, height: 1.9),
                         ),
                         const Spacer(),
-                        const Text('هوية النظام', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 8),
-                        const Text('Rose School 2026 • Windows Local', style: TextStyle(color: Colors.white70, height: 1.8)),
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.96),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: Colors.white24),
+                              boxShadow: const <BoxShadow>[
+                                BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.18), blurRadius: 14, offset: Offset(0, 6)),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                'assets/khaled_whatsapp_qr.png',
+                                width: 132,
+                                height: 132,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 132,
+                                    height: 132,
+                                    alignment: Alignment.center,
+                                    color: const Color(0xFFEDF6FF),
+                                    child: const Icon(Icons.qr_code_2, color: Color(0xFF1F335D), size: 42),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -3334,7 +3362,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     return Material(
       color: Colors.transparent,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
           color: const Color.fromRGBO(255, 255, 255, 0.93),
           borderRadius: BorderRadius.circular(18),
@@ -3343,11 +3371,11 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
             BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.14), blurRadius: 16, offset: Offset(0, 6)),
           ],
         ),
-        child: Column(
+        child: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            const Text(
+            Text(
               'تصميم و برمجة',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -3357,8 +3385,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                 height: 1.25,
               ),
             ),
-            const SizedBox(height: 2),
-            const Text(
+            SizedBox(height: 2),
+            Text(
               'خالد جمال أبو فخر',
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -3366,25 +3394,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                 fontWeight: FontWeight.w900,
                 fontSize: 13,
                 height: 1.25,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                'assets/khaled_whatsapp_qr.png',
-                width: 78,
-                height: 78,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 78,
-                    height: 78,
-                    alignment: Alignment.center,
-                    color: const Color(0xFFEDF6FF),
-                    child: const Icon(Icons.qr_code_2, color: Color(0xFF1F335D)),
-                  );
-                },
               ),
             ),
           ],
