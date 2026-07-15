@@ -3365,6 +3365,21 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                                     }),
                                   ],
                                 ),
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _showForgotPasswordDialog,
+                                    child: const Text(
+                                      'نسيت كلمة السر؟',
+                                      style: TextStyle(
+                                        color: AppPalette.royalBlue,
+                                        fontWeight: FontWeight.w800,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                     ),
@@ -3378,6 +3393,277 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
         ),
       ),
     );
+  }
+
+
+  String _digitsOnly(String value) => value.replaceAll(RegExp(r'[^0-9]'), '');
+
+  bool _contactMatchesUser(AdminUserEntry user, String contactRaw) {
+    final contact = contactRaw.trim();
+    if (contact.isEmpty) return false;
+    final email = user.email.trim().toLowerCase();
+    final mobile = user.mobile.trim();
+    final contactLower = contact.toLowerCase();
+    if (email.isNotEmpty && email == contactLower) return true;
+    final cDigits = _digitsOnly(contact);
+    final mDigits = _digitsOnly(mobile);
+    if (cDigits.isNotEmpty && mDigits.isNotEmpty) {
+      if (cDigits == mDigits) return true;
+      // allow match on last 9/10 digits (local numbers)
+      if (cDigits.length >= 9 && mDigits.endsWith(cDigits.substring(cDigits.length - 9))) return true;
+      if (mDigits.length >= 9 && cDigits.endsWith(mDigits.substring(mDigits.length - 9))) return true;
+    }
+    return false;
+  }
+
+  Future<void> _launchExternalUriFromPage(Uri uri) async {
+    final raw = uri.toString();
+    if (Platform.isWindows) {
+      final escaped = raw.replaceAll("'", "''");
+      final ps = "Start-Process '$escaped'";
+      final result = await Process.run(
+        'powershell',
+        <String>['-NoProfile', '-Command', ps],
+        runInShell: true,
+      );
+      if (result.exitCode != 0) {
+        final fallback = await Process.run('cmd', <String>['/c', 'start', '', raw], runInShell: true);
+        if (fallback.exitCode != 0) {
+          throw Exception('تعذر فتح التطبيق الخارجي');
+        }
+      }
+      return;
+    }
+    if (Platform.isMacOS) {
+      final result = await Process.run('open', <String>[raw]);
+      if (result.exitCode != 0) throw Exception(result.stderr.toString());
+      return;
+    }
+    final result = await Process.run('xdg-open', <String>[raw]);
+    if (result.exitCode != 0) throw Exception(result.stderr.toString());
+  }
+
+  Future<void> _notifyAdminAboutPasswordReset(AdminUserEntry user) async {
+    final schoolWa = _schoolIdentity.whatsapp.trim();
+    final schoolEmail = _schoolIdentity.email.trim();
+    final when = DateTime.now().toIso8601String().replaceFirst('T', ' ').split('.').first;
+    final body =
+        'تنبيه إعادة تعيين كلمة سر%0A'
+        'المستخدم: ${user.username}%0A'
+        'الجوال المسجل: ${user.mobile}%0A'
+        'الإيميل المسجل: ${user.email}%0A'
+        'الوقت: $when%0A'
+        'تمت إعادة التعيين من شاشة الدخول.';
+
+    // Prefer WhatsApp if available, else email.
+    if (schoolWa.isNotEmpty) {
+      var digits = _digitsOnly(schoolWa);
+      if (digits.startsWith('00')) digits = digits.substring(2);
+      if (digits.startsWith('0') && digits.length >= 9) digits = '963${digits.substring(1)}';
+      await _launchExternalUriFromPage(Uri.parse('https://wa.me/$digits?text=$body'));
+      return;
+    }
+    if (schoolEmail.isNotEmpty) {
+      final subject = Uri.encodeComponent('إعادة تعيين كلمة سر - ${user.username}');
+      final mailBody = Uri.encodeComponent(
+        'تنبيه إعادة تعيين كلمة سر\n'
+        'المستخدم: ${user.username}\n'
+        'الجوال المسجل: ${user.mobile}\n'
+        'الإيميل المسجل: ${user.email}\n'
+        'الوقت: $when\n'
+        'تمت إعادة التعيين من شاشة الدخول.',
+      );
+      await _launchExternalUriFromPage(Uri.parse('mailto:$schoolEmail?subject=$subject&body=$mailBody'));
+      return;
+    }
+    _showSnack('لا يوجد واتساب/إيميل للإدارة في الهوية والاعتماد.');
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final usernameController = TextEditingController(text: _loginUsernameController.text.trim());
+    final contactController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+    String error = '';
+    String info =
+        'للمدير والمستخدمين: أدخل اسم المستخدم + الموبايل أو الإيميل المسجل في حسابك، ثم عيّن كلمة سر جديدة.\n'
+        'بعد الحفظ يمكن إبلاغ الإدارة عبر واتساب/البريد (من بيانات الهوية والاعتماد).';
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: const Text('نسيت كلمة السر', style: TextStyle(fontWeight: FontWeight.w900)),
+                content: SizedBox(
+                  width: 460,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        Text(info, style: const TextStyle(color: AppPalette.muted, height: 1.7, fontSize: 12)),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: usernameController,
+                          decoration: const InputDecoration(
+                            labelText: 'اسم المستخدم',
+                            filled: true,
+                            fillColor: Color(0xFFFBFDFF),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: contactController,
+                          decoration: const InputDecoration(
+                            labelText: 'الموبايل أو الإيميل المسجل',
+                            hintText: 'مثال: 0933... أو name@email.com',
+                            filled: true,
+                            fillColor: Color(0xFFFBFDFF),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: newPassController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'كلمة السر الجديدة',
+                            filled: true,
+                            fillColor: Color(0xFFFBFDFF),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: confirmPassController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'تأكيد كلمة السر الجديدة',
+                            filled: true,
+                            fillColor: Color(0xFFFBFDFF),
+                          ),
+                        ),
+                        if (error.isNotEmpty) ...<Widget>[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFDECEE),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppPalette.roseRed.withOpacity(0.35)),
+                            ),
+                            child: Text(error, style: const TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800, height: 1.5)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('إلغاء'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final username = usernameController.text.trim();
+                      final contact = contactController.text.trim();
+                      final pass = newPassController.text;
+                      final confirm = confirmPassController.text;
+                      if (username.isEmpty || contact.isEmpty) {
+                        setDialogState(() => error = 'أدخل اسم المستخدم والموبايل/الإيميل المسجل.');
+                        return;
+                      }
+                      final matches = _adminUsers.where((u) => u.username == username).toList();
+                      if (matches.isEmpty) {
+                        setDialogState(() => error = 'اسم المستخدم غير موجود.');
+                        return;
+                      }
+                      final user = matches.first;
+                      final hasContact = user.email.trim().isNotEmpty || user.mobile.trim().isNotEmpty;
+                      if (!hasContact) {
+                        setDialogState(() => error = 'لا يوجد موبايل/إيميل على هذا الحساب. تواصل مع الإدارة لتحديث البيانات.');
+                        return;
+                      }
+                      if (!_contactMatchesUser(user, contact)) {
+                        setDialogState(() => error = 'الموبايل/الإيميل لا يطابق المسجل على الحساب.');
+                        return;
+                      }
+                      if (pass.length < 4) {
+                        setDialogState(() => error = 'كلمة السر الجديدة يجب أن تكون 4 محارف على الأقل.');
+                        return;
+                      }
+                      if (pass != confirm) {
+                        setDialogState(() => error = 'تأكيد كلمة السر غير متطابق.');
+                        return;
+                      }
+
+                      final index = _adminUsers.indexWhere((u) => u.id == user.id);
+                      if (index < 0) {
+                        setDialogState(() => error = 'تعذر تحديث الحساب.');
+                        return;
+                      }
+                      setState(() {
+                        _adminUsers[index] = _adminUsers[index].copyWith(password: _hashPassword(pass));
+                      });
+                      await _database.saveJson('admin_users', _database.adminUsersToJson(_adminUsers));
+                      if (mounted) {
+                        _loginUsernameController.text = username;
+                        _loginPasswordController.clear();
+                      }
+                      if (Navigator.of(dialogContext).canPop()) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                      if (!mounted) return;
+                      final notify = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => Directionality(
+                          textDirection: TextDirection.rtl,
+                          child: AlertDialog(
+                            title: const Text('تم التعيين بنجاح'),
+                            content: Text(
+                              'تم تعيين كلمة سر جديدة للمستخدم "$username".\nهل تريد إبلاغ الإدارة عبر واتساب/البريد الآن؟',
+                              style: const TextStyle(height: 1.7),
+                            ),
+                            actions: <Widget>[
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('لاحقًا')),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(backgroundColor: AppPalette.goldDark, foregroundColor: Colors.white),
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('إبلاغ الإدارة'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                      if (notify == true) {
+                        try {
+                          await _notifyAdminAboutPasswordReset(_adminUsers[index]);
+                          _showSnack('تم فتح قناة إبلاغ الإدارة.');
+                        } catch (e) {
+                          _showSnack('تم حفظ كلمة السر، وتعذر فتح واتساب/البريد: $e');
+                        }
+                      } else {
+                        _showSnack('تم حفظ كلمة السر الجديدة. يمكنك تسجيل الدخول الآن.');
+                      }
+                    },
+                    child: const Text('تحقق وحفظ'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    usernameController.dispose();
+    contactController.dispose();
+    newPassController.dispose();
+    confirmPassController.dispose();
   }
 
   Widget _buildSidebar(BuildContext context) {
