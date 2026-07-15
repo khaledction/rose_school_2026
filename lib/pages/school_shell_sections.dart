@@ -251,6 +251,21 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                 const Text('إنشاء مستخدم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppPalette.deepNavySoft)),
                 const SizedBox(height: 10),
                 const Text('جميع الحقول مطلوبة ويجب التأكد من تطابق كلمة المرور وتأكيدها مع اختيار الصلاحيات المطلوبة.', style: TextStyle(color: AppPalette.muted)),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDECEE),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppPalette.roseRed.withOpacity(0.35)),
+                  ),
+                  child: const Text(
+                    '⚠️ الموبايل أو الإيميل مطلوب لتفعيل استعادة كلمة السر.
+بدون أحدهما لن يستطيع المستخدم استخدام «نسيت كلمة السر؟» من شاشة الدخول.',
+                    style: TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800, height: 1.6, fontSize: 12),
+                  ),
+                ),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 12,

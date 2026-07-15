@@ -492,7 +492,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (_adminUsernameController.text.trim().isEmpty ||
         _adminEmailController.text.trim().isEmpty ||
         _adminMobileController.text.trim().isEmpty) {
-      return 'يجب إدخال جميع المعلومات المطلوبة.';
+      return 'يجب إدخال اسم المستخدم والموبايل والإيميل. الموبايل أو الإيميل مطلوب لتفعيل استعادة كلمة السر.';
     }
     if (!isEdit && (_adminPasswordController.text.trim().isEmpty || _adminConfirmPasswordController.text.trim().isEmpty)) {
       return 'يجب إدخال كلمة المرور وتأكيدها.';
