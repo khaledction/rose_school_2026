@@ -489,10 +489,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
   }
 
   String? _validateAdminDraft({bool isEdit = false}) {
-    if (_adminUsernameController.text.trim().isEmpty ||
-        _adminEmailController.text.trim().isEmpty ||
-        _adminMobileController.text.trim().isEmpty) {
-      return 'يجب إدخال اسم المستخدم والموبايل والإيميل. الموبايل أو الإيميل مطلوب لتفعيل استعادة كلمة السر.';
+    if (_adminUsernameController.text.trim().isEmpty) {
+      return 'يجب إدخال اسم المستخدم.';
+    }
+    final email = _adminEmailController.text.trim();
+    final mobile = _adminMobileController.text.trim();
+    if (email.isEmpty && mobile.isEmpty) {
+      return 'الموبايل أو الإيميل مطلوب لتفعيل استعادة كلمة السر (واحد منهما على الأقل).';
     }
     if (!isEdit && (_adminPasswordController.text.trim().isEmpty || _adminConfirmPasswordController.text.trim().isEmpty)) {
       return 'يجب إدخال كلمة المرور وتأكيدها.';
