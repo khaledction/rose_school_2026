@@ -261,8 +261,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     border: Border.all(color: AppPalette.roseRed.withOpacity(0.35)),
                   ),
                   child: const Text(
-                    '⚠️ يكفي إدخال الموبايل أو الإيميل (واحد منهما على الأقل) لتفعيل استعادة كلمة السر.
-بدون أي وسيلة تواصل لن يستطيع المستخدم استخدام «نسيت كلمة السر؟» من شاشة الدخول.',
+                    '⚠️ يكفي إدخال الموبايل أو الإيميل (واحد منهما على الأقل) لتفعيل استعادة كلمة السر.\nبدون أي وسيلة تواصل لن يستطيع المستخدم استخدام «نسيت كلمة السر؟» من شاشة الدخول.',
                     style: TextStyle(color: AppPalette.roseRed, fontWeight: FontWeight.w800, height: 1.6, fontSize: 12),
                   ),
                 ),
