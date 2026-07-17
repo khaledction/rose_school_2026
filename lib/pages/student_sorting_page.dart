@@ -17,7 +17,7 @@ class StudentSortingPage extends StatefulWidget {
     super.key,
     required this.students,
     this.examResults = const [],
-    this.schoolName = 'مدرسة روز التعليمية',
+    this.schoolName = 'مدرسة روز التعليمية الخاصة',
     this.sectionSupervisorName = 'مشرف القسم',
     this.schoolManagerName = 'مدير المدرسة',
   });

@@ -2517,7 +2517,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Text('مدرسة روز التعليمية', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                              Text('مدرسة روز التعليمية الخاصة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
                               SizedBox(height: 2),
                               Text('البطاقة المدرسية', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
                             ],
@@ -6926,7 +6926,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(24),
           header: (context) => pw.Column(children: [
-            pw.Text('مدرسة روز التعليمية', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+            pw.Text('مدرسة روز التعليمية الخاصة', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
             pw.Text('تقرير الحضور والغياب • $scopeLabel', style: const pw.TextStyle(fontSize: 10)),
             pw.SizedBox(height: 8),
           ]),
@@ -6991,7 +6991,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
   }
 
   Future<void> _exportCertificatePdf(StudentRecord student, CertificateEntry entry) async {
-    final schoolName = 'مدرسة روز التعليمية';
+    final schoolName = 'مدرسة روز التعليمية الخاصة';
     final supervisor = _supervisorNameController.text.trim().isEmpty ? 'مشرف القسم' : _supervisorNameController.text.trim();
     final manager = _principalNameController.text.trim().isEmpty
         ? (_secretaryNameController.text.trim().isEmpty ? 'مدير المدرسة' : _secretaryNameController.text.trim())
@@ -7510,7 +7510,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                                 children: <Widget>[
                                   Image.asset('image/logo.jpg', width: 46, height: 46, fit: BoxFit.cover),
                                   const SizedBox(width: 12),
-                                  const Expanded(child: Text('مدرسة روز التعليمية', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppPalette.deepNavySoft))),
+                                  const Expanded(child: Text('مدرسة روز التعليمية الخاصة', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppPalette.deepNavySoft))),
                                 ],
                               ),
                               const SizedBox(height: 14),
@@ -8896,7 +8896,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     // So children[0] must be the LEFTMOST column (المحصلة), and children[last] the RIGHTMOST (المادة).
     final totals = _examReportTotals(student, subjects);
     final year = student.schoolYear.isEmpty ? _currentAcademicYear() : student.schoolYear;
-    const schoolName = 'مدرسة روز التعليمية';
+    const schoolName = 'مدرسة روز التعليمية الخاصة';
     final directorate = 'السويداء';
     final complexName = student.registryPlace.trim().isEmpty ? 'المجمع' : student.registryPlace.trim();
     final principal = _principalNameController.text.trim().isEmpty

@@ -12,7 +12,7 @@
 #include "credits.iss.inc"
 
 #define MyAppName "Rose School"
-#define MyAppNameAr "مدرسة روز"
+#define MyAppNameAr "مدرسة روز التعليمية الخاصة"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Rose School"
 #define MyAppURL "https://github.com/khaledction/rose_school_2026"
@@ -104,10 +104,10 @@ Source: "{#VCRedist}"; DestDir: "{tmp}"; DestName: "vc_redist.x64.exe"; Flags: d
 
 [Icons]
 ; Start Menu (Arabic)
-Name: "{group}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Comment: "تشغيل نظام إدارة مدرسة روز"
+Name: "{group}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Comment: "تشغيل نظام إدارة مدرسة روز التعليمية الخاصة"
 Name: "{group}\إلغاء تثبيت {#MyAppNameAr}"; Filename: "{uninstallexe}"; IconFilename: "{app}\app_icon.ico"
 ; Desktop (Arabic)
-Name: "{autodesktop}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon; Comment: "مدرسة روز"
+Name: "{autodesktop}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon; Comment: "مدرسة روز التعليمية الخاصة"
 ; Optional extra Start Menu entry controlled by task
 Name: "{userprograms}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: startmenuicon
 ; Quick Launch
@@ -168,7 +168,7 @@ end;
 
 procedure InitializeWizard();
 begin
-  WizardForm.WelcomeLabel1.Caption := 'مرحبًا بك في تثبيت مدرسة روز';
+  WizardForm.WelcomeLabel1.Caption := 'مرحبًا بك في تثبيت مدرسة روز التعليمية الخاصة';
   WizardForm.WelcomeLabel2.Caption :=
     'سيُثبَّت نظام Rose School على هذا الجهاز.' + #13#10 + #13#10 +
     '{#DesignerNote} {#DesignerName}' + #13#10 +
@@ -184,8 +184,8 @@ begin
   if CurPageID = wpFinished then
   begin
     WizardForm.FinishedLabel.Caption :=
-      'اكتمل تثبيت مدرسة روز بنجاح.' + #13#10 + #13#10 +
-      'يمكنك تشغيل البرنامج من الاختصار: مدرسة روز' + #13#10 + #13#10 +
+      'اكتمل تثبيت مدرسة روز التعليمية الخاصة بنجاح.' + #13#10 + #13#10 +
+      'يمكنك تشغيل البرنامج من الاختصار: مدرسة روز التعليمية الخاصة' + #13#10 + #13#10 +
       '{#DesignerNote} {#DesignerName}' + #13#10 +
       'الهاتف: {#DesignerPhone}' + #13#10 +
       'البريد: {#DesignerEmail}';

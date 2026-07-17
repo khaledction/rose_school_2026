@@ -2201,7 +2201,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     if (NotificationService.instance.all.isEmpty) {
       await NotificationService.instance.addSimple(
         type: 'info',
-        title: 'مرحباً بك في مدرسة روز التعليمية',
+        title: 'مرحباً بك في مدرسة روز التعليمية الخاصة',
         body: 'نظام إدارة متكامل للطلاب والموظفين والمحاسبة.',
         targetPage: 'dashboard',
       );
@@ -3160,7 +3160,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                           child: Image.asset('image/logo.jpg', width: 96, height: 96, fit: BoxFit.cover),
                         ),
                         const SizedBox(height: 18),
-                        const Text('مدرسة روز التعليمية', style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
+                        const Text('مدرسة روز التعليمية الخاصة', style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
                         const SizedBox(height: 10),
                         const Text(
                           'اختر الباب الذي تريد الدخول إليه، ثم أدخل اسم المستخدم وكلمة المرور المعينين من الإدارة حصراً.',
@@ -3741,7 +3741,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     const Text(
-                      'مدرسة روز التعليمية',
+                      'مدرسة روز التعليمية الخاصة',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -4660,7 +4660,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
     return StudentSortingPage(
       students: _students,
       examResults: _examResults,
-      schoolName: 'مدرسة روز التعليمية',
+      schoolName: 'مدرسة روز التعليمية الخاصة',
       sectionSupervisorName: _supervisorNameController.text.trim().isEmpty
           ? (_schoolIdentity.sectionSupervisorName.isEmpty ? 'مشرف القسم' : _schoolIdentity.sectionSupervisorName)
           : _supervisorNameController.text.trim(),

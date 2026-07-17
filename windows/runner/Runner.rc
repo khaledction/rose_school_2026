@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.rose" "\0"
-            VALUE "FileDescription", "rose_school" "\0"
+            VALUE "CompanyName", "مدرسة روز التعليمية الخاصة" "\0"
+            VALUE "FileDescription", "مدرسة روز التعليمية الخاصة" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "rose_school" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.rose. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) com.rose. All rights reserved." "\0"
             VALUE "OriginalFilename", "rose_school.exe" "\0"
-            VALUE "ProductName", "rose_school" "\0"
+            VALUE "ProductName", "مدرسة روز التعليمية الخاصة" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
