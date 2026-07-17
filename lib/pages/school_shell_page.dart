@@ -985,7 +985,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   String _qrPayloadFor(StudentRecord student) {
     return jsonEncode(<String, String>{
-      'لوغو واسم المدرسة': 'مدرسة روز التعليمية الخاصة',
       'الاسم الثلاثي': _studentTripleName(student),
       'الصف': student.grade.trim().isEmpty ? 'غير محدد' : student.grade.trim(),
       'الشعبة': student.section.trim().isEmpty ? 'غير محدد' : student.section.trim(),
@@ -1328,7 +1327,6 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                     headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
                     headers: ['بيانات الباركود', 'القيمة المعتمدة'],
                     data: [
-                      ['لوغو واسم المدرسة', 'مدرسة روز التعليمية الخاصة'],
                       ['الاسم الثلاثي', _studentTripleName(student)],
                       ['الصف', student.grade.trim().isEmpty ? 'غير محدد' : student.grade.trim()],
                       ['الشعبة', student.section.trim().isEmpty ? 'غير محدد' : student.section.trim()],
