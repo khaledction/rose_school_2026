@@ -1,4 +1,4 @@
-# متطلبات العمل — Rose School 2026
+# متطلبات العمل — Rose School
 
 هذا المجلد يلخّص **كل ما تحتاجه** لتحويل المشروع إلى ملف تنفيذي وتوزيعه على أجهزة أخرى.
 
@@ -34,4 +34,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1
 
 المخرجات:
 - `dist\RoseSchoolSetup.exe` (يثبّت VC++ تلقائيًا عند الحاجة)
-- `dist\RoseSchool2026_Portable_....zip` (يحتوي أيضًا `vc_redist.x64.exe`)
+- `dist\RoseSchool_Portable_....zip` (يحتوي أيضًا `vc_redist.x64.exe`)

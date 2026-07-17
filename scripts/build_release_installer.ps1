@@ -1,5 +1,5 @@
 # ============================================================
-# Rose School 2026 - Build Release + ZIP + Inno Setup Installer
+# Rose School - Build Release + ZIP + Inno Setup Installer
 # ------------------------------------------------------------
 # Run in PowerShell:
 #   cd C:\Users\khaledction\Desktop\new-rose
@@ -64,7 +64,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 Set-Location $ProjectRoot
 
-Write-Host "Rose School 2026 - Release Builder" -ForegroundColor Green
+Write-Host "Rose School - Release Builder" -ForegroundColor Green
 Write-Host "Project: $ProjectRoot"
 
 Assert-Command flutter
@@ -79,7 +79,7 @@ $RedistDir = Join-Path $InstallerDir 'redist'
 $VCRedistPath = Join-Path $RedistDir 'vc_redist.x64.exe'
 $IssFile = Join-Path $InstallerDir 'RoseSchool.iss'
 $Stamp = Get-Date -Format 'yyyyMMdd_HHmm'
-$ZipName = "RoseSchool2026_Portable_$Stamp.zip"
+$ZipName = "RoseSchool_Portable_$Stamp.zip"
 $ZipPath = Join-Path $DistDir $ZipName
 $SetupPath = Join-Path $DistDir 'RoseSchoolSetup.exe'
 
@@ -120,7 +120,7 @@ Write-Host "Release folder: $ReleaseDir" -ForegroundColor Yellow
 Write-Step "Attach VC++ runtime helper into portable package folder"
 Copy-Item -Force $VCRedistPath (Join-Path $ReleaseDir 'vc_redist.x64.exe')
 $ReadmePortable = @"
-Rose School 2026 - Portable
+Rose School - Portable
 
 1) If rose_school.exe shows MSVCP140.dll / VCRUNTIME140_1.dll missing:
    run: vc_redist.x64.exe  (Install), then reboot, then run rose_school.exe

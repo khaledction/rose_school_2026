@@ -1,5 +1,5 @@
 ; ============================================================
-; Rose School 2026 - Inno Setup Installer Script (Elegant)
+; Rose School - Inno Setup Installer Script (Elegant)
 ; ------------------------------------------------------------
 ; Features:
 ; - Arabic shortcut names
@@ -11,8 +11,8 @@
 
 #include "credits.iss.inc"
 
-#define MyAppName "Rose School 2026"
-#define MyAppNameAr "مدرسة روز 2026"
+#define MyAppName "Rose School"
+#define MyAppNameAr "مدرسة روز"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Rose School"
 #define MyAppURL "https://github.com/khaledction/rose_school_2026"
@@ -43,7 +43,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppContact={#DesignerPhone} | {#DesignerEmail}
 AppComments={#DesignerNote} {#DesignerName}
-DefaultDirName={autopf}\RoseSchool2026
+DefaultDirName={autopf}\RoseSchool
 DefaultGroupName={#MyAppNameAr}
 DisableProgramGroupPage=no
 OutputDir={#OutputDir}
@@ -107,7 +107,7 @@ Source: "{#VCRedist}"; DestDir: "{tmp}"; DestName: "vc_redist.x64.exe"; Flags: d
 Name: "{group}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Comment: "تشغيل نظام إدارة مدرسة روز"
 Name: "{group}\إلغاء تثبيت {#MyAppNameAr}"; Filename: "{uninstallexe}"; IconFilename: "{app}\app_icon.ico"
 ; Desktop (Arabic)
-Name: "{autodesktop}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon; Comment: "مدرسة روز 2026"
+Name: "{autodesktop}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: desktopicon; Comment: "مدرسة روز"
 ; Optional extra Start Menu entry controlled by task
 Name: "{userprograms}\{#MyAppNameAr}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"; Tasks: startmenuicon
 ; Quick Launch
@@ -168,9 +168,9 @@ end;
 
 procedure InitializeWizard();
 begin
-  WizardForm.WelcomeLabel1.Caption := 'مرحبًا بك في تثبيت مدرسة روز 2026';
+  WizardForm.WelcomeLabel1.Caption := 'مرحبًا بك في تثبيت مدرسة روز';
   WizardForm.WelcomeLabel2.Caption :=
-    'سيُثبَّت نظام Rose School 2026 على هذا الجهاز.' + #13#10 + #13#10 +
+    'سيُثبَّت نظام Rose School على هذا الجهاز.' + #13#10 + #13#10 +
     '{#DesignerNote} {#DesignerName}' + #13#10 +
     'الهاتف: {#DesignerPhone}' + #13#10 +
     'البريد: {#DesignerEmail}' + #13#10 + #13#10 +
@@ -184,8 +184,8 @@ begin
   if CurPageID = wpFinished then
   begin
     WizardForm.FinishedLabel.Caption :=
-      'اكتمل تثبيت مدرسة روز 2026 بنجاح.' + #13#10 + #13#10 +
-      'يمكنك تشغيل البرنامج من الاختصار: مدرسة روز 2026' + #13#10 + #13#10 +
+      'اكتمل تثبيت مدرسة روز بنجاح.' + #13#10 + #13#10 +
+      'يمكنك تشغيل البرنامج من الاختصار: مدرسة روز' + #13#10 + #13#10 +
       '{#DesignerNote} {#DesignerName}' + #13#10 +
       'الهاتف: {#DesignerPhone}' + #13#10 +
       'البريد: {#DesignerEmail}';

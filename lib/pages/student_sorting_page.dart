@@ -301,7 +301,7 @@ class _StudentSortingPageState extends State<StudentSortingPage> {
                   pw.Text(widget.schoolName, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                   pw.Text('النتائج والمعدلات • $scope • $order', style: const pw.TextStyle(fontSize: 9)),
                 ]),
-                pw.Text('Rose School 2026', style: const pw.TextStyle(fontSize: 9)),
+                pw.Text('Rose School', style: const pw.TextStyle(fontSize: 9)),
               ],
             ),
           ),

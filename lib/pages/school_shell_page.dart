@@ -985,7 +985,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   String _qrPayloadFor(StudentRecord student) {
     return jsonEncode(<String, String>{
-      'school': 'Rose School 2026',
+      'school': 'Rose School',
       'id': student.id.toString(),
       'serial': student.serial,
       'name': student.fullName,
@@ -1768,8 +1768,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Future<Uint8List> _buildExamReportPdf(Uint8List pngBytes) async {
     final document = pw.Document(
-      title: 'Rose School 2026 Exam Report',
-      author: 'Rose School 2026',
+      title: 'Rose School Exam Report',
+      author: 'Rose School',
       subject: 'School exam report A4 portrait',
     );
     final image = pw.MemoryImage(pngBytes);
@@ -1920,8 +1920,8 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   Future<Uint8List> _buildBulkExamReportsPdf(List<Uint8List> pngPages) async {
     final document = pw.Document(
-      title: 'Rose School 2026 Bulk Exam Reports',
-      author: 'Rose School 2026',
+      title: 'Rose School Bulk Exam Reports',
+      author: 'Rose School',
       subject: 'Bulk school exam reports A4 portrait',
     );
     final pageFormat = _examReportPageFormat;
@@ -2777,7 +2777,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       return n > prev ? n : prev;
     });
     final next = (highest + 1).toString().padLeft(4, '0');
-    return 'RS-2026-$next';
+    return 'RS-${DateTime.now().year}-$next';
   }
 
   Future<void> _autoSaveStudentDraft({bool silent = true}) async {

@@ -264,7 +264,7 @@ class BackupService {
     <div class="row"><span class="label">عدد الملفات</span><span class="value">${manifest['totalFiles']}</span></div>
   </div>
   <div class="card">
-    <p style="color:#667586;">هذه المعاينة تم إنشاؤها تلقائياً بواسطة نظام Rose School 2026.</p>
+    <p style="color:#667586;">هذه المعاينة تم إنشاؤها تلقائياً بواسطة نظام Rose School.</p>
   </div>
 </body>
 </html>

@@ -1,4 +1,4 @@
-# ملخص حي — Rose School 2026
+# ملخص حي — Rose School
 
 > آخر تحديث: **2026-07-13**
 >
@@ -54,7 +54,7 @@ flutter run -d windows
 - `installer/README_INSTALLER.md` — دليل التثبيت الأنيق
 
 ### مزايا المثبت
-- اختصار عربي: **مدرسة روز 2026**
+- اختصار عربي: **مدرسة روز**
 - أيقونة Setup مخصصة
 - صفحات ترحيب / ترخيص / إنهاء
 
@@ -68,7 +68,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1
 
 المخرجات في `dist\`:
 - `RoseSchoolSetup.exe`
-- `RoseSchool2026_Portable_....zip`
+- `RoseSchool_Portable_....zip`
 
 ## 📝 أرشيف المحادثة
 

@@ -36,7 +36,7 @@ class ExportService {
 
     data['exportedAt'] = DateTime.now().toIso8601String();
     data['appVersion'] = '1.0.0';
-    data['schoolName'] = 'Rose School 2026';
+    data['schoolName'] = 'Rose School';
 
     final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
     final paths = AppStoragePathsService.instance;

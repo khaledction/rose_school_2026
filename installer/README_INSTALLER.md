@@ -1,4 +1,4 @@
-# تجهيز Installer أنيق — Rose School 2026
+# تجهيز Installer أنيق — Rose School
 
 هذا المجلد ينتج:
 
@@ -7,7 +7,7 @@ dist\RoseSchoolSetup.exe
 ```
 
 ## المزايا الحالية
-- اسم عربي للاختصارات: **مدرسة روز 2026**
+- اسم عربي للاختصارات: **مدرسة روز**
 - أيقونة مخصصة لملف الـ Setup (`app_icon.ico`)
 - صفحة ترحيب عربية
 - صفحة ترخيص/موافقة
@@ -83,7 +83,7 @@ installer\RoseSchool.iss
 | الملف | الاستخدام |
 |------|-----------|
 | `dist\RoseSchoolSetup.exe` | تثبيت أنيق + VC++ تلقائي |
-| `dist\RoseSchool2026_Portable_....zip` | تشغيل محمول + helper VC++ |
+| `dist\RoseSchool_Portable_....zip` | تشغيل محمول + helper VC++ |
 | `build\windows\x64\runner\Release\` | مجلد التنفيذ الخام |
 
 ## 6) التوزيع

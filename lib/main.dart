@@ -14,7 +14,7 @@ class RoseSchoolApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Rose School 2026',
+      title: 'Rose School',
       theme: buildAppTheme(),
       home: const Directionality(
         textDirection: TextDirection.rtl,

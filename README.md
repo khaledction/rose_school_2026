@@ -1,4 +1,4 @@
-# Rose School 2026
+# Rose School
 
 نظام إدارة مدرسي محلي لويندوز — Flutter + SQLite (عربي / RTL).
 
@@ -44,7 +44,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build_release_installer.ps1
 
 ينتج:
 - `dist\RoseSchoolSetup.exe` ← ملف تثبيت أنيق
-- `dist\RoseSchool2026_Portable_YYYYMMDD_HHMM.zip` ← نسخة محمولة
+- `dist\RoseSchool_Portable_YYYYMMDD_HHMM.zip` ← نسخة محمولة
 - `build\windows\x64\runner\Release\` ← مجلد التشغيل
 
 ### طريقة اثنين — بناء فقط
@@ -82,8 +82,8 @@ installer\RoseSchool.iss
 أو استخدم السكربت أعلاه ليقوم بكل شيء تلقائيًا.
 
 ### ماذا يفعل الـ Setup؟
-- يثبّت في `Program Files\RoseSchool2026`
-- اختصار عربي: **مدرسة روز 2026**
+- يثبّت في `Program Files\RoseSchool`
+- اختصار عربي: **مدرسة روز**
 - أيقونة مخصصة لملف التثبيت والاختصارات
 - صفحة ترحيب + ترخيص + إنهاء بالعربية
 - اختصار قائمة ابدأ + سطح المكتب (اختياري)
@@ -107,7 +107,7 @@ RoseSchoolSetup.exe
 
 ### 2) Portable (تنفيذي سهل النقل)
 ```text
-RoseSchool2026_Portable_....zip
+RoseSchool_Portable_....zip
 ```
 - فك الضغط وشغّل `rose_school.exe`
 - سهل النقل بين الأجهزة

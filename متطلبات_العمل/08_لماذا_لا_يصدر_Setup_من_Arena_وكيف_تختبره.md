@@ -56,7 +56,7 @@ C:\Users\khaledction\Desktop\new-rose\dist\RoseSchoolSetup.exe
 
 وأيضًا:
 ```text
-dist\RoseSchool2026_Portable_YYYYMMDD_HHMM.zip
+dist\RoseSchool_Portable_YYYYMMDD_HHMM.zip
 ```
 
 ---
