@@ -5,6 +5,15 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+// Convert UTF-8 string to Win32 wide string (UTF-16) to prevent garbled title bar symbols
+static std::wstring Utf8ToWide(const std::string& utf8) {
+  if (utf8.empty()) return std::wstring();
+  int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+  std::wstring wstrTo(size_needed, 0);
+  MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+  return wstrTo;
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -27,7 +36,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"مدرسة روز التعليمية الخاصة", origin, size)) {
+  if (!window.Create(Utf8ToWide("مدرسة روز التعليمية الخاصة"), origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

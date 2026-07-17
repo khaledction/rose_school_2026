@@ -2167,7 +2167,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                     runSpacing: 8,
                     children: <Widget>[
                       _actionButton('توليد QR', AppPalette.goldDark, Colors.white, _generateStudentQrFile),
-                      _actionButton('رفع ملف QR', const Color(0xFFEDF6FF), const Color(0xFF24436F), _pickStudentQrFile),
+                      _actionButton('تصدير وحفظ بالوثائق (PDF)', const Color(0xFFE7F7EE), AppPalette.leafGreen, () => _exportStudentQrDocument(asPdf: true)),
+                      _actionButton('تصدير وحفظ بالوثائق (JPEG)', const Color(0xFFEDF6FF), const Color(0xFF24436F), () => _exportStudentQrDocument(asPdf: false)),
+                      _actionButton('رفع ملف QR', const Color(0xFFF1F5F9), const Color(0xFF475569), _pickStudentQrFile),
                       _actionButton('حذف QR', Colors.white, const Color(0xFF667586), _removeStudentQr),
                     ],
                   ),

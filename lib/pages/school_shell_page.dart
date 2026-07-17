@@ -985,14 +985,13 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
 
   String _qrPayloadFor(StudentRecord student) {
     return jsonEncode(<String, String>{
-      'school': 'Rose School',
-      'id': student.id.toString(),
-      'serial': student.serial,
-      'name': student.fullName,
-      'grade': student.grade,
-      'section': student.section,
-      'registryNumber': student.registryNumber,
-      'guardianMobile': student.guardianMobile,
+      'لوغو واسم المدرسة': 'مدرسة روز التعليمية الخاصة',
+      'الاسم الثلاثي': _studentTripleName(student),
+      'الصف': student.grade.trim().isEmpty ? 'غير محدد' : student.grade.trim(),
+      'الشعبة': student.section.trim().isEmpty ? 'غير محدد' : student.section.trim(),
+      'رقم التسلسل بالمدرسة': student.serial.trim().isEmpty ? 'غير محدد' : student.serial.trim(),
+      'العام الدراسي': student.schoolYear.trim().isEmpty ? '2025 / 2026' : student.schoolYear.trim(),
+      'الحالة': student.status.trim().isEmpty ? 'نشط' : student.status.trim(),
     });
   }
 
@@ -1267,7 +1266,125 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
       return;
     }
     setState(() {});
-    _showSnack('تم توليد ملف QR فعليًا وربطه مع SQLite.');
+    _showSnack('تم توليد باركود الطالب المتضمن الـ 7 عناصر المعتمدة بنجاح.');
+  }
+
+  Future<void> _exportStudentQrDocument({required bool asPdf}) async {
+    final student = _selectedStudent;
+    if (student == null) {
+      _showSnack('احفظ سجل الطالب أولًا قبل تصدير وثيقة الـ QR.');
+      return;
+    }
+
+    await _ensureStudentQrFile(student.id, forceRegenerate: true);
+
+    Uint8List? logoBytes;
+    try {
+      final byteData = await rootBundle.load('image/logo.jpg');
+      logoBytes = byteData.buffer.asUint8List();
+    } catch (_) {}
+
+    final arabicFont = await PdfGoogleFonts.cairoRegular();
+    final arabicFontBold = await PdfGoogleFonts.cairoBold();
+    final qrPayload = _qrPayloadFor(student);
+
+    final pdf = pw.Document(
+      title: 'وثيقة باركود الطالب - ${student.fullName}',
+      author: 'مدرسة روز التعليمية الخاصة',
+    );
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a5,
+        build: (context) {
+          return pw.Directionality(
+            textDirection: pw.TextDirection.rtl,
+            child: pw.Container(
+              padding: const pw.EdgeInsets.all(16),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: <pw.Widget>[
+                  if (logoBytes != null)
+                    pw.SizedBox(
+                      height: 50,
+                      width: 50,
+                      child: pw.Image(pw.MemoryImage(logoBytes)),
+                    ),
+                  pw.SizedBox(height: 6),
+                  pw.Text('مدرسة روز التعليمية الخاصة', style: pw.TextStyle(font: arabicFontBold, fontSize: 16)),
+                  pw.Text('بطاقة وتوثيق الباركود المعتمد للطالب', style: pw.TextStyle(font: arabicFont, fontSize: 10, color: PdfColors.grey700)),
+                  pw.SizedBox(height: 12),
+                  pw.BarcodeWidget(
+                    barcode: pw.Barcode.qrCode(),
+                    data: qrPayload,
+                    width: 130,
+                    height: 130,
+                  ),
+                  pw.SizedBox(height: 14),
+                  pw.Table.fromTextArray(
+                    context: context,
+                    cellStyle: pw.TextStyle(font: arabicFont, fontSize: 9),
+                    headerStyle: pw.TextStyle(font: arabicFontBold, fontSize: 9, color: PdfColors.white),
+                    headerDecoration: const pw.BoxDecoration(color: PdfColors.indigo900),
+                    headers: ['بيانات الباركود', 'القيمة المعتمدة'],
+                    data: [
+                      ['لوغو واسم المدرسة', 'مدرسة روز التعليمية الخاصة'],
+                      ['الاسم الثلاثي', _studentTripleName(student)],
+                      ['الصف', student.grade.trim().isEmpty ? 'غير محدد' : student.grade.trim()],
+                      ['الشعبة', student.section.trim().isEmpty ? 'غير محدد' : student.section.trim()],
+                      ['رقم التسلسل بالمدرسة', student.serial.trim().isEmpty ? 'غير محدد' : student.serial.trim()],
+                      ['العام الدراسي', student.schoolYear.trim().isEmpty ? '2025 / 2026' : student.schoolYear.trim()],
+                      ['الحالة', student.status.trim().isEmpty ? 'نشط' : student.status.trim()],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    final pdfBytes = await pdf.save();
+    final ext = asPdf ? 'pdf' : 'png';
+    final title = 'وثيقة باركود - ${student.fullName}';
+    final baseName = '${_studentExportFileBase(student)}_qr_doc';
+
+    final storedPath = await _fileStorage.saveFile(
+      studentId: student.id,
+      bucket: 'attachments',
+      originalName: '$baseName.$ext',
+      bytes: pdfBytes,
+      preferredBaseName: baseName,
+    );
+
+    final size = await _fileStorage.fileSize(storedPath);
+
+    setState(() {
+      _attachments.insert(
+        0,
+        StudentAttachment(
+          id: DateTime.now().microsecondsSinceEpoch,
+          studentId: student.id,
+          title: title,
+          category: 'بار كود / QR',
+          note: 'وثيقة الباركود المعتمدة (اللوغو، الاسم الثلاثي، الصف، الشعبة، التسلسل، العام، الحالة)',
+          originalFileName: '$baseName.$ext',
+          storedPath: storedPath,
+          uploadedAt: _timestampLabel(),
+          sizeBytes: size,
+        ),
+      );
+    });
+
+    await _persistAttachments();
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdfBytes,
+      name: '$title.$ext',
+    );
+
+    _showSnack('تم تصدير وحفظ وثيقة الباركود بنجاح في قسم «الوثائق» للطالب.');
   }
 
   Future<void> _pickStudentQrFile() async {
