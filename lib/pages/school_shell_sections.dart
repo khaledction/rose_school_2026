@@ -74,9 +74,9 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     final adminUserFields = <MapEntry<String, TextEditingController>>[
       MapEntry('اسم المستخدم *', _adminUsernameController),
       MapEntry('الإيميل *', _adminEmailController),
+      MapEntry('الموبايل *', _adminMobileController),
       MapEntry('كلمة المرور *', _adminPasswordController),
       MapEntry('تأكيد كلمة المرور *', _adminConfirmPasswordController),
-      MapEntry('الموبايل *', _adminMobileController),
     ];
 
     final studentOptions = _students
@@ -274,9 +274,10 @@ extension SchoolShellPageSections on _SchoolShellPageState {
                       _editableField(
                         adminUserFields[i].key,
                         adminUserFields[i].value,
-                        span2: i == adminUserFields.length - 1,
+                        span2: i == 0,
                         focusNode: _adminUserFocusNodes[i],
                         nextFocusNode: i < adminUserFields.length - 1 ? _adminUserFocusNodes[i + 1] : null,
+                        obscureText: adminUserFields[i].key.contains('كلمة المرور'),
                       ),
                     _choiceField(
                       'الصلاحيات *',
@@ -1367,11 +1368,13 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     VoidCallback? onTap,
     FocusNode? focusNode,
     FocusNode? nextFocusNode,
+    bool obscureText = false,
   }) {
     return TextField(
       controller: controller,
       focusNode: focusNode,
       maxLines: maxLines,
+      obscureText: obscureText,
       onTap: onTap,
       textInputAction: nextFocusNode != null ? TextInputAction.next : TextInputAction.done,
       onEditingComplete: nextFocusNode != null ? () => nextFocusNode.requestFocus() : null,
@@ -1802,6 +1805,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
     int maxLines = 1,
     FocusNode? focusNode,
     FocusNode? nextFocusNode,
+    bool obscureText = false,
   }) {
     return SizedBox(
       width: span2 ? 760 : 374,
@@ -1823,6 +1827,7 @@ extension SchoolShellPageSections on _SchoolShellPageState {
               maxLines: maxLines,
               focusNode: focusNode,
               nextFocusNode: nextFocusNode,
+              obscureText: obscureText || label.contains('كلمة المرور'),
               onTap: (label.contains('ملاحظات') || label.contains('ملاحظة'))
                   ? () => _clearNoteFieldOnFirstTap(controller)
                   : null,
