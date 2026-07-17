@@ -92,8 +92,14 @@ Write-Step "Ensure Microsoft VC++ Redistributable (x64)"
 Ensure-VCRedist -TargetPath $VCRedistPath
 
 if (-not $SkipClean) {
-  Write-Step "flutter clean"
+  Write-Step "Cleaning build artifacts and ephemeral cache"
   flutter clean
+  if (Test-Path "windows\flutter\ephemeral") {
+    Remove-Item -Recurse -Force "windows\flutter\ephemeral" -ErrorAction SilentlyContinue
+  }
+  if (Test-Path "build") {
+    Remove-Item -Recurse -Force "build" -ErrorAction SilentlyContinue
+  }
 }
 
 Write-Step "flutter pub get"
