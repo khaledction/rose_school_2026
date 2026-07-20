@@ -3284,58 +3284,58 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                         const Spacer(),
                         Center(
                           child: Container(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.96),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: Colors.white24),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white38),
                               boxShadow: const <BoxShadow>[
-                                BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.16), blurRadius: 12, offset: Offset(0, 5)),
+                                BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.18), blurRadius: 14, offset: Offset(0, 5)),
                               ],
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(8),
                                   child: Image.asset(
-                                    'assets/designer_banner.jpg',
-                                    width: 240,
-                                    height: 104,
+                                    'assets/loraneem.png',
+                                    width: 150,
+                                    height: 65,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        width: 240,
-                                        height: 104,
+                                        width: 150,
+                                        height: 65,
                                         alignment: Alignment.center,
                                         color: const Color(0xFF0F172A),
-                                        child: const Icon(Icons.code, color: Colors.white, size: 36),
+                                        child: const Icon(Icons.code, color: Colors.white, size: 28),
                                       );
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                                 const Text(
                                   'تصميم وبرمجة خالد جمال أبو فخر',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Color(0xFF0D1D43),
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 12.5,
+                                    fontSize: 11.5,
                                     height: 1.2,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 const Directionality(
                                   textDirection: TextDirection.ltr,
                                   child: Text(
-                                    '+963 933 713 023',
+                                    '+963 933 713 023  •  loraneemTech@gmail.com',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Color(0xFF1F335D),
                                       fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      letterSpacing: 0.5,
+                                      fontSize: 10.5,
+                                      letterSpacing: 0.2,
                                     ),
                                   ),
                                 ),
