@@ -3299,41 +3299,44 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
                                   child: Image.asset(
-                                    'assets/khaled_whatsapp_qr.png',
-                                    width: 118,
-                                    height: 118,
+                                    'assets/designer_banner.jpg',
+                                    width: 240,
+                                    height: 104,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        width: 118,
-                                        height: 118,
+                                        width: 240,
+                                        height: 104,
                                         alignment: Alignment.center,
-                                        color: const Color(0xFFEDF6FF),
-                                        child: const Icon(Icons.qr_code_2, color: Color(0xFF1F335D), size: 40),
+                                        color: const Color(0xFF0F172A),
+                                        child: const Icon(Icons.code, color: Colors.white, size: 36),
                                       );
                                     },
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
                                 const Text(
-                                  'تصميم و برمجة',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Color(0xFF1F335D),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 11,
-                                    height: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  'خالد جمال أبو فخر',
+                                  'تصميم وبرمجة خالد جمال أبو فخر',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Color(0xFF0D1D43),
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 12,
+                                    fontSize: 12.5,
                                     height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Directionality(
+                                  textDirection: TextDirection.ltr,
+                                  child: Text(
+                                    '+963 933 713 023',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF1F335D),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                 ),
                               ],
