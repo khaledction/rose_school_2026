@@ -3282,65 +3282,64 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                           style: TextStyle(color: Colors.white70, height: 1.9),
                         ),
                         const Spacer(),
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.96),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white38),
-                              boxShadow: const <BoxShadow>[
-                                BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.18), blurRadius: 14, offset: Offset(0, 5)),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.asset(
-                                    'assets/loraneem.png',
-                                    width: 150,
-                                    height: 65,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 150,
-                                        height: 65,
-                                        alignment: Alignment.center,
-                                        color: const Color(0xFF0F172A),
-                                        child: const Icon(Icons.code, color: Colors.white, size: 28),
-                                      );
-                                    },
-                                  ),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.96),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.white38),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.18), blurRadius: 12, offset: Offset(0, 4)),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.asset(
+                                  'assets/loraneem.png',
+                                  width: double.infinity,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: double.infinity,
+                                      height: 80,
+                                      alignment: Alignment.center,
+                                      color: const Color(0xFF0F172A),
+                                      child: const Icon(Icons.code, color: Colors.white, size: 28),
+                                    );
+                                  },
                                 ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'تصميم وبرمجة خالد جمال أبو فخر',
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'تصميم وبرمجة خالد جمال أبو فخر',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF0D1D43),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  height: 1.15,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Directionality(
+                                textDirection: TextDirection.ltr,
+                                child: Text(
+                                  '+963 933 713 023  •  loraneemTech@gmail.com',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Color(0xFF0D1D43),
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 11.5,
-                                    height: 1.2,
+                                    color: Color(0xFF1F335D),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                    letterSpacing: 0.1,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
-                                const Directionality(
-                                  textDirection: TextDirection.ltr,
-                                  child: Text(
-                                    '+963 933 713 023  •  loraneemTech@gmail.com',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFF1F335D),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10.5,
-                                      letterSpacing: 0.2,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
