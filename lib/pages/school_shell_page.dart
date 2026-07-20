@@ -3286,11 +3286,11 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.14),
+                            color: const Color(0xFF09142E).withOpacity(0.80),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.25)),
+                            border: Border.all(color: const Color(0xFF36F7BF).withOpacity(0.35), width: 1.2),
                             boxShadow: const <BoxShadow>[
-                              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.12), blurRadius: 10, offset: Offset(0, 4)),
+                              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.25), blurRadius: 14, offset: Offset(0, 4)),
                             ],
                           ),
                           child: Column(
@@ -3309,42 +3309,46 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                                       height: 84,
                                       alignment: Alignment.center,
                                       color: Colors.transparent,
-                                      child: const Icon(Icons.code, color: Color(0xFF00F5A0), size: 32),
+                                      child: const Icon(Icons.code, color: Color(0xFF36F7BF), size: 32),
                                     );
                                   },
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              ShaderMask(
-                                shaderCallback: (bounds) => const LinearGradient(
-                                  colors: <Color>[
-                                    Colors.white,
-                                    Color(0xFFC084FC),
-                                    Color(0xFF00F5A0),
+                              RichText(
+                                textAlign: TextAlign.center,
+                                text: const TextSpan(
+                                  children: <TextSpan>[
+                                    TextSpan(
+                                      text: 'تصميم وبرمجة ',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'خالد جمال أبو فخر',
+                                      style: TextStyle(
+                                        color: Color(0xFF36F7BF),
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ],
-                                ).createShader(bounds),
-                                child: const Text(
-                                  'تصميم وبرمجة خالد جمال أبو فخر',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 12,
-                                    height: 1.2,
-                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 3),
+                              const SizedBox(height: 4),
                               const Directionality(
                                 textDirection: TextDirection.ltr,
                                 child: Text(
                                   '+963 933 713 023  •  loraneemTech@gmail.com',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: Color(0xFFE2E8F0),
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                    letterSpacing: 0.1,
+                                    fontSize: 10.5,
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
                               ),
