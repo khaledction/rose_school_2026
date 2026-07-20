@@ -3257,7 +3257,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
               children: <Widget>[
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 12),
+                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 4),
                     decoration: const BoxDecoration(
                       borderRadius: BorderRadius.only(topRight: Radius.circular(34), bottomRight: Radius.circular(34)),
                       gradient: LinearGradient(
@@ -3315,14 +3315,23 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
-                                'تصميم وبرمجة خالد جمال أبو فخر',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFF00F5A0),
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11.5,
-                                  height: 1.2,
+                              ShaderMask(
+                                shaderCallback: (bounds) => const LinearGradient(
+                                  colors: <Color>[
+                                    Colors.white,
+                                    Color(0xFFC084FC),
+                                    Color(0xFF00F5A0),
+                                  ],
+                                ).createShader(bounds),
+                                child: const Text(
+                                  'تصميم وبرمجة خالد جمال أبو فخر',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                    height: 1.2,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 3),
