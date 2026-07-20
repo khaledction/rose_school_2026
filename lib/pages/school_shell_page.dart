@@ -3257,7 +3257,7 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
               children: <Widget>[
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.all(32),
+                    padding: const EdgeInsets.fromLTRB(28, 28, 28, 12),
                     decoration: const BoxDecoration(
                       borderRadius: BorderRadius.only(topRight: Radius.circular(34), bottomRight: Radius.circular(34)),
                       gradient: LinearGradient(
@@ -3284,21 +3284,29 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                         const Spacer(),
                         Container(
                           width: double.infinity,
-                          color: Colors.transparent,
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.14),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withOpacity(0.25)),
+                            boxShadow: const <BoxShadow>[
+                              BoxShadow(color: Color.fromRGBO(0, 0, 0, 0.12), blurRadius: 10, offset: Offset(0, 4)),
+                            ],
+                          ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Image.asset(
                                   'assets/loraneem.png',
                                   width: double.infinity,
-                                  height: 90,
+                                  height: 84,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Container(
                                       width: double.infinity,
-                                      height: 90,
+                                      height: 84,
                                       alignment: Alignment.center,
                                       color: Colors.transparent,
                                       child: const Icon(Icons.code, color: Color(0xFF00F5A0), size: 32),
@@ -3313,21 +3321,21 @@ class _SchoolShellPageState extends State<SchoolShellPage> {
                                 style: TextStyle(
                                   color: Color(0xFF00F5A0),
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                   height: 1.2,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               const Directionality(
                                 textDirection: TextDirection.ltr,
                                 child: Text(
                                   '+963 933 713 023  •  loraneemTech@gmail.com',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 10.5,
-                                    letterSpacing: 0.2,
+                                    fontSize: 10,
+                                    letterSpacing: 0.1,
                                   ),
                                 ),
                               ),
